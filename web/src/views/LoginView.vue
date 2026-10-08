@@ -6,7 +6,7 @@
         <div class="text-center space-y-3">
           <div class="inline-flex items-center justify-center w-20 h-20 rounded-full overflow-hidden shadow-md bg-zinc-100 dark:bg-zinc-800 ring-4 ring-zinc-200/60 dark:ring-zinc-700/60 mx-auto">
             <img
-              src="/HRBUST.png"
+              :src="logoUrl"
               alt="HRBUST"
               class="w-full h-full object-cover rounded-full"
             />
@@ -183,6 +183,7 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import Icon from '@/components/icons/Icon.vue';
+import logoUrl from '@/assets/HRBUST.png';
 import { useSession } from '@/composables/useSession.js';
 import { useToast } from '@/composables/useToast.js';
 import { academicApi } from '@/services/academic/api.js';

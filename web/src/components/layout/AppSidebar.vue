@@ -19,7 +19,7 @@
           <div class="w-12 h-12 flex items-center justify-center shrink-0">
             <div class="w-9 h-9 rounded-full overflow-hidden shadow-xs shrink-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800">
               <img
-                src="/HRBUST.png"
+                :src="logoUrl"
                 alt="HRBUST"
                 class="w-full h-full object-cover rounded-full shrink-0"
               />
@@ -121,6 +121,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Icon from '@/components/icons/Icon.vue';
+import logoUrl from '@/assets/HRBUST.png';
 import { useSession } from '@/composables/useSession.js';
 
 const { isLoggedIn, userProfile, studentNumber, openLoginModal } = useSession();
