@@ -24,7 +24,19 @@ npm run build:userscript
 ## 安装
 
 产物 `better-hrbust.user.js` 是**全资源内联的单文件**(应用 JS + CSS + 校徽
-base64 都在里面,运行时只请求教务系统本身),任选一种方式安装:
+base64 都在里面,运行时只请求教务系统本身)。
+
+**方式 0 · 从仓库 dist 分支安装(推荐,CI 自动构建发布)**
+
+```
+https://raw.githubusercontent.com/Glassous/BetterHRBUST/dist/better-hrbust.user.js
+```
+
+浏览器打开该地址,油猴弹出安装页。脚本已内置 `@updateURL`/`@downloadURL`,
+后续上游更新、CI 重新构建后**油猴会自动检查并提示更新**(版本号含构建号,
+即使上游不 bump `package.json` 版本也能被识别)。
+
+**无 CI 产物/自行构建时**,任选一种本地方式:
 
 **方式 A · 本地服务器安装(推荐,免任何配置)**
 
@@ -47,6 +59,29 @@ npm run serve:userscript
 「允许访问文件网址」→ 把 `.user.js` 拖进浏览器窗口,弹出安装页。
 
 > 注意:油猴「实用工具 → 导入」是导入**备份压缩包**用的,不能装 .user.js 源文件。
+
+## CI 自动发布
+
+`.github/workflows/build-userscript.yml`:push 到 `main` 且改动涉及 `web/**`
+时自动构建,并把 `better-hrbust.user.js` 发布到 `dist` 分支(force_orphan,
+每次单提交,不污染历史)。构建时注入:
+
+- `USERSCRIPT_VERSION_SUFFIX = <run_number>` → 版本形如 `1.0.0.42`,保证油猴可识别每次重建;
+- `USERSCRIPT_DOWNLOAD_URL = <本仓库 dist 分支 raw 地址>` → 写入 `@updateURL`/`@downloadURL`。
+
+## 发布到 Greasy Fork(可选)
+
+Greasy Fork 支持从 URL 同步发布,与 CI 产物天然衔接:
+
+1. 注册 [greasyfork.org](https://greasyfork.org/) 账号;
+2. 「发布脚本」→ 填入 dist 分支 raw 地址作为代码来源,选择定期同步;
+3. 版本号变化时 GF 自动拉取新版本。
+
+注意两点:
+- GF 要求可追溯未压缩源码——本脚本头部 `@homepageURL` 指向仓库,构建链在
+  `web/` 下,满足要求;
+- 本仓库尚未声明开源许可证,**发布前需先确定 `@license`**(作者决定),避免
+ 授权争议;建议在 GF 发布时同步补上。
 
 ## 使用说明
 

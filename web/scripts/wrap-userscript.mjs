@@ -18,14 +18,27 @@ const outPath = path.join(webRoot, 'dist-userscript', 'better-hrbust.user.js');
 
 const pkg = JSON.parse(readFileSync(path.join(webRoot, 'package.json'), 'utf8'));
 
+// CI 注入(本地构建时留空):
+//  - USERSCRIPT_DOWNLOAD_URL: 指向 dist 分支 raw 地址,写入 @downloadURL/@updateURL,
+//    油猴据此做自动更新检查
+//  - USERSCRIPT_VERSION_SUFFIX: 版本追加构建号(如 1.0.0.42),上游不 bump 版本时
+//    也能让油猴识别出新构建
+const downloadUrl = (process.env.USERSCRIPT_DOWNLOAD_URL || '').trim();
+const versionSuffix = (process.env.USERSCRIPT_VERSION_SUFFIX || '').trim();
+const version = versionSuffix ? `${pkg.version}.${versionSuffix}` : pkg.version;
+
 let bundle = readFileSync(bundlePath, 'utf8');
 // 末尾的 sourcemap 行注释会把随后拼上的闭合代码一并注释掉,先移除
 bundle = bundle.replace(/^[ \t]*\/\/[#@] sourceMappingURL=.*$/gm, '').trimEnd();
 
+const updateMeta = downloadUrl
+  ? `// @downloadURL ${downloadUrl}\n// @updateURL   ${downloadUrl}\n`
+  : '';
+
 const header = `// ==UserScript==
 // @name         BetterHRBUST 教务工作台
 // @namespace    https://github.com/Glassous/BetterHRBUST
-// @version      ${pkg.version}
+// @version      ${version}
 // @description  哈理工教务在线(JWP/URP)现代化客户端:课表/成绩/考试/空教室/GPA 分析,同源直连真实教务数据
 // @author       Glassous
 // @match        *://jwzx.hrbust.edu.cn/*
@@ -33,7 +46,7 @@ const header = `// ==UserScript==
 // @noframes
 // @grant        GM_registerMenuCommand
 // @homepageURL  https://github.com/Glassous/BetterHRBUST
-// ==/UserScript==
+${updateMeta}// ==/UserScript==
 `;
 
 const output = `${header}
@@ -66,4 +79,4 @@ ${bundle}
 writeFileSync(outPath, output);
 
 const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
-console.log(`[wrap-userscript] ${path.relative(webRoot, outPath)} 已生成(${kb(output.length)}),主体 ${kb(bundle.length)}`);
+console.log(`[wrap-userscript] ${path.relative(webRoot, outPath)} 已生成(${kb(output.length)}),主体 ${kb(bundle.length)},版本 ${version}${downloadUrl ? `,更新地址 ${downloadUrl}` : ''}`);

@@ -49,3 +49,6 @@ yarn-error.log*
 pnpm-debug.log*
 *.tmp
 *.temp
+
+# 油猴脚本构建产物
+web/dist-userscript/

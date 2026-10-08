@@ -63,7 +63,29 @@ npm run build
 
 ---
 
-### 2. 接口探测工具 (`tools/probe/`)
+### 2. 油猴脚本客户端（Tampermonkey）
+
+无需本地启动 dev server：可一键将整个客户端打包为**单文件油猴脚本**，安装后直接访问教务在线（`http://jwzx.hrbust.edu.cn/`）即自动接管旧版 JSP 页面。所有请求与原版教务系统完全同源（Cookie 会话、验证码、GBK 解码行为一致），无任何中转服务。
+
+```bash
+cd web
+npm ci
+npm run build:userscript   # 产物: web/dist-userscript/better-hrbust.user.js（单文件，样式与图片全内联）
+```
+
+安装与使用说明见 [`web/USERSCRIPT.md`](./web/USERSCRIPT.md)。合并后 GitHub Actions 会自动构建并发布到 `dist` 分支，普通用户可直接从下面的 raw 地址一键安装（油猴凭 `@updateURL` 自动检查更新）：
+
+```
+https://raw.githubusercontent.com/Glassous/BetterHRBUST/dist/better-hrbust.user.js
+```
+
+> [!TIP]
+> 油猴版与 Web 版共用同一套业务代码（client / api / parser / views），**零改动**。
+> 选课等写操作请通过油猴菜单「查看原版教务系统」回到官方页面办理。
+
+---
+
+### 3. 接口探测工具 (`tools/probe/`)
 
 教务系统改版或需验证底层接口时，可直接运行逆向探测工具：
 

@@ -1,0 +1,54 @@
+name: Build Userscript
+
+# 推送 web/ 相关改动到 main 时自动构建油猴脚本,发布到 dist 分支。
+# 用户从 dist 分支的 raw URL 安装后,油猴凭 @updateURL 自动检查更新。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/build-userscript.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-userscript
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build userscript
+        working-directory: web
+        env:
+          # 版本追加构建号,上游不 bump 版本时油猴也能识别出新构建
+          USERSCRIPT_VERSION_SUFFIX: ${{ github.run_number }}
+          USERSCRIPT_DOWNLOAD_URL: https://raw.githubusercontent.com/${{ github.repository }}/dist/better-hrbust.user.js
+        run: |
+          npm ci
+          npm run build:userscript
+
+      - name: Prepare publish dir
+        run: |
+          mkdir -p web/publish
+          cp web/dist-userscript/better-hrbust.user.js web/publish/
+
+      - name: Publish to dist branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: dist
+          publish_dir: web/publish
+          force_orphan: true
+          commit_message: 'deploy: userscript build #${{ github.run_number }}'
