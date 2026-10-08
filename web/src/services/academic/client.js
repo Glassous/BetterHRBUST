@@ -5,16 +5,72 @@
 
 const BASE_PREFIX = '/academic/';
 
-// 请求必须使用页面上下文的 fetch:
-// Tampermonkey 沙箱属于浏览器"安全上下文",Chromium/Edge 会对其发起的 http 请求
-// 做 HTTPS 自动升级,而教务系统 443 端口无 TLS,升级即 ERR_CONNECTION_CLOSED;
-// 若升级失败不能快速回落(如经由代理时 443 慢失败),整个请求直接 Failed to fetch。
-// unsafeWindow.fetch 由油猴 @grant unsafeWindow 提供,发起方变为 http 页面本身,
-// 不参与升级;Web 版没有 unsafeWindow,自然回落 window.fetch。
-const pageFetch =
+// 请求传输层(按优先级):
+// 1. GM_xmlhttpRequest(仅油猴环境存在):走扩展后台网络栈发起,完全不受浏览器
+//    对"安全上下文"发起请求的 HTTPS 自动升级策略影响(教务系统 443 无 TLS,
+//    任何 https 尝试都会 ERR_CONNECTION_CLOSED),也不受页面 window.fetch
+//    被其他脚本包装改写的影响;目标域 Cookie 由油猴按 @connect 域自动携带。
+// 2. 页面 fetch(Web 版 / 本地冒烟):Web 版请求是同源相对路径(dev 经反代),
+//    不存在升级问题;油猴环境的兜底也用页面上下文(unsafeWindow)的 fetch,
+//    发起方为 http 页面本身,不参与升级。
+const PAGE_FETCH =
   typeof unsafeWindow !== 'undefined' && unsafeWindow && typeof unsafeWindow.fetch === 'function'
     ? unsafeWindow.fetch.bind(unsafeWindow)
     : fetch.bind(globalThis);
+
+/**
+ * 相对路径转绝对 URL(GM_xmlhttpRequest 要求绝对地址)
+ */
+function absoluteUrl(path) {
+  return new URL(resolveUrl(path), location.href).href;
+}
+
+/**
+ * 统一请求执行:返回 { ok, status, contentType, buffer, finalUrl }
+ */
+function executeRequest(url, { method = 'GET', headers = {}, body = null } = {}) {
+  if (typeof GM_xmlhttpRequest === 'function') {
+    return new Promise((resolve, reject) => {
+      const details = {
+        method,
+        url,
+        headers: { ...headers },
+        timeout: 30000,
+        responseType: 'arraybuffer',
+        onload: (r) => {
+          const contentType =
+            (String(r.responseHeaders || '').match(/content-type:\s*([^\r\n;]+)/i) || [])[1] || '';
+          resolve({
+            ok: r.status >= 200 && r.status < 300,
+            status: r.status,
+            contentType,
+            buffer: r.response || new ArrayBuffer(0),
+            finalUrl: r.finalUrl || url
+          });
+        },
+        onerror: () => reject(new Error('网络连接失败(扩展通道)')),
+        ontimeout: () => reject(new Error('请求超时(扩展通道)'))
+      };
+      if (body) {
+        details.data = typeof body === 'string' ? body : String(body);
+      }
+      GM_xmlhttpRequest(details);
+    });
+  }
+  return PAGE_FETCH(url, {
+    method,
+    headers,
+    body,
+    credentials: 'include', // 必传,携带与接收 Cookie
+    redirect: 'follow'
+  }).then(async (response) => ({
+    ok: response.ok,
+    status: response.status,
+    contentType: response.headers.get('content-type') || '',
+    buffer: await response.arrayBuffer(),
+    finalUrl: response.url
+  }));
+}
 
 // 登录页标记特征
 const LOGIN_PAGE_MARKERS = ['j_acegi_security_check', 'getCaptcha.do', 'j_captcha'];
@@ -53,19 +109,19 @@ export function parseLoginFailureReason(html) {
 
 /**
  * 智能响应解码
- * @param {Response} response
+ * @param {ArrayBuffer} buffer
+ * @param {string} [contentType]
  * @param {string} [preferredEncoding]
- * @returns {Promise<string>}
+ * @returns {string}
  */
-async function decodeResponse(response, preferredEncoding) {
-  const buffer = await response.arrayBuffer();
-  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+async function decodeResponse(buffer, contentType, preferredEncoding) {
+  const type = String(contentType || '').toLowerCase();
 
   let charset = preferredEncoding || 'utf-8';
 
   if (!preferredEncoding) {
-    if (contentType.includes('charset=')) {
-      const match = contentType.match(/charset=([a-z0-9_-]+)/i);
+    if (type.includes('charset=')) {
+      const match = type.match(/charset=([a-z0-9_-]+)/i);
       if (match && match[1]) {
         charset = match[1].toLowerCase();
       }
@@ -108,7 +164,7 @@ function resolveUrl(path) {
  * 执行 HTTP 请求
  */
 export async function request(path, options = {}) {
-  const url = resolveUrl(path);
+  const url = absoluteUrl(path);
   const {
     method = 'GET',
     headers = {},
@@ -117,16 +173,13 @@ export async function request(path, options = {}) {
     checkAuth = true
   } = options;
 
-  const fetchOptions = {
-    method,
-    headers: {
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'X-Requested-With': 'XMLHttpRequest',
-      ...headers
-    },
-    credentials: 'include' // 必传，携带与接收 Cookie
+  const requestHeaders = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'X-Requested-With': 'XMLHttpRequest',
+    ...headers
   };
 
+  let requestBody = null;
   if (body) {
     if (typeof body === 'object' && !(body instanceof FormData) && !(body instanceof URLSearchParams)) {
       const params = new URLSearchParams();
@@ -135,21 +188,21 @@ export async function request(path, options = {}) {
           params.append(key, String(value));
         }
       });
-      fetchOptions.body = params;
-      fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
+      requestBody = params;
+      requestHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
     } else {
-      fetchOptions.body = body;
+      requestBody = body;
     }
   }
 
   let response;
   try {
-    response = await pageFetch(url, fetchOptions);
+    response = await executeRequest(url, { method, headers: requestHeaders, body: requestBody });
   } catch (err) {
     throw new Error(`网络连接失败：${err.message || '无法连接到教务系统，请确认是否处于校园网或VPN环境'}`);
   }
 
-  const html = await decodeResponse(response, encoding);
+  const html = await decodeResponse(response.buffer, response.contentType, encoding);
 
   // 会话过期判定
   if (checkAuth && isLoginPage(html)) {
@@ -162,8 +215,8 @@ export async function request(path, options = {}) {
   return {
     ok: response.ok,
     status: response.status,
-    url: response.url,
-    headers: response.headers,
+    url: response.finalUrl,
+    contentType: response.contentType,
     html
   };
 }
@@ -202,20 +255,18 @@ export async function postLogin(username, password, captcha) {
 
   let res;
   try {
-    res = await pageFetch(`${BASE_PREFIX}j_acegi_security_check`, {
+    res = await executeRequest(absoluteUrl('j_acegi_security_check'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: form,
-      credentials: 'include',
-      redirect: 'follow'
+      body: form
     });
   } catch (err) {
     throw new Error(`网络连接超时或被阻断：${err.message}`);
   }
 
-  const html = await decodeResponse(res, 'gbk');
+  const html = await decodeResponse(res.buffer, res.contentType, 'gbk');
 
   // 如果依然是登录页或者包含失败标记
   if (isLoginPage(html) || LOGIN_FAILURE_MARKERS.some(m => html.includes(m))) {
@@ -236,9 +287,7 @@ export async function postLogin(username, password, captcha) {
  */
 export async function postLogout() {
   try {
-    await pageFetch(`${BASE_PREFIX}j_acegi_logout`, {
-      credentials: 'include'
-    });
+    await executeRequest(absoluteUrl('j_acegi_logout'), { method: 'GET' });
   } catch {
     // 静默忽略
   }
