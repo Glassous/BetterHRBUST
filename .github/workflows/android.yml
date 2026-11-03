@@ -18,7 +18,7 @@ jobs:
       # 校历共享数据（shared/）被 Android 与 web 两端生成/消费，改动需校验一致性
       - name: 检查校历共享数据
         run: node tools/generate-school-calendar.mjs --check
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
@@ -26,7 +26,7 @@ jobs:
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
-      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: 安装编译平台
         run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
       # 正式签名密钥：在仓库 Settings → Secrets and variables → Actions 中配置（见 README「Android 客户端」）。
