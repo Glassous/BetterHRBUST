@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * 课程块配色（明 / 暗两套）。
@@ -87,10 +88,30 @@ internal data class TimetableWidgetData(
     /** 日视图行（按大节升序，6 个大节全部保行，无课行由渲染层收窄） */
     val todayRows: List<WidgetDaySlot>,
     val todayDate: LocalDate = LocalDate.now(),
-    val calendarMessage: String = ""
+    val calendarMessage: String = "",
+    /** 本次组合时刻（页脚展示「更新时刻」，与「双日课表」页脚一致） */
+    val updatedAt: LocalTime = LocalTime.now(),
+    /** 今天已上完的大节数 / 今天（本周有效）的课程数 */
+    val todayDone: Int = 0,
+    val todayTotal: Int = 0
 ) {
     /** 本周是否有任何课程 */
     val hasWeekCourses: Boolean get() = weekRows.any { it.occupied }
+
+    /**
+     * 周视图要渲染的大节行：整行为空（本周该节次没有课）的行直接隐藏。
+     *
+     * 与 App 内课表一致地保留节次位置信息（序号贴在行首），只是不再为空格子占白。
+     */
+    val visibleWeekRows: List<WidgetWeekRow> get() = weekRows.filter { it.occupied }
+
+    /**
+     * 周视图要渲染的星期列（1=周一 … 7=周日，升序）：整列为空（本周该星期没有课）的列直接隐藏。
+     *
+     * 列被隐藏后剩余列按权重均分宽度，因此课程块的宽度会自动变大，可读性更好。
+     */
+    val visibleWeekDays: List<Int>
+        get() = (1..7).filter { day -> weekRows.any { it.cellsByDay[day].orEmpty().isNotEmpty() } }
 
     /** 今天是否有课程 */
     val hasTodayCourses: Boolean get() = todayRows.any { it.occupied }
@@ -140,6 +161,9 @@ internal object TimetableWidgetLoader {
         val current = app.preferencesManager.preferencesFlow.firstOrNull()
         if (current?.username != prefs.username || current.studentId != prefs.studentId || current.lastLoginAt != prefs.lastLoginAt)
             return TimetableWidgetData.empty(todayDay)
+        val todayRows = buildTodayRows(timetable.cells, styles, todayDay)
+        val now = snapshot.time
+        val todayCells = todayRows.flatMap { it.cells }.filter { it.activeInWeek }
         return TimetableWidgetData(
             hasSession = true,
             hasTimetable = timetable.cells.isNotEmpty() || timetable.unarranged.isNotEmpty(),
@@ -147,7 +171,10 @@ internal object TimetableWidgetLoader {
             todayDay = todayDay,
             weekRows = buildWeekRows(timetable.cells, styles),
             todayDate = snapshot.date,
-            todayRows = buildTodayRows(timetable.cells, styles, todayDay)
+            todayRows = todayRows,
+            updatedAt = now,
+            todayDone = todayCells.count { cell -> finishedBy(cell.course.sectionIndex, now) },
+            todayTotal = todayCells.size
         )
     }
 
@@ -218,6 +245,12 @@ internal object TimetableWidgetLoader {
             )
         }
     }
+}
+
+/** 该大节的课是否已经下课（页脚「今天已上 x/y 节」用）。 */
+private fun finishedBy(section: Int, now: LocalTime): Boolean {
+    val slot = CombineSlots.getOrNull(section - 1) ?: return false
+    return !now.isBefore(LocalTime.parse(slot.end))
 }
 
 /** 课程配色主键（与 App 内课表色块 / 详情卡片同一口径）。 */

@@ -11,9 +11,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
+    android:background="@drawable/widget_preview_surface"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="12dp">
 
     <!-- 顶部：教学周 + 今天 -->
     <LinearLayout
@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="第 3 周"
-            android:textColor="#1B1B1F"
+            android:textColor="#172033"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -35,9 +35,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="今天 · 周三"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
     </LinearLayout>
+
+    <!-- 内容面板：与「双日课表」的面板同款（18dp 圆角纸片） -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="4dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_preview_panel_neutral"
+        android:orientation="vertical"
+        android:padding="4dp">
 
     <!-- 星期表头 -->
     <LinearLayout
@@ -56,7 +66,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="一"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
 
         <TextView
@@ -65,7 +75,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="二"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
 
         <TextView
@@ -84,7 +94,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="四"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
 
         <TextView
@@ -93,7 +103,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="五"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
 
         <TextView
@@ -102,7 +112,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="六"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
 
         <TextView
@@ -111,7 +121,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="日"
-            android:textColor="#6F7278"
+            android:textColor="#56647B"
             android:textSize="9sp" />
     </LinearLayout>
 
@@ -128,7 +138,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="1"
-            android:textColor="#1B1B1F"
+            android:textColor="#172033"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -195,7 +205,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="2"
-            android:textColor="#1B1B1F"
+            android:textColor="#172033"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -260,7 +270,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="3"
-            android:textColor="#1B1B1F"
+            android:textColor="#172033"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -323,7 +333,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="4"
-            android:textColor="#1B1B1F"
+            android:textColor="#172033"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -372,5 +382,30 @@
             android:layout_height="match_parent"
             android:layout_margin="2dp"
             android:layout_weight="1" />
+    </LinearLayout>
+    </LinearLayout>
+
+    <!-- 页脚：更新时刻 + 今日已上进度 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="08:30"
+            android:textColor="#56647B"
+            android:textSize="9sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="今天已上 3/6 节"
+            android:textColor="#172033"
+            android:textSize="10sp"
+            android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
@@ -17,6 +18,7 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.ColumnScope
+import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -28,11 +30,30 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.glassous.betterhrbust.R
 
-/** 小部件根容器圆角（Android 12+ 由 [cornerRadius] 生效，低版本退化为直角）。 */
-internal val WidgetRootCorner = 16.dp
+/**
+ * 小部件根容器圆角（对齐「双日课表」底板；Android 12+ 由 [cornerRadius] 生效，低版本退化为直角）。
+ */
+internal val WidgetRootCorner = 24.dp
 
-/** 小部件内边距。 */
-internal val WidgetRootPadding = 10.dp
+/** 小部件内边距：矮小部件收窄到 [WidgetRootPaddingNarrow]，与「双日课表」一致。 */
+internal val WidgetRootPadding = 16.dp
+internal val WidgetRootPaddingNarrow = 12.dp
+
+/**
+ * 按宿主给出的实际尺寸取内边距（高度不足时收窄，保证网格有足够空间）。
+ *
+ * 与「双日课表」一致：矮小部件收窄内边距，把高度让给课表格子。
+ */
+internal fun widgetRootPadding(size: DpSize): Dp =
+    if (size.height < 280.dp) WidgetRootPaddingNarrow else WidgetRootPadding
+
+/** 内容面板圆角 / 内边距（对齐「双日课表」的今天 / 明天面板）。 */
+internal val WidgetPanelCorner = 18.dp
+internal val WidgetPanelPadding = 4.dp
+
+/** 底部状态行（更新时刻 + 今日已上进度）的高度与上方间隔。 */
+internal val WidgetFooterHeight = 16.dp
+internal val WidgetFooterGap = 4.dp
 
 /** 周视图时间列宽度：仅放大节序号，把宽度让给课程块。 */
 internal val WidgetTimeColumnWidth = 16.dp
@@ -146,18 +167,22 @@ internal fun allocateRowHeights(
 }
 
 /**
- * 小部件中性色（跟随系统深浅色；不启用动态取色，以保持与课程黄金角配色一致的观感）。
+ * 小部件中性色（跟随系统深浅色；与「双日课表」的 widget_colors 同一套色值）。
+ *
+ * 不启用动态取色，以保持与课程黄金角配色一致的观感。
  */
 internal object WidgetPalette {
-    val Surface: ColorProvider = dayNightColor(Color(0xFFFFFFFF), Color(0xFF1C1B1F))
-    val OnSurface: ColorProvider = dayNightColor(Color(0xFF1B1B1F), Color(0xFFE6E1E5))
-    val OnSurfaceVariant: ColorProvider = dayNightColor(Color(0xFF5A5D63), Color(0xFFC4C6CF))
-    /** 今天 / 当前列高亮：中性蓝，与课程块的金黄色相区分 */
-    val Highlight: ColorProvider = dayNightColor(Color(0xFF4A5F82), Color(0xFFAEC6FF))
+    /** 纸面底色：对应「双日课表」底板渐变的中段色（Glance 不支持渐变，取近似纯色）。 */
+    val Surface: ColorProvider = dayNightColor(Color(0xFFF5F7FC), Color(0xFF202632))
+    val OnSurface: ColorProvider = dayNightColor(Color(0xFF172033), Color(0xFFF1F4FA))
+    val OnSurfaceVariant: ColorProvider = dayNightColor(Color(0xFF56647B), Color(0xFFB9C3D6))
 
-    /** 今天所在列的淡色底（对齐 App 内课表的 todayTint：浅色 8% / 深色 14%） */
-    val TodayTint: ColorProvider =
-        dayNightColor(Color(0x144A5F82), Color(0x24AEC6FF))
+    /**
+     * 内容面板底色：「双日课表」widget_tomorrow_surface 同款。
+     *
+     * 三个课表小部件统一使用这一种中性面板，不对「今天」做任何高亮。
+     */
+    val Panel: ColorProvider = dayNightColor(Color(0xFFECEFF4), Color(0xFF282D38))
 }
 
 /**
@@ -205,6 +230,12 @@ internal class WidgetStrings(private val context: Context) {
     val dayEmpty: String = context.getString(R.string.widget_day_empty)
     val noSessionTitle: String = context.getString(R.string.widget_no_session_title)
     val noSessionHint: String = context.getString(R.string.widget_no_session_hint)
+
+    /** 页脚进度：今天已上 x/y 节 */
+    fun doneProgress(done: Int, total: Int): String = context.getString(R.string.widget_done_progress, done, total)
+
+    /** 页脚进度（窄版 2 列宽，只显示 x/y 节） */
+    fun doneProgressShort(done: Int, total: Int): String = context.getString(R.string.widget_done_progress_short, done, total)
 }
 
 /**
@@ -215,6 +246,7 @@ internal class WidgetStrings(private val context: Context) {
 @Composable
 internal fun WidgetRoot(
     action: Action,
+    padding: Dp = WidgetRootPadding,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -224,9 +256,58 @@ internal fun WidgetRoot(
             .cornerRadius(WidgetRootCorner)
             .background(WidgetPalette.Surface)
             .clickable(action)
-            .padding(10.dp),
+            .padding(padding),
         content = content
     )
+}
+
+/**
+ * 内容面板：「双日课表」面板的同款结构（大圆角纸片 + 内边距），统一用中性底色、不做高亮。
+ *
+ * 高度由调用方以显式 dp 给出（含内边距），内部行高据此分配，因此面板恒好铺满可用区域。
+ */
+@Composable
+internal fun WidgetPanel(
+    height: Dp,
+    color: ColorProvider,
+    padding: Dp = WidgetPanelPadding,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .height(height)
+            .cornerRadius(WidgetPanelCorner)
+            .background(color)
+            .padding(padding),
+        content = content
+    )
+}
+
+/**
+ * 底部状态行：左侧更新时刻，右侧今日已上进度（与「双日课表」页脚一致）。
+ */
+@Composable
+internal fun WidgetFooter(
+    updatedAt: String,
+    progress: String
+) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().height(WidgetFooterHeight),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = updatedAt,
+            modifier = GlanceModifier.defaultWeight(),
+            style = widgetText(WidgetPalette.OnSurfaceVariant, 9),
+            maxLines = 1
+        )
+        Text(
+            text = progress,
+            style = widgetText(WidgetPalette.OnSurface, 10, FontWeight.Medium),
+            maxLines = 1
+        )
+    }
 }
 
 /**
@@ -291,7 +372,7 @@ internal fun GridCourseBlock(
 ) {
     Column(
         modifier = modifier
-            .cornerRadius(6.dp)
+            .cornerRadius(8.dp)
             .background(cell.colors.containerColor())
             .padding(
                 horizontal = if (detailed) 6.dp else 2.dp,

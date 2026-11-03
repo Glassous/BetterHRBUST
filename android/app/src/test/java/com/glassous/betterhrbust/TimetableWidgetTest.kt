@@ -77,6 +77,33 @@ class TimetableWidgetTest {
         assertFalse(completed.first().ongoing)
     }
 
+    @Test fun weekViewHidesSectionsAndWeekdaysWithoutCourses() {
+        val ink = androidx.compose.ui.graphics.Color.Black
+        fun cell(day: Int, section: Int) = com.glassous.betterhrbust.widget.WidgetCell(
+            course = TimetableCell("c$day-$section", "c$day-$section", day, section, "第一大节", "课程", "1", "D510", "教师", "1-18周", ""),
+            activeInWeek = true,
+            colors = com.glassous.betterhrbust.widget.WidgetCardColors(ink, ink, ink, ink, ink, ink, ink, ink)
+        )
+        // 只有第 2 大节的周三、第 4 大节的周五有课
+        val rows = (1..6).map { section ->
+            com.glassous.betterhrbust.widget.WidgetWeekRow(
+                section = section,
+                cellsByDay = when (section) {
+                    2 -> mapOf(3 to listOf(cell(3, 2)))
+                    4 -> mapOf(5 to listOf(cell(5, 4)))
+                    else -> emptyMap()
+                }
+            )
+        }
+        val data = com.glassous.betterhrbust.widget.TimetableWidgetData(
+            hasSession = true, hasTimetable = true, currentWeek = 6, todayDay = 3,
+            weekRows = rows, todayRows = emptyList()
+        )
+        assertEquals(listOf(2, 4), data.visibleWeekRows.map { it.section })
+        assertEquals(listOf(3, 5), data.visibleWeekDays)
+        assertTrue(com.glassous.betterhrbust.widget.TimetableWidgetData.empty(3).visibleWeekDays.isEmpty())
+    }
+
     @Test fun offlineTeachingWeekAdvancesOnMondayAndDoesNotInventMissingReference() {
         assertEquals(6, TimetableWidgetModel.teachingWeek(6, "2026-10-09", LocalDate.parse("2026-10-11")))
         assertEquals(7, TimetableWidgetModel.teachingWeek(6, "2026-10-09", LocalDate.parse("2026-10-12")))

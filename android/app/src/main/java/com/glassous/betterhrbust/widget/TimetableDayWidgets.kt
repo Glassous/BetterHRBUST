@@ -37,6 +37,13 @@ private val DayNarrowWeekHeight = 14.dp
 /** 标题与网格之间的间隔。 */
 private val DayHeaderGap = 6.dp
 
+/** 内容面板的内边距（窄版更紧凑，把宽度让给课程块）。 */
+private val DayNarrowPanelPadding = 3.dp
+private val DayWidePanelPadding = 6.dp
+
+/** 面板最小高度：保证 6 个大节仍能铺开。 */
+private val DayPanelMinHeight = 60.dp
+
 /** 时间列宽度（窄版更紧凑）。 */
 private val DayNarrowTimeColumnWidth = 22.dp
 private val DayWideTimeColumnWidth = 32.dp
@@ -46,6 +53,9 @@ private val DayCellInset = 1.dp
 
 /** 同一大节多门课时的块间距。 */
 private val DayStackGap = 2.dp
+
+/** 页脚更新时刻格式（与「双日课表」页脚一致）。 */
+private val DayFooterTimeFormat = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
 
 /**
  * 日视图课表小部件（窄版，桌面占位 2 列 × 4 行）。
@@ -113,7 +123,7 @@ private fun DayWidgetContent(
 ) {
     // Glance 在组合期始终提供小部件实际尺寸（见 GlanceRemoteViews / SizeBox）
     val size = LocalSize.current
-    WidgetRoot(action = action) {
+    WidgetRoot(action = action, padding = widgetRootPadding(size)) {
         when {
             // 未登录 / 本地无课表：提示打开应用同步（与「今天没有课」区分开）
             !data.hasSession || !data.hasTimetable ->
@@ -125,10 +135,11 @@ private fun DayWidgetContent(
 }
 
 /**
- * 日视图网格：标题 + 时间列 + 今天列（6 个大节全部保行）。
+ * 日视图网格：标题 + 内容面板（时间列 + 今天列，6 个大节全部保行）+ 页脚。
  *
- * 行高由 [allocateRowHeights] 按可用高度精确分配（有课行高、无课行收窄），
- * 因此网格始终铺满小部件高度。
+ * 外观与「双日课表」一致：纸面底板 + 18dp 圆角中性面板 + 底部「更新时刻 / 今天已上 x/y 节」；
+ * 面板不染「今天」的高亮色，与周视图共用同一套中性配色。
+ * 行高由 [allocateRowHeights] 按面板内部高度精确分配（有课行高、无课行收窄），因此网格铺满面板。
  */
 @Composable
 private fun DayGrid(
@@ -137,13 +148,16 @@ private fun DayGrid(
     size: DpSize,
     detailed: Boolean
 ) {
-    val contentHeight = (size.height - WidgetRootPadding * 2).coerceAtLeast(40.dp)
+    val contentHeight = (size.height - widgetRootPadding(size) * 2).coerceAtLeast(40.dp)
     val headerHeight = if (detailed) {
         WidgetHeaderHeight
     } else {
         DayNarrowTitleHeight + DayNarrowWeekHeight
     }
-    val gridHeight = (contentHeight - headerHeight - DayHeaderGap).coerceAtLeast(20.dp)
+    val panelPadding = if (detailed) DayWidePanelPadding else DayNarrowPanelPadding
+    val panelHeight = (contentHeight - headerHeight - DayHeaderGap - WidgetFooterHeight - WidgetFooterGap)
+        .coerceAtLeast(DayPanelMinHeight)
+    val gridHeight = (panelHeight - panelPadding * 2).coerceAtLeast(20.dp)
     val emptyRowCount = data.todayRows.count { !it.occupied }
     val occupiedRowCount = data.todayRows.size - emptyRowCount
     val (occupiedRowHeight, emptyRowHeight) = allocateRowHeights(gridHeight, occupiedRowCount, emptyRowCount)
@@ -157,70 +171,107 @@ private fun DayGrid(
     )
     WidgetGap(DayHeaderGap)
 
-    // 6 个大节全部保行：今天有课的行展开课程块，无课行收窄
-    data.todayRows.forEach { slot ->
-        val rowHeight = if (slot.occupied) occupiedRowHeight else emptyRowHeight
-        Row(modifier = GlanceModifier.fillMaxWidth().height(rowHeight)) {
-            // 时间列：大节序号；宽版在行高允许时追加起止时间
-            Box(
-                modifier = GlanceModifier.width(timeColumnWidth).height(rowHeight),
-                contentAlignment = Alignment.Center
-            ) {
-                if (rowHeight >= WidgetRowLabelMinHeight) {
-                    Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
-                        Text(
-                            text = "${slot.section}",
-                            style = widgetText(WidgetPalette.OnSurface, 9, FontWeight.Bold),
-                            maxLines = 1
-                        )
-                        if (detailed && rowHeight >= WidgetTimeRangeMinRowHeight) {
-                            CombineSlots.getOrNull(slot.section - 1)?.let { timeSlot ->
-                                Text(
-                                    text = timeSlot.start,
-                                    style = widgetText(WidgetPalette.OnSurfaceVariant, 8),
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = timeSlot.end,
-                                    style = widgetText(WidgetPalette.OnSurfaceVariant, 8),
-                                    maxLines = 1
-                                )
-                            }
+    // 内容面板：与「双日课表」的面板同款（中性底色，不对「今天」做高亮），大节保行铺满面板内部
+    WidgetPanel(
+        height = panelHeight,
+        color = WidgetPalette.Panel,
+        padding = panelPadding
+    ) {
+        data.todayRows.forEach { slot ->
+            DaySlotRow(
+                slot = slot,
+                strings = strings,
+                rowHeight = if (slot.occupied) occupiedRowHeight else emptyRowHeight,
+                timeColumnWidth = timeColumnWidth,
+                detailed = detailed
+            )
+        }
+    }
+
+    WidgetGap(WidgetFooterGap)
+    WidgetFooter(
+        updatedAt = data.updatedAt.format(DayFooterTimeFormat),
+        progress = if (detailed) {
+            strings.doneProgress(data.todayDone, data.todayTotal)
+        } else {
+            strings.doneProgressShort(data.todayDone, data.todayTotal)
+        }
+    )
+}
+
+/**
+ * 日视图的一行：时间列（大节序号 / 宽版追加起止时间）+ 今天列（课程块）。
+ *
+ * 行高由调用方按可用高度算好，因此行内不做任何高度填充。
+ */
+@Composable
+private fun DaySlotRow(
+    slot: WidgetDaySlot,
+    strings: WidgetStrings,
+    rowHeight: Dp,
+    timeColumnWidth: Dp,
+    detailed: Boolean
+) {
+    Row(modifier = GlanceModifier.fillMaxWidth().height(rowHeight)) {
+        // 时间列：大节序号；宽版在行高允许时追加起止时间
+        Box(
+            modifier = GlanceModifier.width(timeColumnWidth).height(rowHeight),
+            contentAlignment = Alignment.Center
+        ) {
+            if (rowHeight >= WidgetRowLabelMinHeight) {
+                Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
+                    Text(
+                        text = "${slot.section}",
+                        style = widgetText(WidgetPalette.OnSurface, 9, FontWeight.Bold),
+                        maxLines = 1
+                    )
+                    if (detailed && rowHeight >= WidgetTimeRangeMinRowHeight) {
+                        CombineSlots.getOrNull(slot.section - 1)?.let { timeSlot ->
+                            Text(
+                                text = timeSlot.start,
+                                style = widgetText(WidgetPalette.OnSurfaceVariant, 8),
+                                maxLines = 1
+                            )
+                            Text(
+                                text = timeSlot.end,
+                                style = widgetText(WidgetPalette.OnSurfaceVariant, 8),
+                                maxLines = 1
+                            )
                         }
                     }
                 }
             }
+        }
 
-            // 今天列：同一大节可能有多门课（不同周次），纵向等分展示前两门
-            Box(
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .height(rowHeight)
-                    .padding(DayCellInset)
-            ) {
-                val shown = slot.cells.take(2)
-                if (shown.isNotEmpty()) {
-                    val blockHeight = if (shown.size > 1) {
-                        ((rowHeight - DayStackGap) / 2).coerceAtLeast(8.dp)
-                    } else {
-                        rowHeight
-                    }
-                    Column(modifier = GlanceModifier.fillMaxWidth()) {
-                        shown.forEachIndexed { index, cell ->
-                            if (index > 0) WidgetGap(DayStackGap)
-                            GridCourseBlock(
-                                cell = cell,
-                                strings = strings,
-                                layout = blockTextLayout(
-                                    blockHeight = blockHeight,
-                                    detailed = detailed,
-                                    stacked = shown.size > 1,
-                                    reserveTagLine = !cell.activeInWeek
-                                ),
+        // 今天列：同一大节可能有多门课（不同周次），纵向等分展示前两门
+        Box(
+            modifier = GlanceModifier
+                .defaultWeight()
+                .height(rowHeight)
+                .padding(DayCellInset)
+        ) {
+            val shown = slot.cells.take(2)
+            if (shown.isNotEmpty()) {
+                val blockHeight = if (shown.size > 1) {
+                    ((rowHeight - DayStackGap) / 2).coerceAtLeast(8.dp)
+                } else {
+                    rowHeight
+                }
+                Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    shown.forEachIndexed { index, cell ->
+                        if (index > 0) WidgetGap(DayStackGap)
+                        GridCourseBlock(
+                            cell = cell,
+                            strings = strings,
+                            layout = blockTextLayout(
+                                blockHeight = blockHeight,
                                 detailed = detailed,
-                                modifier = GlanceModifier.fillMaxWidth().height(blockHeight)
-                            )
-                        }
+                                stacked = shown.size > 1,
+                                reserveTagLine = !cell.activeInWeek
+                            ),
+                            detailed = detailed,
+                            modifier = GlanceModifier.fillMaxWidth().height(blockHeight)
+                        )
                     }
                 }
             }
