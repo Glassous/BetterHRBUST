@@ -2,15 +2,19 @@
   <!-- 仅在桌面端（Tauri shim 注入 window.desktopWindow）渲染；浏览器环境不出现 -->
   <div
     v-if="available"
-    class="tb-drag sticky top-0 z-[60] h-10 flex items-center justify-end px-3 select-none bg-[#f6f7f9]/95 dark:bg-[#14161a]/95 backdrop-blur-md"
+    class="tb-drag sticky top-0 z-[60] h-10 flex items-stretch justify-end pl-3 select-none bg-[#f6f7f9]/95 dark:bg-[#14161a]/95 backdrop-blur-md"
     @mousedown="onBarMouseDown"
   >
     <!-- 左侧留空：仅作为可拖拽区域（双击可切换最大化） -->
     <div class="flex-1 h-full"></div>
 
-    <!-- 右侧窗口控制按钮：幽灵样式（无底色，与标题栏背景融为一体，悬停出现淡色晕染） -->
-    <div class="flex items-center gap-1.5 tb-nodrag">
-      <button type="button" title="最小化" :class="btnClass" @click="win.minimize()">
+    <!--
+      右侧窗口控制按钮：方形、彼此紧贴、与窗口右上角齐平。
+      不留右侧内边距、不加圆角、不设间距 —— 保证最外一列像素以及按钮之间的接缝
+      都落在按钮自身的可点击范围里（圆形按钮的四角与四周留白原本是死区）。
+    -->
+    <div class="tb-nodrag flex items-stretch">
+      <button type="button" title="最小化" aria-label="最小化" :class="btnClass" @click="win.minimize()">
         <svg
           class="w-5 h-5"
           viewBox="0 0 24 24"
@@ -25,6 +29,7 @@
       <button
         type="button"
         :title="isMaximized ? '向下还原' : '最大化'"
+        :aria-label="isMaximized ? '向下还原' : '最大化'"
         :class="btnClass"
         @click="win.toggleMaximize()"
       >
@@ -54,7 +59,13 @@
           <rect x="5.5" y="9.5" width="9" height="9" rx="2.5" />
         </svg>
       </button>
-      <button type="button" title="关闭" :class="closeClass" @click="win.close()">
+      <button
+        type="button"
+        title="关闭"
+        aria-label="关闭"
+        :class="closeClass"
+        @click="win.close()"
+      >
         <svg
           class="w-5 h-5"
           viewBox="0 0 24 24"
@@ -89,12 +100,13 @@ function onBarMouseDown(e) {
   else win.startDrag();
 }
 
-// 幽灵按钮：默认与标题栏背景同色（仅图标），悬停出现淡色晕染；
-// 关闭键悬停红色晕染以示区分。无底色/描边/阴影，尺寸放大到 36px。
+// 方形窗口控制键：与标题栏等高（40×40），无圆角、无间距，紧贴窗口右上角。
+// 悬停/按下只改底色 —— 不用 scale 缩放：收缩动画会让紧贴的边缘露出缝隙，
+// 也会让指针在按下瞬间落到按钮之外。
 const btnBase =
-  'w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100';
-const btnClass = `${btnBase} hover:bg-zinc-900/6 dark:hover:bg-[#23262d]`;
-const closeClass = `${btnBase} hover:bg-red-500/10 hover:text-red-600 dark:hover:bg-red-500/15 dark:hover:text-red-400`;
+  'shrink-0 w-10 h-full flex items-center justify-center cursor-pointer select-none transition-colors duration-150 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400';
+const btnClass = `${btnBase} hover:bg-zinc-900/6 active:bg-zinc-900/10 dark:hover:bg-[#23262d] dark:active:bg-[#2a2e36]`;
+const closeClass = `${btnBase} hover:bg-red-500/10 hover:text-red-600 active:bg-red-500/15 dark:hover:bg-red-500/15 dark:hover:text-red-400`;
 
 onMounted(async () => {
   if (!win) return;
