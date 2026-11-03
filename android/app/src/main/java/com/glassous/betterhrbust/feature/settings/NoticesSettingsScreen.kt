@@ -321,6 +321,23 @@ fun NoticesSettingsScreen(
                                 onClick = { showClearCacheDialog = true }
                             )
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                            // 课表小部件的准点刷新需要系统的精确闹钟权限，与缓存清理同属「本机能力」，合并在同一卡片里
+                            SettingsActionRow(
+                                icon = Icons.Default.Alarm,
+                                title = "课表组件准点更新",
+                                subtitle = "允许系统闹钟后，在课程结束和午夜准点刷新；未允许时系统更新可能延后",
+                                onClick = {
+                                    if (android.os.Build.VERSION.SDK_INT >= 31) {
+                                        context.startActivity(
+                                            android.content.Intent(
+                                                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                                android.net.Uri.parse("package:${context.packageName}")
+                                            )
+                                        )
+                                    }
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.Outlined.Feedback,
                                 title = "意见反馈",
@@ -344,20 +361,6 @@ fun NoticesSettingsScreen(
                             )
                         }
                     }
-                }
-
-                item {
-                    SettingsActionRow(
-                        icon = Icons.Default.Refresh,
-                        title = "课表组件准点更新",
-                        subtitle = "允许系统闹钟后，在课程结束和午夜准点刷新；未允许时系统更新可能延后",
-                        onClick = {
-                            if (android.os.Build.VERSION.SDK_INT >= 31) {
-                                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                                    android.net.Uri.parse("package:${context.packageName}")))
-                            }
-                        }
-                    )
                 }
 
                 // Section: 关于与更新（数据源为 GitHub Release：仅提示 + 跳转下载页，不做应用内安装）

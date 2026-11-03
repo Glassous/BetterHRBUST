@@ -23,6 +23,7 @@ import com.glassous.betterhrbust.core.parser.AcademicParsers
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
+import com.glassous.betterhrbust.core.ui.components.GpaCalculationHelp
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
 import com.glassous.betterhrbust.core.util.GpaCalculator
@@ -256,12 +257,19 @@ fun DashboardScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = "查看成绩",
-                                tint = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // 计算说明入口：卡片右上角问号（点击只弹说明，不透传到卡片的跳转）
+                                GpaCalculationHelp(
+                                    iconOnly = true,
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "查看成绩",
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
@@ -285,8 +293,6 @@ fun DashboardScreen(
                     }
                 }
             }
-
-            item { com.glassous.betterhrbust.core.ui.components.GpaCalculationHelp() }
 
             // Upcoming Exam Card (if any)
             if (upcomingExam != null) {

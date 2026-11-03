@@ -1,5 +1,6 @@
 package com.glassous.betterhrbust.core.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
@@ -64,6 +67,68 @@ fun PageHeaderTitle(
             ),
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+/** 固定顶栏内容区高度（不含状态栏安全区）。 */
+val PageTopBarHeight = 52.dp
+
+/**
+ * 固定顶栏占用的上边距：给滚动列表的 `contentPadding.top` 用。
+ *
+ * @param extra 顶栏与首条内容之间的额外留白
+ */
+@Composable
+fun pageTopBarTopPadding(extra: Dp = 8.dp): Dp =
+    LocalTopContentInset.current + PageTopBarHeight + extra
+
+/**
+ * 二级页面固定顶栏：返回按钮 + 页面标题固定在状态栏下方，不随内容滚动。
+ *
+ * 底色始终不透明（与页面底色一致、不加分隔线），因此滚过顶栏的内容被完全遮住，
+ * 也不需要随滚动状态变化。
+ *
+ * 使用方式：把列表 `contentPadding.top` 设为 [pageTopBarTopPadding]，
+ * 顶栏与本页内容同处一个 `Box`（顶栏后放置即可覆盖在内容之上）。
+ */
+@Composable
+fun FixedPageTopBar(
+    title: String,
+    onBack: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Spacer(modifier = Modifier.height(LocalTopContentInset.current))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PageTopBarHeight)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (onBack != null) {
+                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "返回"
+                    )
+                }
+                Spacer(modifier = Modifier.width(2.dp))
+            } else {
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

@@ -6,8 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,8 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
-import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
+import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
+import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import org.json.JSONObject
 
@@ -44,9 +44,20 @@ fun ResourcesScreen(onBack: () -> Unit) {
         if (uri.scheme !in listOf("http", "https") || uri.host?.endsWith(".hrbust.edu.cn") != true) { error = "资料地址不属于学校网站"; return }
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { error = "无法打开浏览器：${it.message}" }
     }
-    Column(Modifier.fillMaxSize().padding(top = LocalTopContentInset.current)) {
-        Row(Modifier.padding(12.dp)) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }; Text("资料查找", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 10.dp)) }
-        LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = LocalBottomContentInset.current + 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // 固定顶栏：标题与返回按钮不随内容滚动，列表滚起来后顶栏底色转为不透明
+    val listState = rememberLazyListState()
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = pageTopBarTopPadding(),
+                bottom = LocalBottomContentInset.current + 16.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             item {
                 Text("教务处公开资料目录，原文与附件在学校网站打开。")
                 OutlinedTextField(
@@ -77,5 +88,6 @@ fun ResourcesScreen(onBack: () -> Unit) {
             if (filtered.isEmpty() && catalog.isSuccess) item { Text("未找到匹配资料，请尝试其他关键词或分类。") }
             item { TextButton(onClick = { open("http://jwzx.hrbust.edu.cn/homepage/info.do?columnId=344") }) { Text("打开教务处资料下载原站") } }
         }
+        FixedPageTopBar(title = "资料查找", onBack = onBack)
     }
 }

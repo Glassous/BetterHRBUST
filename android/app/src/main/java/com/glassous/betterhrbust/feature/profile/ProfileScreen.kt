@@ -3,6 +3,7 @@ package com.glassous.betterhrbust.feature.profile
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -17,10 +18,10 @@ import androidx.compose.ui.unit.dp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.PersonalInfo
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
-import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
+import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.LoadingView
-import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
@@ -82,6 +83,8 @@ fun ProfileScreen(
         }
     }
 
+    // 固定顶栏：标题与返回按钮不随内容滚动，列表滚起来后顶栏底色转为不透明
+    val listState = rememberLazyListState()
     Box(modifier = modifier.fillMaxSize()) {
         AppPullToRefreshBox(
             isRefreshing = isRefreshing || isSyncing,
@@ -93,16 +96,14 @@ fun ProfileScreen(
                 LoadingView(message = "正在加载学籍信息...")
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(
-                        top = LocalTopContentInset.current + 8.dp,
+                        top = pageTopBarTopPadding(),
                         bottom = LocalBottomContentInset.current + 24.dp
                     )
                 ) {
-                    // 页面标题（作为滚动内容，可穿透状态栏）
-                    item { PageHeaderTitle("学籍档案", onBack = onBack) }
-
                     // Profile Header Card
                     item {
                         Card(
@@ -241,6 +242,7 @@ fun ProfileScreen(
                 }
             }
         }
+        FixedPageTopBar(title = "学籍档案", onBack = onBack)
     }
 }
 

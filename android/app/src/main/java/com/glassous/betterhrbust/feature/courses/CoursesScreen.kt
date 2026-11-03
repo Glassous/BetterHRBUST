@@ -3,6 +3,7 @@ package com.glassous.betterhrbust.feature.courses
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
@@ -17,10 +18,10 @@ import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.CourseSearchItem
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
-import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.EmptyView
+import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.LoadingView
-import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.Job
@@ -66,21 +67,20 @@ fun CoursesScreen(
         }
     }
 
-    // 整页为单一滚动列表：顶部内容（标题/检索框）随滚动穿透状态栏，
-    // 初始与末尾内容由 contentPadding 保证不被系统栏与悬浮导航坞遮挡。
+    // 整页为单一滚动列表，标题改为固定顶栏（滚动后底色转为不透明，内容从顶栏下方滚过）
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = modifier
+        state = listState,
+        modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(
-            top = LocalTopContentInset.current + 8.dp,
+            top = pageTopBarTopPadding(),
             bottom = LocalBottomContentInset.current + 24.dp
         )
     ) {
-        // 页面标题（作为滚动内容，可穿透状态栏）
-        item { PageHeaderTitle("我的课程名录", onBack = onBack) }
-
         item {
             OutlinedTextField(
                 value = searchQuery,
@@ -168,5 +168,7 @@ fun CoursesScreen(
                 }
             }
         }
+    }
+        FixedPageTopBar(title = "我的课程名录", onBack = onBack)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,8 +29,8 @@ import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
-import com.glassous.betterhrbust.core.ui.LocalTopContentInset
-import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
+import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import com.glassous.betterhrbust.core.util.FeedbackText
 import com.glassous.betterhrbust.data.repository.FeedbackRepository
@@ -149,22 +150,22 @@ fun FeedbackScreen(
         }
     }
 
+    // 固定顶栏：标题与返回按钮不随内容滚动，列表滚起来后顶栏底色转为不透明
+    val listState = rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
     LazyColumn(
-        modifier = modifier
+        state = listState,
+        modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
             // 键盘弹出时列表底部让位，保证输入框与提交按钮可见
             .imePadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(
-            top = LocalTopContentInset.current + 8.dp,
+            top = pageTopBarTopPadding(),
             bottom = LocalBottomContentInset.current + 32.dp
         )
     ) {
-        item {
-            PageHeaderTitle(title = "意见反馈", onBack = onBack)
-        }
-
         item { FeedbackIntroCard() }
 
         when {
@@ -208,6 +209,8 @@ fun FeedbackScreen(
         }
 
         item { PrivacyCard() }
+    }
+        FixedPageTopBar(title = "意见反馈", onBack = onBack)
     }
 }
 

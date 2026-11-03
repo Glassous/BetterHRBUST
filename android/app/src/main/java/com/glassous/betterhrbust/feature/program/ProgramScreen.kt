@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -24,11 +25,11 @@ import com.glassous.betterhrbust.core.model.CreditsProgress
 import com.glassous.betterhrbust.core.model.CurriculumPlanResult
 import com.glassous.betterhrbust.core.model.ScoreResult
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
-import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
+import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.LoadingView
-import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.util.GpaCalculator
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
@@ -114,6 +115,9 @@ fun ProgramScreen(
         creditsProgress?.categories?.associateBy { it.name } ?: emptyMap()
     }
 
+    // 固定顶栏：标题与返回按钮不随内容滚动，列表滚起来后顶栏底色转为不透明；
+    // 加载 / 空态同样盖在顶栏之下，避免打开后无处退出
+    val listState = rememberLazyListState()
     Box(modifier = modifier.fillMaxSize()) {
         AppPullToRefreshBox(
             isRefreshing = isRefreshing || isSyncing,
@@ -121,46 +125,22 @@ fun ProgramScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             if (groups.isEmpty() && (isRefreshing || isSyncing)) {
-                // 加载态同样保留页头（含返回按钮），避免打开后无处退出
-                Column(modifier = Modifier.fillMaxSize()) {
-                    PageHeaderTitle(
-                        title = "培养方案",
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(top = LocalTopContentInset.current + 8.dp),
-                        onBack = onBack
-                    )
-                    LoadingView(
-                        message = "正在获取培养方案...",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                LoadingView(message = "正在获取培养方案...")
             } else if (groups.isEmpty()) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    PageHeaderTitle(
-                        title = "培养方案",
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(top = LocalTopContentInset.current + 8.dp),
-                        onBack = onBack
-                    )
-                    EmptyView(
-                        title = "暂无培养方案数据",
-                        description = cacheError.ifEmpty { "请下拉刷新加载方案" },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                EmptyView(
+                    title = "暂无培养方案数据",
+                    description = cacheError.ifEmpty { "请下拉刷新加载方案" }
+                )
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(
-                        top = LocalTopContentInset.current + 8.dp,
+                        top = pageTopBarTopPadding(),
                         bottom = LocalBottomContentInset.current + 24.dp
                     )
                 ) {
-                    // 页面标题（作为滚动内容，可穿透状态栏）
-                    item { PageHeaderTitle("培养方案", onBack = onBack) }
 
                     // Summary Card
                     item {
@@ -236,6 +216,7 @@ fun ProgramScreen(
                 }
             }
         }
+        FixedPageTopBar(title = "培养方案", onBack = onBack)
     }
 }
 
