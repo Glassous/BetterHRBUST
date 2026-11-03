@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +36,8 @@ import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.datastore.UserPreferencesManager
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
+import com.glassous.betterhrbust.core.ui.theme.warningBannerColors
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -217,22 +218,24 @@ fun AuthScreen(
 
                     // 会话失效提示：不满足"一周节流"条件时此处仍会展示（仅登录页告知）
                     if (isSessionExpired) {
+                        val warning = warningBannerColors(LocalDarkTheme.current)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFFFF7E6)
+                            color = warning.container,
+                            border = BorderStroke(1.dp, warning.border)
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
                                     text = "登录状态已失效",
-                                    color = Color(0xFF92400E),
+                                    color = warning.content,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "教务会话已过期，本地缓存的课表 / 成绩 / 考试数据仍可离线查看；重新登录后即可手动刷新最新数据。",
-                                    color = Color(0xFF92400E),
+                                    color = warning.content,
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }

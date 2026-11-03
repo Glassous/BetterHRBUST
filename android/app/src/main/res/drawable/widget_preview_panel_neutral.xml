@@ -2,6 +2,6 @@
 <!-- 预览图内容面板：「双日课表」明天面板（widget_tomorrow_panel）同款 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#ECEFF4" />
+    <solid android:color="#F4F4F5" />
     <corners android:radius="18dp" />
 </shape>

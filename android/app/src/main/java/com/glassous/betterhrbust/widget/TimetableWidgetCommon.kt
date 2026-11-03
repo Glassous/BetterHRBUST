@@ -29,6 +29,12 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.glassous.betterhrbust.R
+import com.glassous.betterhrbust.core.ui.theme.AppSurfaceDark
+import com.glassous.betterhrbust.core.ui.theme.AppSurfaceLight
+import com.glassous.betterhrbust.core.ui.theme.Zinc100
+import com.glassous.betterhrbust.core.ui.theme.Zinc400
+import com.glassous.betterhrbust.core.ui.theme.Zinc500
+import com.glassous.betterhrbust.core.ui.theme.Zinc900
 
 /**
  * 小部件根容器圆角（对齐「双日课表」底板；Android 12+ 由 [cornerRadius] 生效，低版本退化为直角）。
@@ -167,22 +173,23 @@ internal fun allocateRowHeights(
 }
 
 /**
- * 小部件中性色（跟随系统深浅色；与「双日课表」的 widget_colors 同一套色值）。
+ * 小部件中性色（跟随系统深浅色；与 Web / 应用内同一套 zinc 色板，也与「双日课表」的
+ * widget_colors 保持同值）。
  *
- * 不启用动态取色，以保持与课程黄金角配色一致的观感。
+ * 不启用动态取色，以保持与课程黄金角配色、以及与 Web 端一致的观感。
  */
 internal object WidgetPalette {
-    /** 纸面底色：对应「双日课表」底板渐变的中段色（Glance 不支持渐变，取近似纯色）。 */
-    val Surface: ColorProvider = dayNightColor(Color(0xFFF5F7FC), Color(0xFF202632))
-    val OnSurface: ColorProvider = dayNightColor(Color(0xFF172033), Color(0xFFF1F4FA))
-    val OnSurfaceVariant: ColorProvider = dayNightColor(Color(0xFF56647B), Color(0xFFB9C3D6))
+    /** 纸面底色：卡片白 / Web 的 `dark:bg-[#1c1e24]`。 */
+    val Surface: ColorProvider = dayNightColor(AppSurfaceLight, AppSurfaceDark)
+    val OnSurface: ColorProvider = dayNightColor(Zinc900, Zinc100)
+    val OnSurfaceVariant: ColorProvider = dayNightColor(Zinc500, Zinc400)
 
     /**
-     * 内容面板底色：「双日课表」widget_tomorrow_surface 同款。
+     * 内容面板底色：Web 卡片内的次级块（`bg-zinc-50/50` / `#23262d`）。
      *
      * 三个课表小部件统一使用这一种中性面板，不对「今天」做任何高亮。
      */
-    val Panel: ColorProvider = dayNightColor(Color(0xFFECEFF4), Color(0xFF282D38))
+    val Panel: ColorProvider = dayNightColor(Zinc100, Color(0xFF23262D))
 }
 
 /**

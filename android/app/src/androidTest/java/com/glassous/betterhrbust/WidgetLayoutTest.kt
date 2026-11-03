@@ -48,7 +48,7 @@ class WidgetLayoutTest {
                     bitmap.recycle()
                 }
                 val panel=root!!.findViewById<View>(R.id.widget_today_panel).background as android.graphics.drawable.GradientDrawable
-                assertEquals(if(night) android.graphics.Color.parseColor("#27354A") else android.graphics.Color.parseColor("#E8EFFA"),panel.color!!.defaultColor)
+                assertEquals(if(night) android.graphics.Color.parseColor("#2A2E36") else android.graphics.Color.parseColor("#ECECEF"),panel.color!!.defaultColor)
             }
         }
     }

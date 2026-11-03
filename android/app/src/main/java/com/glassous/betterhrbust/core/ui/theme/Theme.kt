@@ -1,12 +1,10 @@
 package com.glassous.betterhrbust.core.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.platform.LocalContext
 
 /**
  * 当前应用内是否处于深色主题。
@@ -16,36 +14,20 @@ import androidx.compose.ui.platform.LocalContext
  */
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-)
-
+/**
+ * 应用主题：固定使用与 Web 端一致的 zinc 中性色板，不参与系统动态取色（Material You）。
+ *
+ * 之所以关闭动态取色：Web 端没有品牌色 / 壁纸取色概念，桌面端与网页端的观感必须一致，
+ * 壁纸取色会让同一份界面在不同机型上变成不同颜色。
+ */
 @Composable
 fun BetterHRBUSTTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
         MaterialTheme(
-            colorScheme = colorScheme,
+            colorScheme = betterHrbustColorScheme(darkTheme),
             typography = Typography,
             content = content
         )

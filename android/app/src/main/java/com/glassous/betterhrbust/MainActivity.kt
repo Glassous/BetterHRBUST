@@ -108,11 +108,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 动态取色固定开启：Android 12+ 一律使用壁纸取色
-            BetterHRBUSTTheme(
-                darkTheme = useDarkTheme,
-                dynamicColor = true
-            ) {
+            // 固定使用与 Web 端一致的中性色板，不启用系统动态取色（Material You）
+            BetterHRBUSTTheme(darkTheme = useDarkTheme) {
                 val resolvedAuthState = authState
                 if (resolvedAuthState == null || prefs == null) {
                     // 首帧占位：仅渲染与主题一致的底色，等会话状态与偏好就绪后再决定落地页

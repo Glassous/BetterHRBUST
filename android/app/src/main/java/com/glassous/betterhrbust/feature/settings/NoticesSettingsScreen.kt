@@ -530,6 +530,7 @@ fun NoticesSettingsScreen(
         if (showClearCacheDialog) {
             AlertDialog(
                 onDismissRequest = { showClearCacheDialog = false },
+                containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("确认清理缓存？") },
                 text = { Text("清理后需联网重新获取数据。") },
                 confirmButton = {
@@ -566,6 +567,7 @@ fun NoticesSettingsScreen(
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
+                containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("退出登录") },
                 text = { Text("将清除会话并返回登录页。") },
                 confirmButton = {

@@ -26,7 +26,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="今天 · 周三"
-            android:textColor="#172033"
+            android:textColor="#18181B"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="第 3 周"
-            android:textColor="#56647B"
+            android:textColor="#71717A"
             android:textSize="9sp" />
     </LinearLayout>
 
@@ -66,7 +66,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="1"
-                android:textColor="#172033"
+                android:textColor="#18181B"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -74,14 +74,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="08:10"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="09:50"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
         </LinearLayout>
 
@@ -115,7 +115,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="2"
-                android:textColor="#172033"
+                android:textColor="#18181B"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -123,14 +123,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="10:10"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="11:50"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
         </LinearLayout>
 
@@ -164,7 +164,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="3"
-                android:textColor="#172033"
+                android:textColor="#18181B"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -172,14 +172,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="13:30"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="15:10"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
         </LinearLayout>
 
@@ -213,7 +213,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="4"
-                android:textColor="#172033"
+                android:textColor="#18181B"
                 android:textSize="9sp"
                 android:textStyle="bold" />
 
@@ -221,14 +221,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="15:30"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="17:10"
-                android:textColor="#56647B"
+                android:textColor="#71717A"
                 android:textSize="8sp" />
         </LinearLayout>
 
@@ -256,7 +256,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="5"
-            android:textColor="#9A9DA3"
+            android:textColor="#A1A1AA"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -277,7 +277,7 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="6"
-            android:textColor="#9A9DA3"
+            android:textColor="#A1A1AA"
             android:textSize="9sp"
             android:textStyle="bold" />
 
@@ -301,14 +301,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="08:30"
-            android:textColor="#56647B"
+            android:textColor="#71717A"
             android:textSize="9sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="今天已上 3/6 节"
-            android:textColor="#172033"
+            android:textColor="#18181B"
             android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>

@@ -32,6 +32,9 @@ import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.Amber500
+import com.glassous.betterhrbust.core.ui.theme.Emerald500
+import com.glassous.betterhrbust.core.ui.theme.Rose500
 import com.glassous.betterhrbust.core.util.FeedbackText
 import com.glassous.betterhrbust.data.repository.FeedbackRepository
 import kotlinx.coroutines.launch
@@ -668,11 +671,11 @@ private fun PrivacyLine(dotColor: Color, text: String) {
     }
 }
 
-/** 提交成功提示色（emerald-500） */
-private val SuccessGreen = Color(0xFF059669)
+/** 提交成功提示色（与 Web 端 emerald-500 一致） */
+private val SuccessGreen = Emerald500
 
-/** 门控提示色（amber-600） */
-private val WarningAmber = Color(0xFFD97706)
+/** 门控提示色（与 Web 端 amber-500 一致） */
+private val WarningAmber = Amber500
 
-/** 隐私说明中的警示色（rose-500） */
-private val DangerRed = Color(0xFFF43F5E)
+/** 隐私说明中的警示色（与 Web 端 rose-500 一致） */
+private val DangerRed = Rose500

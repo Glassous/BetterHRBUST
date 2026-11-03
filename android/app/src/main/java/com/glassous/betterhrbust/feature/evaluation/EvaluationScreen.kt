@@ -119,7 +119,9 @@ fun EvaluationScreen(onBack: () -> Unit) {
         FixedPageTopBar(title = "教学评价助手", onBack = back)
     }
     if (confirming) template?.let { form ->
-        AlertDialog(onDismissRequest = { confirming = false }, title = { Text("确认批量教学评价") },
+        AlertDialog(onDismissRequest = { confirming = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("确认批量教学评价") },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text("将向学校提交 ${chosen.size} 门课程的评价，使用以下配置：")
                 form.questions.forEachIndexed { index, question -> Text("${question.title}：${question.options.getOrNull(ratings[index])?.label.orEmpty()}") }

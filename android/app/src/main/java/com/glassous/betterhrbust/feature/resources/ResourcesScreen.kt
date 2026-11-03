@@ -78,7 +78,10 @@ fun ResourcesScreen(onBack: () -> Unit) {
                 items(items.map { it.category }.distinct()) { name -> FilterChip(selected = category == name, onClick = { category = name }, label = { Text(name) }) }
             } }
             items(filtered, key = { it.category + it.id }) { row ->
-                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(row.title, style = MaterialTheme.typography.titleMedium)
                     Text("${row.category} · ${row.date}", style = MaterialTheme.typography.bodySmall)
                     TextButton(onClick = { open(row.url) }) { Text("查看学校原文") }

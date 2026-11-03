@@ -112,8 +112,9 @@ object CourseColorPalette {
     private fun mutedColors(dark: Boolean) = CourseCardColors(
         container = if (dark) CourseMutedColor.backgroundDark else CourseMutedColor.backgroundLight,
         content = if (dark) CourseMutedColor.textDark else CourseMutedColor.textLight,
-        border = if (dark) Color(0xFF3F3F46) else Color(0xFFE4E4E7),
-        accent = if (dark) Color(0xFF71717A) else Color(0xFFA1A1AA)
+        // 边框 / 强调点直接沿用 Web 的 zinc-800 / zinc-200 与 zinc-500 / zinc-400
+        border = if (dark) Zinc800 else Zinc200,
+        accent = if (dark) Zinc500 else Zinc400
     )
 
     private fun normalize(value: String): String = value.replace(Regex("""\s+"""), "").trim()

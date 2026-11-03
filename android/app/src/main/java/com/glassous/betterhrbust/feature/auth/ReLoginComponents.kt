@@ -42,6 +42,8 @@ import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
+import com.glassous.betterhrbust.core.ui.theme.warningBannerColors
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -58,10 +60,12 @@ fun SessionExpiredBanner(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bannerBg = Color(0xFFFEF3C7)
-    val bannerBorder = Color(0xFFFCD34D)
-    val textColor = Color(0xFF92400E)
-    val buttonBg = Color(0xFFD97706)
+    // 与 Web 端 AppHeader 的会话提示同一套 amber 语义色
+    val warning = warningBannerColors(LocalDarkTheme.current)
+    val bannerBg = warning.container
+    val bannerBorder = warning.border
+    val textColor = warning.content
+    val buttonBg = warning.accent
     val interactionSource = remember { MutableInteractionSource() }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -105,7 +109,7 @@ fun SessionExpiredBanner(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFF59E0B).copy(alpha = alpha))
+                        .background(warning.accent.copy(alpha = alpha))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
