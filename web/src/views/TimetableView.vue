@@ -108,7 +108,10 @@
       </div>
 
       <!-- Timetable Grid -->
-      <div v-else class="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#111316] overflow-x-auto shadow-xs">
+      <div
+        v-else
+        class="rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#111316] overflow-x-auto shadow-xs"
+      >
         <div class="min-w-[1040px]">
           <!-- Table Header (Days of week) -->
           <div
@@ -175,33 +178,27 @@
                 isTodayColumn(dayNum) ? 'bg-emerald-500/[0.07] dark:bg-emerald-400/[0.06]' : ''
               ]"
             >
-              <div
+              <!-- 每节课就是一张卡片：点开后同一节点由 GSAP Flip 展开成详情大卡 -->
+              <TimetableCourseCard
                 v-for="course in getVisibleCoursesForSlot(dayNum, slot.period)"
                 :key="course.courseName + course.id"
-                :class="[
-                  'p-2.5 rounded-lg text-sm leading-tight transition-all duration-150 cursor-pointer border select-none h-full flex flex-col justify-between',
-                  isCourseActiveThisWeek(course) ? 'course-card' : COURSE_MUTED
-                ]"
-                :style="courseColorStyle(course)"
-                @click="openCourseDetail(course)"
-              >
-                <div>
-                  <div class="font-bold line-clamp-2 tracking-tight">{{ course.courseName }}</div>
-                  <div class="text-xs opacity-80 mt-1.5 flex items-center gap-1">
-                    <span class="truncate">{{ course.location || '待定' }}</span>
-                  </div>
-                </div>
-                <div class="text-[11px] opacity-75 mt-1.5 truncate">
-                  {{ course.teacher }} · {{ course.weeks }}
-                </div>
-              </div>
+                :course="course"
+                :active="isCourseActiveThisWeek(course)"
+                :expanded="expandedCourseKey === courseKey(course)"
+                :view-mode="viewMode"
+                @open="onCourseOpen"
+                @close="onCourseClose"
+              />
             </div>
           </div>
         </div>
       </div>
 
       <!-- Unarranged courses table -->
-      <UiCard v-if="unarrangedCourses.length > 0" title="未安排固定节次/地点的课程 (实践/实验/重修)">
+      <UiCard
+        v-if="unarrangedCourses.length > 0"
+        title="未安排固定节次/地点的课程 (实践/实验/重修)"
+      >
         <div class="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs">
           <div
             v-for="item in unarrangedCourses"
@@ -252,40 +249,7 @@
         </div>
       </UiModal>
 
-      <!-- Course Detail Drawer -->
-      <UiDrawer
-        v-model="showDrawer"
-        :title="selectedCourse?.courseName || '课程详情'"
-      >
-        <div v-if="selectedCourse" class="space-y-4 text-xs">
-          <div class="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/80 dark:border-zinc-800 space-y-2">
-            <div class="flex justify-between">
-              <span class="text-zinc-500">课程序号</span>
-              <span class="font-semibold">{{ selectedCourse.courseSeq || '无' }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-zinc-500">任课教师</span>
-              <span class="font-semibold">{{ selectedCourse.teacher }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-zinc-500">上课地点</span>
-              <span class="font-semibold">{{ selectedCourse.location }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-zinc-500">授课周次</span>
-              <span class="font-semibold">{{ selectedCourse.weeks }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-zinc-500">课时属性</span>
-              <span class="font-semibold">{{ selectedCourse.hoursType || '讲课学时' }}</span>
-            </div>
-          </div>
 
-          <div class="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300 text-[11px] leading-relaxed">
-            课程信息来自学校教务系统
-          </div>
-        </div>
-      </UiDrawer>
     </template>
   </div>
 </template>
@@ -296,13 +260,13 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import UiModal from '@/components/ui/UiModal.vue';
-import UiDrawer from '@/components/ui/UiDrawer.vue';
+import TimetableCourseCard from '@/components/timetable/TimetableCourseCard.vue';
 import Icon from '@/components/icons/Icon.vue';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useToast } from '@/composables/useToast.js';
 import { BASE_SLOT_TIMES, COMBINE_SLOT_TIMES } from '@/utils/periodTimes.js';
-import { getCourseColor, COURSE_MUTED } from '@/utils/courseColors.js';
+
 import { timetableDayDate } from '@/utils/timetableDates.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
 import { buildIcsCalendar, downloadIcs } from '@/utils/ics.js';
@@ -328,8 +292,16 @@ const activeTimetable = computed(() =>
 const courses = computed(() => activeTimetable.value.cells || []);
 const unarrangedCourses = computed(() => activeTimetable.value.unarranged || []);
 
-const showDrawer = ref(false);
+/** 当前展开为详情大卡的课程（过渡与关闭动作由卡片自身完成） */
 const selectedCourse = ref(null);
+/**
+ * 课程稳定标识：缓存数据可能被响应式代理包裹，直接比较对象引用不可靠，
+ * 因此用「课程名 + 排课 ID」判断哪张卡处于展开态。
+ */
+function courseKey(course) {
+  return course ? `${course.courseName}｜${course.id ?? ''}` : '';
+}
+const expandedCourseKey = computed(() => courseKey(selectedCourse.value));
 const showWeekPicker = ref(false);
 
 const daysOfWeek = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -373,10 +345,6 @@ function isTodayColumn(dayNum) {
   return !isSchoolHoliday.value && selectedWeek.value === currentWeek.value && dayNum === currentDayIndex.value;
 }
 
-/** 课程卡片动态配色（非当前教学周返回 null，走中性灰 COURSE_MUTED 样式） */
-function courseColorStyle(course) {
-  return isCourseActiveThisWeek(course) ? getCourseColor(course).style : null;
-}
 
 // 当前筛选条件下实际展示的课程（"仅看本周" 关闭时为全部课程）
 const visibleCourses = computed(() =>
@@ -408,9 +376,14 @@ function getVisibleCoursesForSlot(day, period) {
   return visibleCourses.value.filter(c => c.day === day && c.sectionIndex === period);
 }
 
-function openCourseDetail(course) {
+/** 卡片请求展开：只是标记「这张卡处于展开态」，过渡与关闭都由卡片自己完成 */
+function onCourseOpen(course) {
   selectedCourse.value = course;
-  showDrawer.value = true;
+}
+
+/** 卡片请求收起：清掉展开标记，节点按正常流回到课表网格 */
+function onCourseClose() {
+  selectedCourse.value = null;
 }
 
 /** 取某教学周某天某时刻的 Date（以本周一为锚点推算，本地时间） */
