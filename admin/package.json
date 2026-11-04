@@ -1,7 +1,7 @@
 {
   "name": "better-hrbust-admin",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.3.0",
   "type": "module",
   "description": "BetterHRBUST - 意见反馈管理端（与 Web 端同技术栈、同 UI 风格）",
   "scripts": {

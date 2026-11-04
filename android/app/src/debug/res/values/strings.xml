@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug 专属资源覆盖：调试包在桌面 / 任务切换器中显示为「BetterHRBUST Debug」，
+  便于与同机共存的正式版区分（两者包名已通过 applicationIdSuffix 分离）。
+-->
+<resources>
+    <string name="app_name">BetterHRBUST Debug</string>
+</resources>

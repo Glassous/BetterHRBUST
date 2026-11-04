@@ -8,8 +8,8 @@ plugins {
 // ---------- 版本信息（唯一来源） ----------
 // 升级版本号 / 版本名只需改这两行：versionName 同时用于 defaultConfig 与 APK 产物命名
 // （BetterHRBUST-x.y.z-android.apk），避免两者各写一份导致不一致。
-val appVersionCode = 4
-val appVersionName = "1.2.0"
+val appVersionCode = 5
+val appVersionName = "1.3.0"
 
 // ---------- 正式签名配置 ----------
 // CI 通过 GitHub Secrets 注入环境变量（见 .github/workflows/android.yml）；
