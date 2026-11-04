@@ -22,7 +22,8 @@
     "list": "node probe.mjs --list",
     "analyze": "node probe.mjs --analyze-only",
     "dry-run": "node probe.mjs --dry-run",
-    "reuse": "node probe.mjs --skip-login"
+    "reuse": "node probe.mjs --skip-login",
+    "classroom": "node classroom-probe.mjs"
   },
   "files": [
     "*.mjs",

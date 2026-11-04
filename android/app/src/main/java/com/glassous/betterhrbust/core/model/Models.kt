@@ -279,13 +279,50 @@ data class PlanCourseDetail(
 data class ClassroomQueryOptions(
     val areas: List<NamedOption> = emptyList(),
     val buildings: List<NamedOption> = emptyList(),
-    val rooms: List<NamedOption> = emptyList()
+    val rooms: List<NamedOption> = emptyList(),
+    // 第几周（1-26）与星期几（1=周一），来自查询页的 whichweek / week 下拉
+    val weeks: List<NamedOption> = emptyList(),
+    val days: List<NamedOption> = emptyList()
 )
 
 @Serializable
 data class NamedOption(
     val id: String,
     val name: String
+)
+
+/**
+ * 单条占用：day 1-7（周一=1），start 1-12 小节，span 连堂节数。
+ * type: course（课程）/ exam（课程考试）/ other（其它）/ occupied（未知）
+ */
+@Serializable
+data class ClassroomOccupancy(
+    val day: Int,
+    val start: Int,
+    val span: Int = 1,
+    val type: String = "occupied",
+    val reason: String = ""
+)
+
+@Serializable
+data class ClassroomRoom(
+    val id: String = "",
+    val name: String = "",
+    val seats: Int = 0,
+    val roomType: String = "",
+    val deskType: String = "",
+    val occupancy: List<ClassroomOccupancy> = emptyList()
+)
+
+/** 按周查询结果：一栋教学楼 × 一个周次 × 一个星期 × 12 小节 */
+@Serializable
+data class ClassroomDaySchedule(
+    val semester: String = "",
+    val buildingName: String = "",
+    val week: Int = 0,
+    val day: Int = 0,
+    val date: String = "",
+    val rooms: List<ClassroomRoom> = emptyList()
 )
 
 @Serializable

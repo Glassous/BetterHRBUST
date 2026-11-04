@@ -627,26 +627,201 @@ object AcademicParsers {
         return CurriculumPlanResult(groups = groups.distinctBy { it.id.ifBlank { it.name } }, totalRequiredCredits = total)
     }
 
+    /** 读取下拉选项，过滤「请选择」占位项（value=-1） */
+    private fun readClassroomOptions(doc: Document, name: String): List<NamedOption> {
+        return doc.select("select[name=$name] option")
+            .mapNotNull { opt ->
+                val value = opt.`val`().trim()
+                if (value.isEmpty() || value == "-1") null
+                else NamedOption(value, opt.text().replace(Regex("\\s+"), " ").trim())
+            }
+    }
+
     fun parseClassroomQueryOptions(html: String): ClassroomQueryOptions {
-        val doc: Document = Jsoup.parse(html)
-        val areas = mutableListOf<NamedOption>()
-        val buildings = mutableListOf<NamedOption>()
-        val rooms = mutableListOf<NamedOption>()
+        val doc: Document = Jsoup.parse(stripHtmlComments(html))
+        val weeks = readClassroomOptions(doc, "whichweek")
+            .filter { it.id.toIntOrNull() != null }
+        val days = readClassroomOptions(doc, "week")
+            .filter { it.id.toIntOrNull() in 1..7 }
 
-        doc.select("select[name=aid] option").forEach { opt ->
-            val v = opt.`val`()
-            if (v.isNotEmpty() && v != "-1") areas.add(NamedOption(v, opt.text().trim()))
+        return ClassroomQueryOptions(
+            areas = readClassroomOptions(doc, "aid"),
+            buildings = readClassroomOptions(doc, "buildingid"),
+            rooms = readClassroomOptions(doc, "room"),
+            weeks = weeks,
+            days = days
+        )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * 空教室查询（教室时间占用）
+     *
+     * 实测（2026-11-04）：只有 roomschedule_week.jsdo（按周、整楼、一天）
+     * 返回真实占用；roomschedule.jsdo（按教室）返回 26 周空骨架。
+     * 结构：table.infolist_tab，每个教室一行（id=tr<教室ID>），前 6 列是
+     * 教室信息，第 7 列内嵌 2 行表：第 1 行是第1-12节标签，第 2 行是占用标记。
+     * ------------------------------------------------------------------ */
+
+    private val CLASSROOM_WEEKDAY_TEXTS = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
+    /** 教务「提示信息」错误页（HTTP 200 但正文是错误） */
+    fun isUrupErrorPage(html: String?): Boolean {
+        if (html.isNullOrEmpty()) return false
+        return Regex("<title>\\s*提示信息\\s*</title>", RegexOption.IGNORE_CASE).containsMatchIn(html)
+    }
+
+    /**
+     * 提取「提示信息」错误页的可读文案；非错误页返回 null
+     */
+    fun parseUrupErrorMessage(html: String?): String? {
+        if (!isUrupErrorPage(html)) return null
+        val doc = Jsoup.parse(stripHtmlComments(html))
+        val raw = doc.selectFirst("#content_margin")?.text()
+            ?.replace(Regex("\\s+"), " ")
+            ?.trim()
+            .orEmpty()
+        val code = raw
+            .replace(Regex("\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}"), "")
+            .replace(Regex("\\bTA\\d+\\b"), "")
+            .trim()
+        return when {
+            code.isEmpty() -> "教务系统返回了提示信息页，未取到具体原因"
+            code.startsWith("For input string") -> "查询参数为空或格式不正确"
+            code == "null" -> "教务未返回数据，请更换筛选条件重试"
+            code == "-1" -> "教务会话无效，请重新登录后重试"
+            code == "-2" -> "查询条件不合法（周次、星期需为有效值）"
+            Regex("^-?\\d+$").matches(code) -> "教务拒绝了本次查询（返回码 $code）"
+            else -> code
         }
-        doc.select("select[name=buildingid] option").forEach { opt ->
-            val v = opt.`val`()
-            if (v.isNotEmpty() && v != "-1") buildings.add(NamedOption(v, opt.text().trim()))
+    }
+
+    /** 只取表格的直接子行，避免把内嵌表格的行也算进来 */
+    private fun directRows(table: org.jsoup.nodes.Element): List<org.jsoup.nodes.Element> {
+        val rows = mutableListOf<org.jsoup.nodes.Element>()
+        table.children().forEach { child ->
+            when (child.tagName()) {
+                "tr" -> rows.add(child)
+                "tbody", "thead", "tfoot" -> rows.addAll(child.children().filter { it.tagName() == "tr" })
+            }
         }
-        doc.select("select[name=room] option").forEach { opt ->
-            val v = opt.`val`()
-            if (v.isNotEmpty() && v != "-1") rooms.add(NamedOption(v, opt.text().trim()))
+        return rows
+    }
+
+    /** 只取一行的直接单元格 */
+    private fun directCells(row: org.jsoup.nodes.Element): List<org.jsoup.nodes.Element> =
+        row.children().filter { it.tagName() == "td" || it.tagName() == "th" }
+
+    private fun parseOccupancyType(cell: org.jsoup.nodes.Element): String {
+        val marker = cell.selectFirst("font[color]")
+        if (marker != null) {
+            return when (marker.attr("color").lowercase()) {
+                "#ff0000" -> "course"
+                "#ff6600" -> "exam"
+                "#006600" -> "other"
+                else -> "occupied"
+            }
+        }
+        return if (cell.text().isBlank()) "" else "occupied"
+    }
+
+    /** 解析占用标记的 title，跳过「占用人」（个人信息不展示） */
+    private fun parseOccupancyReason(cell: org.jsoup.nodes.Element): String {
+        val title = cell.selectFirst("a[title]")?.attr("title").orEmpty()
+        if (title.isBlank()) return ""
+        return title
+            .split(Regex("\r?\n|\\s{2,}"))
+            .map { it.replace(Regex("\\s+"), " ").trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("占用人") }
+            .joinToString(" · ")
+    }
+
+    private fun parseNestedOccupancy(cell: org.jsoup.nodes.Element, day: Int): List<ClassroomOccupancy> {
+        val nested = cell.selectFirst("table") ?: return emptyList()
+        val rows = directRows(nested)
+        val dataRow = rows.getOrNull(1) ?: return emptyList()
+        return directCells(dataRow).mapIndexedNotNull { index, sectionCell ->
+            val type = parseOccupancyType(sectionCell)
+            if (type.isEmpty()) return@mapIndexedNotNull null
+            ClassroomOccupancy(
+                day = day,
+                start = index + 1,
+                span = 1,
+                type = type,
+                reason = parseOccupancyReason(sectionCell)
+            )
+        }
+    }
+
+    private data class ClassroomHeading(
+        val semester: String = "",
+        val buildingName: String = "",
+        val week: Int = 0,
+        val day: Int = 0,
+        val date: String = ""
+    )
+
+    private fun parseScheduleHeading(doc: Document, fallbackDay: Int): ClassroomHeading {
+        val heading = doc.selectFirst("table#title td div")?.text()
+            ?.replace(Regex("\\s+"), " ")
+            ?.trim()
+            .orEmpty()
+        val week = Regex("第\\s*(\\d+)\\s*周").find(heading)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val dayMatch = Regex("(周[一二三四五六日])\\s*[（(]\\s*(\\d{1,2}-\\d{1,2})\\s*[)）]").find(heading)
+        val day = dayMatch?.groupValues?.get(1)
+            ?.let { CLASSROOM_WEEKDAY_TEXTS.indexOf(it) + 1 }
+            ?.takeIf { it > 0 } ?: fallbackDay
+        val date = dayMatch?.groupValues?.get(2).orEmpty()
+        val head = heading.replace(Regex("\\s*第\\s*\\d+\\s*周[\\s\\S]*$"), "").trim()
+        val semesterMatch = Regex("^(\\d{4}(?:-\\d{4})?\\s*(?:春|夏|秋|冬)?)(.*)$").find(head)
+
+        return ClassroomHeading(
+            semester = semesterMatch?.groupValues?.get(1)?.trim().orEmpty(),
+            buildingName = semesterMatch?.groupValues?.get(2)?.trim() ?: head,
+            week = week,
+            day = day,
+            date = date
+        )
+    }
+
+    /**
+     * 解析按周查询（roomschedule_week.jsdo）的整楼占用
+     * @param fallbackDay 页面标题未标明星期时使用的兜底值
+     */
+    fun parseClassroomDaySchedule(html: String, fallbackDay: Int = 0): ClassroomDaySchedule {
+        val doc = Jsoup.parse(stripHtmlComments(html))
+        val heading = parseScheduleHeading(doc, fallbackDay)
+
+        val rooms = mutableListOf<ClassroomRoom>()
+        val table = doc.selectFirst("table.infolist_tab")
+        if (table != null) {
+            directRows(table).forEach { row ->
+                if (row.select("th").isNotEmpty()) return@forEach
+                val cells = directCells(row)
+                if (cells.size < 7) return@forEach
+                val name = cells[0].text().replace(Regex("\\s+"), " ").trim()
+                if (name.isEmpty()) return@forEach
+
+                rooms.add(
+                    ClassroomRoom(
+                        id = row.id().removePrefix("tr"),
+                        name = name,
+                        seats = cells[1].text().trim().toIntOrNull() ?: 0,
+                        roomType = cells[5].text().replace(Regex("\\s+"), " ").trim(),
+                        deskType = cells[4].text().replace(Regex("\\s+"), " ").trim(),
+                        occupancy = parseNestedOccupancy(cells[6], heading.day)
+                    )
+                )
+            }
         }
 
-        return ClassroomQueryOptions(areas = areas, buildings = buildings, rooms = rooms)
+        return ClassroomDaySchedule(
+            semester = heading.semester,
+            buildingName = heading.buildingName,
+            week = heading.week,
+            day = heading.day,
+            date = heading.date,
+            rooms = rooms
+        )
     }
 
     fun parseCourseList(html: String): List<CourseSearchItem> {

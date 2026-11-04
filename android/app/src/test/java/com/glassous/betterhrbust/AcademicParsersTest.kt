@@ -1,8 +1,10 @@
 package com.glassous.betterhrbust
 
+import com.glassous.betterhrbust.core.model.ClassroomOccupancy
 import com.glassous.betterhrbust.core.model.ExamItem
 import com.glassous.betterhrbust.core.model.ScoreItem
 import com.glassous.betterhrbust.core.parser.AcademicParsers
+import com.glassous.betterhrbust.core.parser.ClassroomScheduleLogic
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -320,6 +322,73 @@ class AcademicParsersTest {
 
         assertTrue("Campus areas should be extracted", options.areas.isNotEmpty())
         assertTrue("Buildings should be extracted", options.buildings.isNotEmpty())
+    }
+
+    @Test
+    fun classroomQueryOptionsCarryWeeksAndDays() {
+        val options = AcademicParsers.parseClassroomQueryOptions(loadFixture("0042-classroom.query.html"))
+
+        assertEquals("whichweek 应有 26 个可选周次", 26, options.weeks.size)
+        assertEquals("week 应有 7 个星期", 7, options.days.size)
+        assertEquals("1", options.weeks.first().id)
+        assertEquals("1", options.days.first().id)
+        assertEquals("周一", options.days.first().name)
+    }
+
+    @Test
+    fun parseClassroomDayScheduleReadsOccupancyMatrix() {
+        val schedule = AcademicParsers.parseClassroomDaySchedule(loadFixture("0043-classroom.week.html"), 1)
+
+        assertEquals("2026秋", schedule.semester)
+        assertEquals("西区一号楼", schedule.buildingName)
+        assertEquals(10, schedule.week)
+        assertEquals(1, schedule.day)
+        assertEquals("11-02", schedule.date)
+        assertEquals(6, schedule.rooms.size)
+
+        val room = schedule.rooms.first { it.id == "665" }
+        assertEquals("西1-0303", room.name)
+        assertEquals(224, room.seats)
+        assertEquals("多媒体教室", room.roomType)
+        assertEquals(listOf(1, 2, 3, 4, 5, 6), room.occupancy.map { it.start })
+        assertTrue("颜色 #FF0000 应识别为课程", room.occupancy.all { it.type == "course" })
+
+        val freeRoom = schedule.rooms.first { it.id == "4180" }
+        assertTrue("整日无课的教室不应有占用记录", freeRoom.occupancy.isEmpty())
+    }
+
+    @Test
+    fun classroomFreeRangesMergeConsecutiveSections() {
+        val occupancy = (1..6).map {
+            ClassroomOccupancy(day = 1, start = it, span = 1, type = "course")
+        }
+
+        val monday = ClassroomScheduleLogic.dayRanges(occupancy, 1)
+        assertEquals(1, monday.size)
+        assertEquals(7, monday.first().start)
+        assertEquals(12, monday.first().end)
+        assertEquals("周一 7-12 节", ClassroomScheduleLogic.formatRange(monday.first()))
+
+        // 整周：周一 1 段 + 其余 6 天各 1 段
+        assertEquals(7, ClassroomScheduleLogic.weekRanges(occupancy).size)
+        assertEquals(6, ClassroomScheduleLogic.occupiedSections(occupancy))
+    }
+
+    @Test
+    fun urupErrorPageIsDetectedInsteadOfReturningEmptyData() {
+        val errorHtml = """
+            <html><head><title>提示信息</title></head><body>
+              <table class="error"><tr><td id="content_margin">-2 2026-11-04 23:20:05 TA1</td></tr></table>
+            </body></html>
+        """.trimIndent()
+
+        assertTrue(AcademicParsers.isUrupErrorPage(errorHtml))
+        assertEquals("查询条件不合法（周次、星期需为有效值）", AcademicParsers.parseUrupErrorMessage(errorHtml))
+
+        // 正常表单页会用 <em class="error"> 做必填占位，不能被误判
+        val formHtml = """<html><head><title>教室时间占用</title></head><body><em class="error"></em></body></html>"""
+        assertFalse(AcademicParsers.isUrupErrorPage(formHtml))
+        assertNull(AcademicParsers.parseUrupErrorMessage(formHtml))
     }
 
     @Test

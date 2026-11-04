@@ -436,6 +436,10 @@ class AcademicRepository(
         emit(Resource.Loading)
         try {
             val html = client.get("teacher/teachresource/roomschedulequery.jsdo", preferredCharset = CharsetDecoderHelper.GBK)
+            AcademicParsers.parseUrupErrorMessage(html)?.let {
+                emit(Resource.Error(it))
+                return@flow
+            }
             val options = AcademicParsers.parseClassroomQueryOptions(html)
             emit(Resource.Success(options))
         } catch (switched: AccountSwitchedException) {
@@ -446,6 +450,90 @@ class AcademicRepository(
             emit(Resource.Error(e.message ?: "获取教室选项失败", e))
         }
     }
+
+    /**
+     * 选定教学区后取该区的教学楼列表
+     * 教务的级联刷新是 POST 查询页自身（表单 method=post）
+     */
+    fun getClassroomBuildings(aid: String): Flow<Resource<ClassroomQueryOptions>> = flow {
+        emit(Resource.Loading)
+        try {
+            val html = client.post(
+                "teacher/teachresource/roomschedulequery.jsdo",
+                formBody = classroomQueryForm(aid = aid),
+                preferredCharset = CharsetDecoderHelper.GBK,
+                encodeFormWithGbk = true
+            )
+            AcademicParsers.parseUrupErrorMessage(html)?.let {
+                emit(Resource.Error(it))
+                return@flow
+            }
+            emit(Resource.Success(AcademicParsers.parseClassroomQueryOptions(html)))
+        } catch (switched: AccountSwitchedException) {
+            throw switched
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "获取教学楼列表失败", e))
+        }
+    }
+
+    /**
+     * 按周查询整栋教学楼的占用（一天 × 全部教室 × 12 小节）
+     *
+     * 注意：whichweek 是第几周（1-26），day 是星期几（1-7），两者都必须是数字；
+     * 传 -1 教务会返回「提示信息」错误页（正文 -2）。
+     */
+    fun getClassroomDaySchedule(
+        aid: String,
+        buildingId: String,
+        week: Int,
+        day: Int
+    ): Flow<Resource<ClassroomDaySchedule>> = flow {
+        emit(Resource.Loading)
+        try {
+            require(week in 1..26) { "教学周需在 1-26 之间" }
+            require(day in 1..7) { "星期需在 1-7 之间" }
+            val html = client.post(
+                "teacher/teachresource/roomschedule_week.jsdo",
+                formBody = classroomQueryForm(
+                    aid = aid,
+                    buildingId = buildingId,
+                    room = "-1",
+                    whichweek = week.toString(),
+                    week = day.toString()
+                ),
+                preferredCharset = CharsetDecoderHelper.GBK,
+                encodeFormWithGbk = true
+            )
+            AcademicParsers.parseUrupErrorMessage(html)?.let {
+                emit(Resource.Error(it))
+                return@flow
+            }
+            emit(Resource.Success(AcademicParsers.parseClassroomDaySchedule(html, day)))
+        } catch (switched: AccountSwitchedException) {
+            throw switched
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "查询教室占用失败", e))
+        }
+    }
+
+    /** 教室查询页的表单字段（与教务页面保持一致的占位值） */
+    private fun classroomQueryForm(
+        aid: String = "-1",
+        buildingId: String = "-1",
+        room: String = "-1",
+        whichweek: String = "-1",
+        week: String = "1"
+    ): Map<String, String> = mapOf(
+        "aid" to aid,
+        "buildingid" to buildingId,
+        "room" to room,
+        "whichweek" to whichweek,
+        "week" to week
+    )
 
     fun searchCourses(keyword: String): Flow<Resource<List<CourseSearchItem>>> = flow {
         emit(Resource.Loading)

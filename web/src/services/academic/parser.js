@@ -591,39 +591,244 @@ export function parseCurriculumPlan(html) {
   };
 }
 
+/* ------------------------------------------------------------------ *
+ * 空教室查询（teacher/teachresource/）
+ *
+ * 实测结构（2026-11-04，见 tools/probe/classroom-probe.mjs）：
+ *   · 查询页 roomschedulequery.jsdo 的级联刷新是 **POST 表单自身**，
+ *     字段 aid / buildingid / room / whichweek / week；
+ *   · roomschedule_week.jsdo（按周）返回「教室 × 12 小节」矩阵：
+ *       外层 table.infolist_tab，每个教室一行，第 7 个 td 内嵌一张 2 行表，
+ *       第二行的 12 个格子中：
+ *         空    = <td valign="top">&nbsp;</td>
+ *         占用  = <td><a title="..."><font color="#FF0000">●</font></a></td>
+ *       颜色语义：#FF0000 课程 / #FF6600 课程考试 / #006600 其它；
+ *   · roomschedule.jsdo（按教室）返回 26 周骨架但**不含占用标记**，无法用于取空闲。
+ *
+ * 注意：`whichweek` 是第几周，`week` 是星期几，两者不可互换。
+ * ------------------------------------------------------------------ */
+
+/** 周几文本 → 序号（1=周一） */
+const WEEKDAY_TEXTS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+/** 占用标记颜色 → 语义 */
+const OCCUPANCY_COLORS = {
+  '#ff0000': 'course',
+  '#ff6600': 'exam',
+  '#006600': 'other'
+};
+
+export const OCCUPANCY_TYPE_LABELS = {
+  course: '课程',
+  exam: '考试',
+  other: '其它',
+  occupied: '占用'
+};
+
 /**
- * 解析教室时间占用（/academic/teacher/teachresource/roomschedulequery.jsdo）
+ * 是否为教务「提示信息」错误页
+ *
+ * 这类页面 HTTP 状态是 200，只能靠内容判定。标题 `<title>提示信息</title>`
+ * 是 URP 错误页的固定特征；正常表单页里的 `class="error"` 只是必填提示占位，
+ * 不能作为判据。
+ */
+export function isUrupErrorPage(html) {
+  return /<title>\s*提示信息\s*<\/title>/i.test(String(html || ''));
+}
+
+/** 错误码 → 用户可读文案（不同教务版本返回码不统一，未知码保留原文） */
+function describeUrupErrorCode(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '教务系统返回了提示信息页，未取到具体原因';
+  if (/^For input string/i.test(text)) return '查询参数为空或格式不正确';
+  if (text === 'null') return '教务未返回数据，请更换筛选条件重试';
+  if (text === '-1') return '教务会话无效，请重新登录后重试';
+  if (text === '-2') return '查询条件不合法（周次、星期需为有效值）';
+  if (/^-?\d+$/.test(text)) return `教务拒绝了本次查询（返回码 ${text}）`;
+  return text;
+}
+
+/**
+ * 解析「提示信息」错误页内容
+ * @returns {{code:string,message:string}|null} 非错误页返回 null
+ */
+export function parseUrupError(html) {
+  if (!isUrupErrorPage(html)) return null;
+  const doc = createDom(stripHtmlComments(html));
+  const cell = doc.querySelector('#content_margin');
+  const raw = (cell?.textContent || '').replace(/\s+/g, ' ').trim();
+  // 去掉尾部的时间戳与节点名（-2 2026-11-04 23:20:05 TA1）
+  const code = raw
+    .replace(/\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/g, '')
+    .replace(/\bTA\d+\b/g, '')
+    .trim();
+  return { code, message: describeUrupErrorCode(code) };
+}
+
+/** 读取某个 select 的选项（过滤「请选择」占位项 -1） */
+function readSelectOptions(doc, name) {
+  const select = doc.querySelector(`select[name="${name}"]`);
+  if (!select) return [];
+  return Array.from(select.querySelectorAll('option'))
+    .map(opt => ({
+      id: (opt.getAttribute('value') ?? opt.textContent).trim(),
+      name: opt.textContent.replace(/\s+/g, ' ').trim()
+    }))
+    .filter(item => item.id && item.id !== '-1' && !/^请选择/.test(item.name));
+}
+
+/**
+ * 解析教室时间占用查询页（roomschedulequery.jsdo）
+ *
+ * 返回结构与旧版保持兼容（areas / buildings / rooms），额外提供
+ * weeks（第几周 1-26）与 days（星期几 1-7），供页面直接生成筛选项。
  */
 export function parseClassroomQueryOptions(html) {
-  const doc = createDom(html);
-  const areas = [];
-  const buildings = [];
-  const rooms = [];
-
-  const aidSelect = doc.querySelector('select[name="aid"]');
-  if (aidSelect) {
-    aidSelect.querySelectorAll('option').forEach(opt => {
-      if (opt.value) areas.push({ id: opt.value, name: opt.textContent.trim() });
-    });
-  }
-
-  const bSelect = doc.querySelector('select[name="buildingid"]');
-  if (bSelect) {
-    bSelect.querySelectorAll('option').forEach(opt => {
-      if (opt.value) buildings.push({ id: opt.value, name: opt.textContent.trim() });
-    });
-  }
-
-  const rSelect = doc.querySelector('select[name="room"]');
-  if (rSelect) {
-    rSelect.querySelectorAll('option').forEach(opt => {
-      if (opt.value) rooms.push({ id: opt.value, name: opt.textContent.trim() });
-    });
-  }
+  const doc = createDom(stripHtmlComments(html));
+  const weeks = readSelectOptions(doc, 'whichweek')
+    .map(item => ({ id: Number(item.id), name: item.name }))
+    .filter(item => Number.isFinite(item.id) && item.id > 0);
+  const days = readSelectOptions(doc, 'week')
+    .map(item => ({
+      id: WEEKDAY_TEXTS.indexOf(item.name) + 1 || Number(item.id),
+      name: item.name
+    }))
+    .filter(item => item.id >= 1 && item.id <= 7);
 
   return {
-    areas,
-    buildings,
-    rooms
+    areas: readSelectOptions(doc, 'aid'),
+    buildings: readSelectOptions(doc, 'buildingid'),
+    rooms: readSelectOptions(doc, 'room'),
+    weeks,
+    days
   };
+}
+
+/** 单元格文本归一化 */
+function cellText(cell) {
+  return (cell?.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+/** 从占用标记的 title 中提取占用原因 / 备注（跳过「占用人」，避免展示个人信息） */
+function parseOccupancyTitle(anchor) {
+  const title = anchor?.getAttribute('title') || '';
+  if (!title) return '';
+  const parts = title
+    .split(/\r?\n|&#13;|\s{2,}/)
+    .map(part => part.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .filter(part => !/^占用人/.test(part));
+  return parts.join(' · ');
+}
+
+/** 判定单个小节格子的占用类型；空闲返回空串 */
+function detectOccupancyType(cell) {
+  const marker = cell.querySelector('font[color]');
+  if (marker) {
+    const color = (marker.getAttribute('color') || '').toLowerCase();
+    return OCCUPANCY_COLORS[color] || 'occupied';
+  }
+  const text = cellText(cell);
+  if (!text) return '';
+  // 未带颜色的 ● 或其它文字，同样视为占用
+  return 'occupied';
+}
+
+/**
+ * 解析内嵌的 12 小节占用表 → 逐小节占用记录
+ * @param {HTMLTableElement|null} nested
+ * @param {number} day 星期几（1-7）
+ */
+function parseNestedOccupancy(nested, day) {
+  if (!nested) return [];
+  const rows = Array.from(nested.rows || []);
+  // 第 1 行是「第1节…第12节」标签，第 2 行才是占用标记
+  const dataRow = rows[1];
+  if (!dataRow) return [];
+
+  const items = [];
+  Array.from(dataRow.cells).forEach((cell, index) => {
+    const type = detectOccupancyType(cell);
+    if (!type) return;
+    items.push({
+      day,
+      start: index + 1,
+      span: 1,
+      type,
+      label: OCCUPANCY_TYPE_LABELS[type] || '占用',
+      reason: parseOccupancyTitle(cell.querySelector('a[title]'))
+    });
+  });
+  return items;
+}
+
+/** 解析页面标题「2026秋国际 第10周  周一(11-02) 教室占用维护」 */
+function parseScheduleHeading(doc, fallbackDay) {
+  const heading = (doc.querySelector('table#title td div')?.textContent || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const week = Number((heading.match(/第\s*(\d+)\s*周/) || [])[1]) || 0;
+  const dayMatch = heading.match(/(周[一二三四五六日])\s*[（(]\s*([\d]{1,2}-[\d]{1,2})\s*[)）]/);
+  const day = dayMatch ? WEEKDAY_TEXTS.indexOf(dayMatch[1]) + 1 : 0;
+  const date = dayMatch ? dayMatch[2] : '';
+
+  // 标题前半段是「学期 + 教学楼」，如 2026秋国际
+  const head = heading.replace(/\s*第\s*\d+\s*周[\s\S]*$/, '').trim();
+  const semesterMatch = head.match(/^(\d{4}(?:-\d{4})?\s*(?:春|夏|秋|冬)?)(.*)$/);
+
+  return {
+    heading,
+    semester: semesterMatch ? semesterMatch[1].trim() : '',
+    buildingName: semesterMatch ? semesterMatch[2].trim() : head,
+    week,
+    day: day || fallbackDay || 0,
+    date
+  };
+}
+
+/**
+ * 解析按周查询的整楼占用（roomschedule_week.jsdo）
+ *
+ * @param {string} html
+ * @param {number} [fallbackDay] 页面未标明星期时使用的兜底值
+ * @returns {{
+ *   semester:string, buildingName:string, week:number, day:number, date:string,
+ *   rooms: Array<{id:string,name:string,seats:number|null,scheduleCapacity:number|null,
+ *     examCapacity:number|null,deskType:string,roomType:string,
+ *     occupancy:Array<{day:number,start:number,span:number,type:string,label:string,reason:string}>}>
+ * }}
+ */
+export function parseClassroomDaySchedule(html, fallbackDay = 0) {
+  const doc = createDom(stripHtmlComments(html));
+  const meta = parseScheduleHeading(doc, fallbackDay);
+  const table = doc.querySelector('table.infolist_tab');
+  const rooms = [];
+
+  if (table) {
+    Array.from(table.rows || []).forEach(row => {
+      // 表头是 th
+      if (row.querySelector('th')) return;
+      const cells = Array.from(row.cells || []);
+      if (cells.length < 7) return;
+
+      const name = cellText(cells[0]);
+      if (!name) return;
+
+      const id = (row.id || '').replace(/^tr/, '');
+      const nested = cells[6].querySelector('table');
+      rooms.push({
+        id,
+        name,
+        seats: Number(cellText(cells[1])) || null,
+        scheduleCapacity: Number(cellText(cells[2])) || null,
+        examCapacity: Number(cellText(cells[3])) || null,
+        deskType: cellText(cells[4]),
+        roomType: cellText(cells[5]),
+        occupancy: parseNestedOccupancy(nested, meta.day || fallbackDay)
+      });
+    });
+  }
+
+  return { ...meta, rooms };
 }

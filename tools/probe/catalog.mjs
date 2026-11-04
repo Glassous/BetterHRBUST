@@ -724,30 +724,51 @@ export const CATALOG = [
     note:
       '实测：HTTP 200，5372 字节。**这是「空教室查询」的真实入口**' +
       '（之前猜的 manager/classroom/* 全是 404）。\n' +
-      'POST 表单字段：aid / buildingid / room / whichweek / week\n' +
-      '两个提交按钮：[确定] checkForm() 与 [确定] checkWeekForm()'
+      '表单 `form1` 为 `method="post"`、`action="roomschedulequery.jsdo"`，' +
+      '下级下拉带 `onChange="this.form.submit()"`，因此**级联刷新是 POST 自身**，' +
+      '不是 GET `?aid=`。表单字段：aid / buildingid / room / whichweek / week。\n' +
+      '两个提交按钮：[确定] checkForm() → roomschedule.jsdo（按教室）、' +
+      '[确定] checkWeekForm() → roomschedule_week.jsdo（按周）。'
   },
   {
     key: 'classroom.roomschedule',
     name: '教室排课（按教室）',
     module: 'classroom',
     path: 'teacher/teachresource/roomschedule.jsdo',
-    method: 'GET',
-    params: { buildingid: '', room: '', whichweek: '' },
-    confidence: 'likely',
-    markers: ['教室'],
-    note: '由 roomschedulequery.jsdo 的表单 action 发现'
+    method: 'POST',
+    params: { aid: '', buildingid: '', room: '', whichweek: '', week: '' },
+    confidence: 'verified',
+    markers: ['教室时间占用维护'],
+    note:
+      '由 roomschedulequery.jsdo 的 `checkForm()` 提交（表单 method=post，action="./roomschedule.jsdo"）。\n' +
+      '2026-11-04 带参实测（aid=353&buildingid=584&room=665&whichweek=10）：HTTP 200，约 92KB，' +
+      '含 26 张 `infolists_tab`（每周一张 12 行 × 8 列）。\n' +
+      '**但 26 周的所有格子都是空格，没有占用标记**——即使该教室在按周接口里明确有课。' +
+      '即此页面不直出占用数据，不能用于取空闲教室。\n' +
+      '不带参数时（2026-10-08）返回「提示信息」错误页 `For input string: ""`。'
   },
   {
     key: 'classroom.roomscheduleWeek',
-    name: '教室排课（按周）',
+    name: '教室排课（按周，整楼 × 一天）',
     module: 'classroom',
     path: 'teacher/teachresource/roomschedule_week.jsdo',
-    method: 'GET',
-    params: { whichweek: '', week: '' },
-    confidence: 'likely',
-    markers: ['教室'],
-    note: '由 roomschedulequery.jsdo 的第二个提交按钮发现'
+    method: 'POST',
+    params: { aid: '', buildingid: '', room: '-1', whichweek: '', week: '' },
+    confidence: 'verified',
+    markers: ['教室占用维护', '占用情况(小节)'],
+    note:
+      '由 roomschedulequery.jsdo 的 `checkWeekForm()` 提交（表单 method=post，' +
+      'action="./roomschedule_week.jsdo"）。`whichweek` 是**第几周**（1-26），' +
+      '`week` 是**星期几**（1=周一 … 7=周日），两者不可互换，且都不能为 `-1`。\n' +
+      '2026-11-04 实测：aid=353&buildingid=1688&room=-1&whichweek=10&week=1 → HTTP 200，318KB，' +
+      '225 间教室 × 12 小节，耗时 6.9s（西区一号楼 61 间 / 85KB / 2.2s）。\n' +
+      '结构：`table.infolist_tab`，每间教室一行（id="tr<教室ID>"），前 6 列为' +
+      ' 教室名 / 座位数 / 排课容量 / 考试容量 / 桌椅类型 / 教室类型，' +
+      '第 7 列内嵌 2 行表：第 1 行是第1-12节标签，第 2 行是占用标记。\n' +
+      '空闲格 `<td valign="top">&nbsp;</td>`；占用格 `<a title="…"><font color="#FF0000">●</font></a>`，' +
+      '颜色 #FF0000 课程 / #FF6600 课程考试 / #006600 其它。\n' +
+      '`week=-1` 或 `whichweek=-1` 返回「提示信息」错误页，正文 `-2`。\n' +
+      '**每次只返回一天**，整周需 week=1..7 共 7 次请求。'
   },
 
   /* ========================== 培养方案与学分 ========================== */

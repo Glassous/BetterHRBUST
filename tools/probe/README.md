@@ -107,6 +107,26 @@ node tools/probe/probe.mjs --dry-run
 node tools/probe/probe.mjs --analyze-only
 ```
 
+### 方式三：空教室定向探测
+
+「教室时间占用」是级联表单，且按教室 / 按周是两个不同接口，批量探测覆盖不到。
+用这个脚本按真实参数把整条链路抓一遍：
+
+```bash
+# 复用网页端登录的会话（output/session.json）
+node tools/probe/classroom-probe.mjs
+
+# 指定教学区 / 教学楼 / 周次 / 星期
+node tools/probe/classroom-probe.mjs --aid 353 --building 1688 --week 10 --day 1
+
+# 多抓几间教室，并打印详细请求日志
+node tools/probe/classroom-probe.mjs --rooms 3 --verbose
+```
+
+产物落在 `output/classroom/`：`01-query.html` … `05-room-*.html` 样本、
+`report.md`（每张表的行列规模与前 3 行）与 `structure.json`（结构化结果）。
+参数语义：`--week` 是第几周（`whichweek`），`--day` 是星期几（`week`）。
+
 ## 4. 工作原理
 
 ### 4.1 探测流程
@@ -434,6 +454,7 @@ node tools/probe/probe.mjs --analyze-only
 ```
 tools/probe/
 ├── probe.mjs            # 命令行探测入口
+├── classroom-probe.mjs  # 空教室（教室时间占用）级联定向探测
 ├── server.mjs           # 网页探测控制台服务（本地 HTTP + SSE）
 ├── catalog.mjs          # 接口目录（接口定义 + 实测记录）
 ├── config.example.json  # 配置示例

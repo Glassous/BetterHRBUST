@@ -12,8 +12,43 @@ import {
   parseExams,
   parseCalendarInfo,
   parseCurriculumPlan,
-  parseClassroomQueryOptions
+  parseClassroomQueryOptions,
+  parseClassroomDaySchedule,
+  parseUrupError
 } from './parser.js';
+
+/** 教室查询页的默认表单值（与教务页面 hidden/占位项一致） */
+const CLASSROOM_FORM_DEFAULTS = {
+  aid: '-1',
+  buildingid: '-1',
+  room: '-1',
+  whichweek: '-1',
+  week: '1'
+};
+
+/**
+ * 教务会用 HTTP 200 返回「提示信息」错误页，必须在这里拦下来，
+ * 否则错误页会被当成「没有教室」的空数据。
+ */
+function assertNoClassroomError(html) {
+  const error = parseUrupError(html);
+  if (!error) return;
+  const err = new Error(error.message);
+  err.isUrupError = true;
+  err.urupCode = error.code;
+  throw err;
+}
+
+/** POST 教室查询页（级联刷新：选教学区 / 选教学楼都提交本页） */
+async function postClassroomQueryPage(body) {
+  const res = await request('teacher/teachresource/roomschedulequery.jsdo', {
+    method: 'POST',
+    body: { ...CLASSROOM_FORM_DEFAULTS, ...body },
+    encoding: 'gbk'
+  });
+  assertNoClassroomError(res.html);
+  return parseClassroomQueryOptions(res.html);
+}
 
 export const academicApi = {
   getCaptchaUrl,
@@ -123,12 +158,54 @@ export const academicApi = {
   },
 
   /**
-   * 获取教室占用选项
+   * 获取教室查询的初始选项（教学区 / 教学楼 / 周次 / 星期）
    */
   async getClassroomQueryOptions() {
     const res = await request('teacher/teachresource/roomschedulequery.jsdo', {
       encoding: 'gbk'
     });
+    assertNoClassroomError(res.html);
     return parseClassroomQueryOptions(res.html);
+  },
+
+  /**
+   * 选定教学区后取该区的教学楼列表
+   * @param {{aid: string}} params
+   */
+  async getClassroomBuildings({ aid }) {
+    const options = await postClassroomQueryPage({ aid, buildingid: '-1', room: '-1' });
+    return options;
+  },
+
+  /**
+   * 选定教学楼后取该楼的教室列表
+   * @param {{aid: string, buildingId: string}} params
+   */
+  async getClassroomRooms({ aid, buildingId }) {
+    return postClassroomQueryPage({ aid, buildingid: buildingId, room: '-1' });
+  },
+
+  /**
+   * 按周查询整栋教学楼的占用（一天 × 全部教室 × 12 小节）
+   *
+   * 教务只提供「指定星期」的整楼数据，整周需要由调用方按 day 1-7 聚合。
+   *
+   * @param {{aid: string, buildingId: string, week: number, day: number}} params
+   * @returns {Promise<ReturnType<typeof parseClassroomDaySchedule>>}
+   */
+  async getClassroomDaySchedule({ aid, buildingId, week, day }) {
+    const res = await request('teacher/teachresource/roomschedule_week.jsdo', {
+      method: 'POST',
+      body: {
+        aid,
+        buildingid: buildingId,
+        room: '-1',
+        whichweek: String(week),
+        week: String(day)
+      },
+      encoding: 'gbk'
+    });
+    assertNoClassroomError(res.html);
+    return parseClassroomDaySchedule(res.html, day);
   }
 };
