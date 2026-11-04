@@ -14,7 +14,7 @@
           variant="outline"
           size="sm"
           :disabled="isChecking"
-          @click="check()"
+          @click="runCheck"
         >
           <template v-if="isChecking" #prefix>
             <svg
@@ -39,36 +39,24 @@
         </UiButton>
       </div>
 
-      <!-- 发现新版本：版本号 + 更新日志 + 前往下载 -->
+      <!-- 发现新版本：这里只放入口，更新说明统一在弹窗中展示 -->
       <div
         v-if="hasUpdate"
-        class="rounded-xl border border-amber-300/70 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-4 space-y-3"
+        class="flex items-center justify-between gap-3 rounded-xl border border-amber-300/70 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/10"
       >
-        <div class="flex items-center flex-wrap gap-x-2 gap-y-1">
-          <Icon name="sparkles" custom-class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          <span class="text-sm font-bold text-amber-800 dark:text-amber-300">
-            发现新版本 v{{ latestRelease.version }}
-          </span>
-          <span v-if="publishedText" class="text-[11px] text-amber-700/70 dark:text-amber-400/60">
-            {{ publishedText }} 发布
-          </span>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <Icon name="sparkles" custom-class="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span class="text-sm font-bold text-amber-800 dark:text-amber-300">
+              发现新版本 v{{ latestRelease.version }}
+            </span>
+          </div>
+          <p class="mt-1 text-[11px] text-amber-700/75 dark:text-amber-300/70">
+            <template v-if="publishedText">{{ publishedText }} 发布 · </template>
+            查看完整更新说明
+          </p>
         </div>
-
-        <!-- 更新日志：限高滚动，避免长日志撑破布局 -->
-        <p
-          v-if="latestRelease.notes"
-          class="max-h-40 overflow-y-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-amber-900/85 dark:text-amber-200/80"
-        >{{ latestRelease.notes }}</p>
-        <p v-else class="text-xs text-amber-900/70 dark:text-amber-200/60">
-          新版本已发布，点击下方按钮前往 Release 页面查看详情并下载安装包。
-        </p>
-
-        <UiButton size="sm" @click="openRelease()">
-          <template #prefix>
-            <Icon name="download" custom-class="w-3.5 h-3.5" />
-          </template>
-          前往下载
-        </UiButton>
+        <UiButton size="sm" @click="showDialog = true">查看更新</UiButton>
       </div>
 
       <!-- 检测失败：仅手动检测时提示（启动静默检测失败不打扰） -->
@@ -76,15 +64,57 @@
         {{ errorMessage }}
       </p>
     </div>
+
+    <!-- 更新说明弹窗：关闭按钮在右上角（UiModal 内置），正文渲染 Markdown -->
+    <UiModal
+      v-model="showDialog"
+      :title="latestRelease ? `更新说明 · v${latestRelease.version}` : '更新说明'"
+      max-width="lg"
+    >
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+          <span>当前 v{{ currentVersion || '未知' }}</span>
+          <span class="text-zinc-300 dark:text-zinc-600">→</span>
+          <span class="font-semibold text-amber-600 dark:text-amber-400">
+            最新 v{{ latestRelease?.version || '' }}
+          </span>
+          <template v-if="publishedText">
+            <span class="text-zinc-300 dark:text-zinc-600">·</span>
+            <span>{{ publishedText }} 发布</span>
+          </template>
+        </div>
+
+        <div
+          v-if="notesHtml"
+          class="markdown-body text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-300"
+          v-html="notesHtml"
+        ></div>
+        <p v-else class="text-xs text-zinc-500 dark:text-zinc-400">
+          该版本未提供更新说明，可前往 Release 页面查看详情。
+        </p>
+      </div>
+
+      <template #footer>
+        <UiButton variant="ghost" size="sm" @click="showDialog = false">关闭</UiButton>
+        <UiButton size="sm" @click="openRelease()">
+          <template #prefix>
+            <Icon name="download" custom-class="w-3.5 h-3.5" />
+          </template>
+          前往下载
+        </UiButton>
+      </template>
+    </UiModal>
   </UiCard>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
+import UiModal from '@/components/ui/UiModal.vue';
 import Icon from '@/components/icons/Icon.vue';
 import { useUpdate } from '@/composables/useUpdate.js';
+import { renderMarkdown } from '@/utils/markdown.js';
 
 const {
   status,
@@ -97,8 +127,11 @@ const {
   openRelease
 } = useUpdate();
 
+const showDialog = ref(false);
+
 const isChecking = computed(() => status.value === 'checking');
 const isUpToDate = computed(() => status.value === 'uptodate');
+const notesHtml = computed(() => renderMarkdown(latestRelease.value?.notes || ''));
 
 const publishedText = computed(() => {
   const raw = latestRelease.value?.publishedAt;
@@ -108,4 +141,125 @@ const publishedText = computed(() => {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 });
+
+/** 手动检测：发现新版本后直接弹出更新说明 */
+async function runCheck() {
+  await check();
+  if (hasUpdate.value) showDialog.value = true;
+}
 </script>
+
+<style scoped>
+/* 更新说明排版：v-html 内容不受 scoped 属性约束，统一用 :deep 命中 */
+.markdown-body :deep(h1) {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--md-heading, inherit);
+  margin: 0.2rem 0 0.5rem;
+}
+.markdown-body :deep(h2) {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 1rem 0 0.45rem;
+}
+.markdown-body :deep(h3) {
+  font-size: 0.94rem;
+  font-weight: 600;
+  margin: 0.85rem 0 0.4rem;
+}
+.markdown-body :deep(h4),
+.markdown-body :deep(h5),
+.markdown-body :deep(h6) {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.7rem 0 0.35rem;
+}
+.markdown-body :deep(p) {
+  margin: 0.35rem 0;
+}
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  margin: 0.35rem 0;
+  padding-left: 1.15rem;
+}
+.markdown-body :deep(ul) {
+  list-style: disc;
+}
+.markdown-body :deep(ol) {
+  list-style: decimal;
+}
+.markdown-body :deep(li) {
+  margin: 0.18rem 0;
+}
+.markdown-body :deep(li)::marker {
+  color: rgb(161 161 170);
+}
+.markdown-body :deep(code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.3rem;
+  background: rgb(244 244 245);
+  color: rgb(63 63 70);
+}
+.markdown-body :deep(pre) {
+  margin: 0.5rem 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.6rem;
+  background: rgb(24 24 27);
+  color: rgb(228 228 231);
+  overflow-x: auto;
+}
+.markdown-body :deep(pre code) {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 0.82em;
+}
+.markdown-body :deep(blockquote) {
+  margin: 0.5rem 0;
+  padding: 0.35rem 0.75rem;
+  border-left: 3px solid rgb(212 212 216);
+  color: rgb(113 113 122);
+}
+.markdown-body :deep(hr) {
+  margin: 0.9rem 0;
+  border: 0;
+  border-top: 1px solid rgb(228 228 231);
+}
+.markdown-body :deep(a) {
+  color: rgb(217 119 6);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-body :deep(table) {
+  width: 100%;
+  margin: 0.6rem 0;
+  border-collapse: collapse;
+  font-size: 0.86em;
+}
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  /* 半透明中性色：浅色 / 深色主题下都能看清 */
+  border: 1px solid rgba(127, 127, 127, 0.28);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+.markdown-body :deep(th) {
+  background: rgba(127, 127, 127, 0.16);
+  color: inherit;
+  font-weight: 600;
+}
+
+:global(.dark) .markdown-body :deep(code) {
+  background: rgb(39 39 42);
+  color: rgb(228 228 231);
+}
+:global(.dark) .markdown-body :deep(blockquote) {
+  border-left-color: rgb(63 63 70);
+  color: rgb(161 161 170);
+}
+:global(.dark) .markdown-body :deep(hr) {
+  border-color: rgb(63 63 70);
+}
+</style>

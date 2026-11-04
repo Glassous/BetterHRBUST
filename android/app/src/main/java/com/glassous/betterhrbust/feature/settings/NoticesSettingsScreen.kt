@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.NoticeItem
 import com.glassous.betterhrbust.core.model.UpdateState
@@ -72,6 +73,7 @@ fun NoticesSettingsScreen(
 
     var showClearCacheDialog by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     /**
      * 读取本地缓存（离线只读，不联网）
@@ -402,7 +404,15 @@ fun NoticesSettingsScreen(
                                     )
                                 }
                                 TextButton(
-                                    onClick = { coroutineScope.launch { updateRepo.check() } },
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            updateRepo.check()
+                                            // 手动检测到新版本时直接弹出说明
+                                            if (updateRepo.state.value is UpdateState.Available) {
+                                                showUpdateDialog = true
+                                            }
+                                        }
+                                    },
                                     enabled = !isCheckingUpdate
                                 ) {
                                     when {
@@ -435,6 +445,7 @@ fun NoticesSettingsScreen(
                                 )
                             }
 
+                            // 发现新版本：页面内只保留入口，说明统一在弹窗中展示
                             if (available != null) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Surface(
@@ -442,47 +453,42 @@ fun NoticesSettingsScreen(
                                     shape = RoundedCornerShape(14.dp),
                                     color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
                                 ) {
-                                    Column(modifier = Modifier.padding(14.dp)) {
-                                        Text(
-                                            text = buildString {
-                                                append("发现新版本 v")
-                                                append(available.latestVersion)
-                                                if (available.publishedDate.isNotBlank()) {
-                                                    append("（")
-                                                    append(available.publishedDate)
-                                                    append(" 发布）")
-                                                }
-                                            },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text(
-                                            text = available.notes.ifBlank {
-                                                "新版本已发布，点击下方按钮前往 Release 页面查看详情并下载安装包。"
-                                            },
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            // 更新日志可能较长：限高滚动，避免撑破页面
-                                            modifier = Modifier
-                                                .heightIn(max = 160.dp)
-                                                .verticalScroll(rememberScrollState())
-                                        )
-                                        Spacer(modifier = Modifier.height(12.dp))
-                                        Button(
-                                            onClick = { openReleasePage(context, available.releaseUrl) },
-                                            shape = RoundedCornerShape(12.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Download,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
+                                    Row(
+                                        modifier = Modifier.padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "发现新版本 v${available.latestVersion}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("前往下载")
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "查看 Markdown 更新说明",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Button(
+                                            onClick = { showUpdateDialog = true },
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text("查看更新", fontSize = 13.sp)
                                         }
                                     }
+                                }
+
+                                if (showUpdateDialog) {
+                                    UpdateDialog(
+                                        currentVersion = available.currentVersion,
+                                        latestVersion = available.latestVersion,
+                                        publishedDate = available.publishedDate,
+                                        notes = available.notes,
+                                        onDownload = { openReleasePage(context, available.releaseUrl) },
+                                        onDismiss = { showUpdateDialog = false }
+                                    )
                                 }
                             }
                         }
