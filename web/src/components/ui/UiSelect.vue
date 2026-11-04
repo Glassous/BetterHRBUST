@@ -35,38 +35,40 @@
       <div
         v-if="open"
         role="listbox"
-        class="absolute left-0 top-[calc(100%+6px)] z-30 min-w-full w-max max-w-[18rem] max-h-64 overflow-y-auto rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-[#1c1e24] p-1 shadow-lg shadow-zinc-900/10 dark:shadow-black/50 [scrollbar-width:thin]"
+        class="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full w-max max-w-[18rem] overflow-hidden rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-[#1c1e24] shadow-lg shadow-zinc-900/10 dark:shadow-black/50"
       >
-        <button
-          v-for="(item, idx) in items"
-          :key="String(item.value)"
-          :ref="el => (optionRefs[idx] = el)"
-          type="button"
-          role="option"
-          tabindex="-1"
-          :aria-selected="item.value === modelValue"
-          :class="[
-            'w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left cursor-pointer transition-colors duration-100',
-            sizeClass.option,
-            highlightIndex === idx
-              ? 'bg-zinc-100 dark:bg-zinc-800/70 text-zinc-900 dark:text-zinc-100'
-              : 'text-zinc-600 dark:text-zinc-300',
-            item.value === modelValue ? 'font-semibold' : ''
-          ]"
-          @mouseenter="highlightIndex = idx"
-          @click="choose(item)"
-        >
-          <span class="truncate">{{ item.label }}</span>
-          <Icon
-            v-if="item.value === modelValue"
-            name="check"
-            customClass="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"
-          />
-        </button>
+        <UiScrollArea viewport-class="p-1 max-h-64">
+          <button
+            v-for="(item, idx) in items"
+            :key="String(item.value)"
+            :ref="el => (optionRefs[idx] = el)"
+            type="button"
+            role="option"
+            tabindex="-1"
+            :aria-selected="item.value === modelValue"
+            :class="[
+              'w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left cursor-pointer transition-colors duration-100',
+              sizeClass.option,
+              highlightIndex === idx
+                ? 'bg-zinc-100 dark:bg-zinc-800/70 text-zinc-900 dark:text-zinc-100'
+                : 'text-zinc-600 dark:text-zinc-300',
+              item.value === modelValue ? 'font-semibold' : ''
+            ]"
+            @mouseenter="highlightIndex = idx"
+            @click="choose(item)"
+          >
+            <span class="truncate">{{ item.label }}</span>
+            <Icon
+              v-if="item.value === modelValue"
+              name="check"
+              customClass="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"
+            />
+          </button>
 
-        <div v-if="items.length === 0" class="px-2.5 py-2 text-xs text-zinc-400 dark:text-zinc-500">
-          暂无可选项
-        </div>
+          <div v-if="items.length === 0" class="px-2.5 py-2 text-xs text-zinc-400 dark:text-zinc-500">
+            暂无可选项
+          </div>
+        </UiScrollArea>
       </div>
     </Transition>
   </div>
@@ -75,6 +77,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Icon from '@/components/icons/Icon.vue';
+import UiScrollArea from '@/components/ui/UiScrollArea.vue';
 
 const props = defineProps({
   modelValue: {

@@ -10,6 +10,12 @@
       <UiButton variant="primary" size="sm" @click="openLoginModal">立即登录</UiButton>
     </UiCard>
 
+    <!-- 会话校验中：校验通过前不开放查询 -->
+    <UiCard v-else-if="!authChecked" class="py-12 text-center max-w-lg mx-auto">
+      <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2 text-zinc-500" />
+      <p class="text-xs text-zinc-500">正在校验登录状态，请稍候…</p>
+    </UiCard>
+
     <template v-else>
       <!-- 筛选条 -->
       <UiCard>
@@ -29,16 +35,43 @@
             </label>
 
             <label class="flex flex-col gap-1.5">
-              <span class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">教学楼</span>
-              <UiSelect
-                :model-value="selectedBuilding"
-                :items="buildingItems"
-                :disabled="optionsLoading || !buildingItems.length"
-                size="sm"
-                aria-label="教学楼"
-                custom-class="min-w-[9rem]"
-                @update:model-value="onBuildingChange"
-              />
+              <span class="flex items-center gap-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                教学楼
+                <span
+                  v-if="isCurrentDefaultBuilding"
+                  class="rounded bg-amber-50 dark:bg-amber-500/10 px-1 py-px text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                >默认</span>
+              </span>
+              <div class="flex items-center gap-1.5">
+                <UiSelect
+                  :model-value="selectedBuilding"
+                  :items="buildingItems"
+                  :disabled="optionsLoading || !buildingItems.length"
+                  size="sm"
+                  aria-label="教学楼"
+                  custom-class="min-w-[9rem]"
+                  @update:model-value="onBuildingChange"
+                />
+                <button
+                  type="button"
+                  :disabled="!selectedBuilding"
+                  :title="isCurrentDefaultBuilding ? '取消默认教学楼' : '设为默认教学楼'"
+                  :aria-label="isCurrentDefaultBuilding ? '取消默认教学楼' : '设为默认教学楼'"
+                  :aria-pressed="isCurrentDefaultBuilding"
+                  :class="[
+                    'flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+                    isCurrentDefaultBuilding
+                      ? 'border-amber-300/80 bg-amber-50 text-amber-500 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400'
+                      : 'border-zinc-200 text-zinc-400 hover:border-zinc-300 hover:text-amber-500 dark:border-zinc-700/60 dark:text-zinc-500 dark:hover:text-amber-400'
+                  ]"
+                  @click="toggleDefaultBuilding"
+                >
+                  <Icon
+                    :name="isCurrentDefaultBuilding ? 'star-filled' : 'star'"
+                    customClass="w-4 h-4"
+                  />
+                </button>
+              </div>
             </label>
 
             <label class="flex flex-col gap-1.5">
@@ -79,7 +112,8 @@
                 查询
               </UiButton>
               <UiButton variant="ghost" size="sm" :disabled="optionsLoading" @click="backToNow">
-                本周
+                <template #prefix><Icon name="clock" customClass="w-3.5 h-3.5 mr-1.5" /></template>
+                今天
               </UiButton>
             </div>
 
@@ -89,7 +123,7 @@
                 size="sm"
                 :loading="weekLoading"
                 :disabled="!selectedBuilding || weekLoaded || scheduleLoading"
-                @click="loadWeek"
+                @click="loadWeekChecked"
               >
                 <template #prefix><Icon name="calendar" customClass="w-3.5 h-3.5 mr-1.5" /></template>
                 {{ weekLoaded ? '整周已加载' : weekLoading ? `加载中 ${weekProgress.done}/${weekProgress.total}` : '加载整周空闲' }}
@@ -152,90 +186,154 @@
           <p class="text-xs text-zinc-500">选择教学区与教学楼后点击「查询」</p>
         </div>
 
-        <!-- 矩阵 -->
-        <div v-else class="overflow-auto max-h-[68vh] rounded-b-xl">
-          <table class="w-full border-collapse text-xs min-w-[900px]">
-            <caption class="sr-only">
-              {{ selectedBuildingName }} 第 {{ selectedWeek }} 周 {{ dayLabel }} 教室小节占用情况
-            </caption>
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  class="sticky left-0 top-0 z-30 bg-white/95 dark:bg-[#1c1e24] backdrop-blur px-3 py-2.5 text-left font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-zinc-800 whitespace-nowrap"
-                >
-                  教室
-                </th>
-                <th
-                  v-for="slot in sectionColumns"
-                  :key="slot.period"
-                  scope="col"
+        <div v-else>
+          <!-- 桌面：教室 × 12 小节矩阵（固定首列宽度，窄屏横向滚动） -->
+          <UiScrollArea
+            axis="both"
+            class="hidden max-h-[68vh] rounded-b-xl md:block"
+            viewport-class="max-h-[68vh]"
+          >
+            <table class="w-full table-fixed border-collapse text-xs min-w-[620px]">
+              <caption class="sr-only">
+                {{ selectedBuildingName }} 第 {{ selectedWeek }} 周 {{ dayLabel }} 教室小节占用情况
+              </caption>
+              <colgroup>
+                <col class="w-[8.5rem]" />
+                <col v-for="slot in sectionColumns" :key="slot.period" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="sticky left-0 top-0 z-30 bg-white/95 dark:bg-[#1c1e24] backdrop-blur px-2.5 py-2 text-left font-semibold text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-zinc-800 whitespace-nowrap"
+                  >
+                    教室
+                  </th>
+                  <th
+                    v-for="slot in sectionColumns"
+                    :key="slot.period"
+                    scope="col"
+                    :class="[
+                      'sticky top-0 z-20 bg-white/95 dark:bg-[#1c1e24] backdrop-blur px-1 py-1.5 text-center font-medium text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-zinc-800 whitespace-nowrap',
+                      groupSeparatorClass(slot.period)
+                    ]"
+                  >
+                    <div class="text-[11px] tabular-nums">第{{ slot.period }}节</div>
+                    <div class="text-[9px] font-normal text-zinc-400/90 tabular-nums">{{ slot.time.slice(0, 5) }}</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="room in visibleRooms"
+                  :key="room.id || room.name"
                   :class="[
-                    'sticky top-0 z-20 bg-white/95 dark:bg-[#1c1e24] backdrop-blur px-1 py-2 text-center font-medium text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-zinc-800 whitespace-nowrap',
-                    groupSeparatorClass(slot.period)
+                    'transition-colors duration-150',
+                    highlightRoomId === (room.id || room.name)
+                      ? 'bg-zinc-900/[0.04] dark:bg-zinc-100/[0.06]'
+                      : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40'
                   ]"
+                  @click="focusRoom(room)"
                 >
-                  <div class="tabular-nums">第{{ slot.period }}节</div>
-                  <div class="text-[9px] font-normal text-zinc-400/90 tabular-nums">{{ slot.time.slice(0, 5) }}</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="room in visibleRooms"
-                :key="room.id || room.name"
-                :class="[
-                  'transition-colors duration-150',
-                  highlightRoomId === (room.id || room.name)
-                    ? 'bg-zinc-900/[0.04] dark:bg-zinc-100/[0.06]'
-                    : 'hover:bg-zinc-50/80 dark:hover:bg-zinc-900/40'
-                ]"
-                @click="focusRoom(room)"
-              >
-                <th
-                  scope="row"
-                  class="sticky left-0 z-10 bg-white dark:bg-[#1c1e24] text-left px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800/70 max-w-[13rem] cursor-pointer"
-                >
-                  <div class="font-semibold text-zinc-800 dark:text-zinc-100 truncate">{{ room.name }}</div>
-                  <div class="text-[10px] font-normal text-zinc-400 truncate">
-                    {{ room.roomType || '类型未知' }}<template v-if="room.seats"> · {{ room.seats }} 座</template>
-                  </div>
-                </th>
-                <td
+                  <th
+                    scope="row"
+                    class="sticky left-0 z-10 bg-white dark:bg-[#1c1e24] text-left px-2.5 py-1 border-b border-zinc-100 dark:border-zinc-800/70 cursor-pointer"
+                  >
+                    <div class="truncate text-[12px] font-semibold text-zinc-800 dark:text-zinc-100">{{ room.name }}</div>
+                    <div class="truncate text-[10px] font-normal text-zinc-400">
+                      {{ room.roomType || '类型未知' }}<template v-if="room.seats"> · {{ room.seats }} 座</template>
+                    </div>
+                  </th>
+                  <td
+                    v-for="slot in sectionColumns"
+                    :key="slot.period"
+                    tabindex="0"
+                    :aria-label="cellLabel(room, slot.period)"
+                    :title="cellLabel(room, slot.period)"
+                    :class="[
+                      'border-b border-l border-zinc-300/60 dark:border-zinc-700/70 text-center h-7 outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60',
+                      groupSeparatorClass(slot.period),
+                      cellClass(room, slot.period)
+                    ]"
+                  >
+                    <span
+                      v-if="occupancyAt(room, slot.period)"
+                      :class="['inline-block w-2 h-2 rounded-full', typeDotClass(occupancyAt(room, slot.period).type)]"
+                    ></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </UiScrollArea>
+
+          <!-- 移动端：每间教室一张卡片，12 小节铺满一行，无需横向滚动 -->
+          <div class="divide-y divide-zinc-100 md:hidden dark:divide-zinc-800/70">
+            <div
+              v-for="room in visibleRooms"
+              :key="room.id || room.name"
+              :class="[
+                'px-4 py-2.5 transition-colors duration-150 cursor-pointer',
+                highlightRoomId === (room.id || room.name)
+                  ? 'bg-zinc-900/[0.04] dark:bg-zinc-100/[0.06]'
+                  : 'active:bg-zinc-50 dark:active:bg-zinc-900/40'
+              ]"
+              @click="focusRoom(room)"
+            >
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="min-w-0 truncate text-[13px] font-semibold text-zinc-800 dark:text-zinc-100">
+                  {{ room.name }}
+                </span>
+                <span class="shrink-0 text-[10px] text-zinc-400">
+                  {{ room.roomType || '类型未知' }}<template v-if="room.seats"> · {{ room.seats }} 座</template>
+                </span>
+              </div>
+              <div class="mt-1.5 flex gap-[2px]">
+                <div
                   v-for="slot in sectionColumns"
                   :key="slot.period"
-                  tabindex="0"
                   :aria-label="cellLabel(room, slot.period)"
-                  :title="cellLabel(room, slot.period)"
                   :class="[
-                    'border-b border-l border-zinc-300/60 dark:border-zinc-700/70 text-center h-8 outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60',
-                    groupSeparatorClass(slot.period),
+                    'h-5 flex-1 rounded-[3px]',
+                    mobileGroupClass(slot.period),
                     cellClass(room, slot.period)
                   ]"
                 >
                   <span
                     v-if="occupancyAt(room, slot.period)"
-                    :class="['inline-block w-2 h-2 rounded-full', typeDotClass(occupancyAt(room, slot.period).type)]"
+                    :class="[
+                      'mx-auto mt-[5px] block w-1.5 h-1.5 rounded-full',
+                      typeDotClass(occupancyAt(room, slot.period).type)
+                    ]"
                   ></span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+              <div class="mt-1 flex justify-between text-[9px] tabular-nums text-zinc-400">
+                <span>第1节</span>
+                <span>第6节</span>
+                <span>第12节</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <template #footer>
-          <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-zinc-500">
-            <span>
-              占用标记由教务「教室时间占用」页面给出（课程 / 课程考试 / 其它），教务不返回具体课程名。
-            </span>
+          <div class="flex flex-col items-center gap-2.5 py-0.5">
             <button
               v-if="hasMoreRooms"
               type="button"
-              class="text-zinc-700 dark:text-zinc-300 font-medium hover:underline cursor-pointer"
+              class="group inline-flex items-center gap-2 rounded-full border border-zinc-200/90 bg-white px-6 py-2.5 text-[13px] font-medium text-zinc-700 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md active:translate-y-0 active:scale-[0.98] cursor-pointer dark:border-zinc-700/80 dark:bg-zinc-800/60 dark:text-zinc-200 dark:hover:border-zinc-600"
               @click="showMoreRooms"
             >
-              再显示 {{ Math.min(60, summaryRooms.length - visibleLimit) }} 间（共 {{ summaryRooms.length }} 间）
+              <Icon
+                name="chevron-down"
+                customClass="w-4 h-4 text-zinc-400 transition-transform duration-200 group-hover:translate-y-0.5"
+              />
+              <span>再显示 {{ Math.min(60, summaryRooms.length - visibleLimit) }} 间</span>
+              <span class="text-[11px] font-normal text-zinc-400">共 {{ summaryRooms.length }} 间</span>
             </button>
+            <p class="text-center text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+              占用标记由教务「教室时间占用」页面给出（课程 / 课程考试 / 其它），教务不返回具体课程名。
+            </p>
           </div>
         </template>
       </UiCard>
@@ -349,14 +447,25 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiBadge from '@/components/ui/UiBadge.vue';
 import UiSelect from '@/components/ui/UiSelect.vue';
+import UiScrollArea from '@/components/ui/UiScrollArea.vue';
 import Icon from '@/components/icons/Icon.vue';
 import { useSession } from '@/composables/useSession.js';
+import { useToast } from '@/composables/useToast.js';
 import { useClassroomQuery, todayWeekday } from '@/composables/useClassroomQuery.js';
 import { OCCUPANCY_TYPE_LABELS } from '@/services/academic/parser.js';
 import { formatSlot } from '@/services/academic/classroomSchedule.js';
 import { BASE_SLOT_TIMES } from '@/utils/periodTimes.js';
 
-const { isLoggedIn, openLoginModal, currentWeek } = useSession();
+const {
+  isLoggedIn,
+  isSessionExpired,
+  authChecked,
+  isCheckingAuth,
+  checkAuth,
+  openLoginModal,
+  currentWeek
+} = useSession();
+const { showToast } = useToast();
 const {
   areas,
   buildings,
@@ -372,6 +481,9 @@ const {
   allDayFreeCount,
   weekLoaded,
   selectedBuildingName,
+  isCurrentDefaultBuilding,
+  setDefaultBuilding,
+  clearDefaultBuilding,
   lastLoadedAt,
   optionsLoading,
   scheduleLoading,
@@ -419,35 +531,78 @@ const lastLoadedText = computed(() => {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 });
 
+/* ---------------------- 登录校验 ---------------------- */
+
+/**
+ * 所有查询的前置闸门：先确认登录状态，再放行请求。
+ * 会话已失效 / 未登录 → 直接跳登录；尚未做过启动校验 → 先轻量校验一次。
+ */
+async function ensureSession() {
+  if (!isLoggedIn.value || isSessionExpired.value) {
+    openLoginModal();
+    return false;
+  }
+  if (!authChecked.value) {
+    if (isCheckingAuth.value) {
+      // 启动校验已在进行：等它结束，避免重复请求与「未校验先查询」
+      await new Promise(resolve => {
+        const stop = watch(authChecked, value => {
+          if (value) {
+            stop();
+            resolve();
+          }
+        });
+        setTimeout(() => {
+          stop();
+          resolve();
+        }, 8000);
+      });
+    } else {
+      await checkAuth({ light: true });
+    }
+    if (!isLoggedIn.value) {
+      openLoginModal();
+      return false;
+    }
+  }
+  return true;
+}
+
 /* ---------------------- 交互 ---------------------- */
 
 async function onAreaChange(value) {
+  if (!(await ensureSession())) return;
   await selectArea(value);
   await queryDay(selectedDay.value);
 }
 
 async function onBuildingChange(value) {
+  if (!(await ensureSession())) return;
   selectBuilding(value);
   await queryDay(selectedDay.value);
 }
 
 async function onWeekChange(value) {
+  if (!(await ensureSession())) return;
   selectWeek(value);
   await queryDay(selectedDay.value);
 }
 
 async function onDayChange(value) {
+  if (!(await ensureSession())) return;
   selectDay(value);
   await queryDay(value);
 }
 
 async function ensureDaySchedule(force = false) {
   if (!selectedBuilding.value || !selectedWeek.value) return;
+  if (!(await ensureSession())) return;
   if (force) await refreshDay();
   else await queryDay(selectedDay.value);
 }
 
-function backToNow() {
+async function backToNow() {
+  if (!(await ensureSession())) return;
   const week = Number(currentWeek?.value) || selectedWeek.value;
   // 当前教学周不在教务可选范围内时不改周次，只回到今天
   if (!weeks.value.length || weeks.value.some(item => item.id === week)) {
@@ -455,7 +610,32 @@ function backToNow() {
   }
   const day = todayWeekday();
   if (day !== selectedDay.value) selectDay(day);
-  ensureDaySchedule(false);
+  await ensureDaySchedule(false);
+}
+
+async function loadWeekChecked() {
+  if (!(await ensureSession())) return;
+  await loadWeek();
+}
+
+/** 设置 / 取消默认教学楼 */
+function toggleDefaultBuilding() {
+  if (!selectedArea.value || !selectedBuilding.value) return;
+  if (isCurrentDefaultBuilding.value) {
+    clearDefaultBuilding();
+    showToast({ title: '已取消默认教学楼', type: 'info' });
+    return;
+  }
+  setDefaultBuilding({
+    areaId: selectedArea.value,
+    buildingId: selectedBuilding.value,
+    name: selectedBuildingName.value
+  });
+  showToast({
+    title: '已设为默认教学楼',
+    message: `${selectedBuildingName.value} · 下次进入自动选中`,
+    type: 'success'
+  });
 }
 
 /* ---------------------- 矩阵渲染 ---------------------- */
@@ -500,6 +680,11 @@ function groupSeparatorClass(period) {
   return period === 5 || period === 9
     ? 'border-l-2 border-l-zinc-300/80 dark:border-l-zinc-600/70'
     : '';
+}
+
+/** 移动端卡片内的分组留白（替代边框竖线） */
+function mobileGroupClass(period) {
+  return period === 5 || period === 9 ? 'ml-1' : '';
 }
 
 function cellLabel(room, period) {
@@ -549,6 +734,7 @@ function focusRoom(room) {
 
 async function boot() {
   if (!isLoggedIn.value) return;
+  if (!(await ensureSession())) return;
   await init();
   if (!error.value && selectedBuilding.value) {
     await queryDay(selectedDay.value);

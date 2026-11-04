@@ -124,6 +124,14 @@
       <polyline points="20 6 9 17 4 12" />
     </g>
 
+    <g v-else-if="name === 'star'">
+      <path d="M12 3.4l2.7 5.5 6 .9-4.35 4.25 1.03 5.97L12 17.2l-5.38 2.82 1.03-5.97L3.3 9.8l6-.9z" />
+    </g>
+
+    <g v-else-if="name === 'star-filled'" fill="currentColor" stroke="none">
+      <path d="M12 3.4l2.7 5.5 6 .9-4.35 4.25 1.03 5.97L12 17.2l-5.38 2.82 1.03-5.97L3.3 9.8l6-.9z" />
+    </g>
+
     <g v-else-if="name === 'x'">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />

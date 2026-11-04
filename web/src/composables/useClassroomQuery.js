@@ -26,6 +26,8 @@ import {
 
 const CACHE_KEY = 'better_hrbust_cache_classroom_options';
 const CACHE_VERSION = 2;
+/** 默认教学楼是用户偏好，与选项缓存分开存，登出/换号不清理 */
+const DEFAULT_BUILDING_KEY = 'better_hrbust_classroom_default_building';
 /** 整周聚合时的并发上限：教务系统压力有限，保持轻量 */
 const WEEK_CONCURRENCY = 2;
 
@@ -70,6 +72,57 @@ let cachedWeeks = [];
 let cachedDays = [];
 
 let initPromise = null;
+
+/** 默认教学楼（用户偏好）：{ areaId, buildingId, name } */
+function readDefaultBuilding() {
+  try {
+    const raw = storageGetItem(DEFAULT_BUILDING_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.areaId || !data.buildingId) return null;
+    return {
+      areaId: String(data.areaId),
+      buildingId: String(data.buildingId),
+      name: String(data.name || '')
+    };
+  } catch {
+    return null;
+  }
+}
+
+const defaultBuilding = ref(readDefaultBuilding());
+
+function setDefaultBuilding({ areaId, buildingId, name = '' } = {}) {
+  if (!areaId || !buildingId) return;
+  defaultBuilding.value = {
+    areaId: String(areaId),
+    buildingId: String(buildingId),
+    name: String(name || '')
+  };
+  storageSetItem(DEFAULT_BUILDING_KEY, JSON.stringify(defaultBuilding.value));
+}
+
+function clearDefaultBuilding() {
+  defaultBuilding.value = null;
+  storageRemoveItem(DEFAULT_BUILDING_KEY);
+}
+
+/** 当前选中的教学楼是否就是默认教学楼 */
+const isCurrentDefaultBuilding = computed(() => {
+  const preset = defaultBuilding.value;
+  if (!preset || !selectedArea.value || !selectedBuilding.value) return false;
+  return preset.areaId === selectedArea.value && preset.buildingId === selectedBuilding.value;
+});
+
+/** 在一栋楼列表里挑出应选中的教学楼：默认 > 上次选择 > 第一个 */
+function pickBuildingId(aid, list, fallbackId) {
+  const preset = defaultBuilding.value;
+  if (preset && preset.areaId === aid && list.some(item => item.id === preset.buildingId)) {
+    return preset.buildingId;
+  }
+  if (fallbackId && list.some(item => item.id === fallbackId)) return fallbackId;
+  return list[0]?.id || '';
+}
 
 function readCache() {
   try {
@@ -262,9 +315,10 @@ function init() {
         weeks.value = cachedWeeks;
         days.value = cachedDays;
         Object.assign(buildingsByArea, cached.buildingsByArea || {});
-        selectedArea.value = cachedAreas.some(item => item.id === cached.lastArea)
-          ? cached.lastArea
-          : cachedAreas[0].id;
+        const preset = defaultBuilding.value;
+        selectedArea.value = preset && cachedAreas.some(item => item.id === preset.areaId)
+          ? preset.areaId
+          : (cachedAreas.some(item => item.id === cached.lastArea) ? cached.lastArea : cachedAreas[0].id);
       } else {
         const res = await academicApi.getClassroomQueryOptions();
         cachedAreas = res.areas || [];
@@ -273,7 +327,10 @@ function init() {
         areas.value = cachedAreas;
         weeks.value = cachedWeeks;
         days.value = cachedDays;
-        selectedArea.value = cachedAreas[0]?.id || '';
+        const preset = defaultBuilding.value;
+        selectedArea.value = preset && cachedAreas.some(item => item.id === preset.areaId)
+          ? preset.areaId
+          : (cachedAreas[0]?.id || '');
       }
 
       // 默认周次：当前教学周（限制在教务给出的可选范围内）
@@ -286,10 +343,7 @@ function init() {
 
       if (selectedArea.value) {
         await loadBuildings(selectedArea.value);
-        const lastBuilding = cached?.lastBuilding;
-        selectedBuilding.value = buildings.value.some(item => item.id === lastBuilding)
-          ? lastBuilding
-          : (buildings.value[0]?.id || '');
+        selectedBuilding.value = pickBuildingId(selectedArea.value, buildings.value, cached?.lastBuilding);
       }
 
       if (!days.value.length) {
@@ -322,7 +376,8 @@ async function selectArea(aid) {
   optionsLoading.value = true;
   try {
     await loadBuildings(aid);
-    selectedBuilding.value = buildings.value[0]?.id || '';
+    // 切回默认教学楼所在的教学区时，自动选中默认教学楼
+    selectedBuilding.value = pickBuildingId(aid, buildings.value, '');
     writeCache();
   } catch (err) {
     handleError(err);
@@ -482,6 +537,8 @@ export function useClassroomQuery() {
     selectedBuilding,
     selectedWeek,
     selectedDay,
+    defaultBuilding,
+    isCurrentDefaultBuilding,
 
     // 结果
     currentSchedule,
@@ -509,6 +566,8 @@ export function useClassroomQuery() {
     selectDay,
     queryDay,
     loadWeek,
-    refreshDay
+    refreshDay,
+    setDefaultBuilding,
+    clearDefaultBuilding
   };
 }
