@@ -45,6 +45,10 @@ data class AppPreferences(
     val navigationDockCollapsed: Boolean = false,
     /** 「记住密码」保存的凭证（`学号\n混淆后的密码`），为空表示未保存 */
     val savedCredential: String = "",
+    /** 空教室查询的默认教学楼（与教学区绑定，空串表示未设置） */
+    val classroomDefaultAreaId: String = "",
+    val classroomDefaultBuildingId: String = "",
+    val classroomDefaultBuildingName: String = "",
 ) {
     fun teachingWeekOn(date: java.time.LocalDate): Int? {
         if (com.glassous.betterhrbust.core.util.SchoolCalendar.semesterOn(date) != null)
@@ -91,6 +95,9 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
          * （见 res/xml/backup_rules.xml 与 res/xml/data_extraction_rules.xml）。
          */
         private val KEY_SAVED_CREDENTIAL = stringPreferencesKey("saved_credential")
+        private val KEY_CLASSROOM_DEFAULT_AREA = stringPreferencesKey("classroom_default_area")
+        private val KEY_CLASSROOM_DEFAULT_BUILDING = stringPreferencesKey("classroom_default_building")
+        private val KEY_CLASSROOM_DEFAULT_BUILDING_NAME = stringPreferencesKey("classroom_default_building_name")
 
         /**
          * 解析已保存凭证中属于 [username] 的密码。
@@ -134,7 +141,10 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
             realName = prefs[KEY_REAL_NAME] ?: "",
             lastUpdateCheckAt = prefs[KEY_LAST_UPDATE_CHECK_AT] ?: 0L,
             navigationDockCollapsed = prefs[KEY_NAVIGATION_DOCK_COLLAPSED] ?: false,
-            savedCredential = prefs[KEY_SAVED_CREDENTIAL] ?: ""
+            savedCredential = prefs[KEY_SAVED_CREDENTIAL] ?: "",
+            classroomDefaultAreaId = prefs[KEY_CLASSROOM_DEFAULT_AREA] ?: "",
+            classroomDefaultBuildingId = prefs[KEY_CLASSROOM_DEFAULT_BUILDING] ?: "",
+            classroomDefaultBuildingName = prefs[KEY_CLASSROOM_DEFAULT_BUILDING_NAME] ?: ""
         )
     }
 
@@ -274,6 +284,35 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
     suspend fun setTimetableSectionMode(mode: String) {
         store.edit { prefs ->
             prefs[KEY_TIMETABLE_SECTION_MODE] = mode
+        }
+    }
+
+    /**
+     * 记忆空教室查询的默认教学楼（与教学区绑定）。
+     * 属于界面偏好而非教务数据，退出登录 / 换号时不清除。
+     */
+    suspend fun setClassroomDefaultBuilding(
+        areaId: String,
+        buildingId: String,
+        buildingName: String,
+        expected: AppPreferences? = null
+    ) {
+        if (areaId.isBlank() || buildingId.isBlank()) return
+        store.edit { prefs ->
+            if (expected != null && prefs[KEY_USERNAME] != expected.username) return@edit
+            prefs[KEY_CLASSROOM_DEFAULT_AREA] = areaId
+            prefs[KEY_CLASSROOM_DEFAULT_BUILDING] = buildingId
+            prefs[KEY_CLASSROOM_DEFAULT_BUILDING_NAME] = buildingName
+        }
+    }
+
+    /** 取消默认教学楼 */
+    suspend fun clearClassroomDefaultBuilding(expected: AppPreferences? = null) {
+        store.edit { prefs ->
+            if (expected != null && prefs[KEY_USERNAME] != expected.username) return@edit
+            prefs.remove(KEY_CLASSROOM_DEFAULT_AREA)
+            prefs.remove(KEY_CLASSROOM_DEFAULT_BUILDING)
+            prefs.remove(KEY_CLASSROOM_DEFAULT_BUILDING_NAME)
         }
     }
 

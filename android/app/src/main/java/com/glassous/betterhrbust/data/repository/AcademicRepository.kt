@@ -446,6 +446,8 @@ class AcademicRepository(
             throw switched
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
+        } catch (expired: SessionExpiredException) {
+            throw expired
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "获取教室选项失败", e))
         }
@@ -473,6 +475,8 @@ class AcademicRepository(
             throw switched
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
+        } catch (expired: SessionExpiredException) {
+            throw expired
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "获取教学楼列表失败", e))
         }
@@ -515,6 +519,8 @@ class AcademicRepository(
             throw switched
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
+        } catch (expired: SessionExpiredException) {
+            throw expired
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "查询教室占用失败", e))
         }

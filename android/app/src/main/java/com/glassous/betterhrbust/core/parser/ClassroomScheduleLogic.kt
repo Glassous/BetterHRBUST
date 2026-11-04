@@ -142,6 +142,19 @@ object ClassroomScheduleLogic {
         sectionCount: Int = SECTION_COUNT
     ): Int = occupiedKeys(occupancy, sectionCount).size
 
+    /**
+     * 选择应初始选中的教学楼：默认教学楼（仍存在）> 上次选择 > 第一个
+     */
+    fun pickBuildingId(
+        available: List<String>,
+        preferred: String?,
+        fallback: String? = null
+    ): String {
+        if (!preferred.isNullOrBlank() && available.contains(preferred)) return preferred
+        if (!fallback.isNullOrBlank() && available.contains(fallback)) return fallback
+        return available.firstOrNull().orEmpty()
+    }
+
     /** 格式化为「周一 3-4 节」 */
     fun formatRange(range: ClassroomFreeRange): String {
         val weekday = WEEKDAY_LABELS.getOrNull(range.day - 1) ?: "周${range.day}"

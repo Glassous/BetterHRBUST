@@ -358,6 +358,19 @@ class AcademicParsersTest {
     }
 
     @Test
+    fun classroomDefaultBuildingSelection() {
+        val available = listOf("1168", "584", "1688")
+
+        assertEquals("584", ClassroomScheduleLogic.pickBuildingId(available, "584"))
+        assertEquals("1688", ClassroomScheduleLogic.pickBuildingId(available, null, "1688"))
+        // 默认教学楼不属于当前教学区 → 回落到第一个
+        assertEquals("1168", ClassroomScheduleLogic.pickBuildingId(available, "999"))
+        // 默认与上次都无效 → 第一个
+        assertEquals("1168", ClassroomScheduleLogic.pickBuildingId(available, "999", "888"))
+        assertEquals("", ClassroomScheduleLogic.pickBuildingId(emptyList(), "584"))
+    }
+
+    @Test
     fun classroomFreeRangesMergeConsecutiveSections() {
         val occupancy = (1..6).map {
             ClassroomOccupancy(day = 1, start = it, span = 1, type = "course")
