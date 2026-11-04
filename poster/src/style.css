@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  /* 只使用系统字体栈，不发起任何外部字体请求，导出时也不会因字重缺失而回退 */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #eef2f9;
+  color: #0b1526;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 海报为固定像素画布，导出结果是位图：禁止选中，避免预览时出现蓝色选区 */
+.poster-sheet {
+  -webkit-user-select: none;
+  user-select: none;
+}
