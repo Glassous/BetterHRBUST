@@ -1,10 +1,15 @@
 package com.glassous.betterhrbust.feature.settings
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,12 +27,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.NoticeItem
+import com.glassous.betterhrbust.core.notify.ClassReminderTicker
+import com.glassous.betterhrbust.core.notify.HyperIslandSupport
+import com.glassous.betterhrbust.core.notify.isDebuggable
 import com.glassous.betterhrbust.core.model.UpdateState
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
@@ -63,6 +73,44 @@ fun NoticesSettingsScreen(
     val isCheckingUpdate = updateState is UpdateState.Checking
 
     val prefs by prefsManager.preferencesFlow.collectAsState(initial = null)
+    // 仅在设备真正具备小米超级岛能力时展示本设置项：非小米设备、澎湃 OS 2 及更早系统整行不出现
+    val islandSupported = remember { HyperIslandSupport.supportsIsland(context) }
+    val islandReminderEnabled = prefs?.classIslandReminder ?: true
+    // 调试包额外提供「模拟 15 分钟后上课」入口：没有真实课表或未进入提醒窗口时也能验证通知/岛样式
+    val debugBuild = remember { isDebuggable(context) }
+    var mockReminderEnabled by remember { mutableStateOf(ClassReminderTicker.isMockEnabled()) }
+    var pendingNotificationAction by remember { mutableStateOf<NotificationAction?>(null) }
+    // 适配自检：把设备能力、系统放行状态一次性摊开，便于判断「为什么没上岛」
+    var showIslandDiagnostics by remember { mutableStateOf(false) }
+    var islandDiagnostics by remember { mutableStateOf("") }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val action = pendingNotificationAction
+        pendingNotificationAction = null
+        coroutineScope.launch {
+            if (!granted) {
+                // 被拒绝时开关回退为关闭，避免「开关开着但实际不会提醒」的假象
+                if (action == NotificationAction.EnableReminder) {
+                    prefsManager.setClassIslandReminder(false)
+                }
+                Toast.makeText(context, "未授予通知权限，上课提醒未开启", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            when (action) {
+                NotificationAction.EnableReminder -> {
+                    prefsManager.setClassIslandReminder(true)
+                    HyperIslandSupport.invalidate()
+                }
+
+                NotificationAction.MockReminder -> {
+                    mockReminderEnabled = ClassReminderTicker.toggleMock(context)
+                }
+
+                null -> Unit
+            }
+        }
+    }
     val isSyncing by syncManager.isSyncing.collectAsState()
     var isRefreshing by remember { mutableStateOf(false) }
     var notices by remember { mutableStateOf<List<NoticeItem>>(emptyList()) }
@@ -299,6 +347,88 @@ fun NoticesSettingsScreen(
                     }
                 }
 
+                // Section: 提醒（仅在设备具备小米超级岛能力时出现，不支持时整行不渲染）
+                if (islandSupported) {
+                    item {
+                        Text(
+                            text = "提醒",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "上课提醒（超级岛）",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "课前 20 分钟在小米超级岛显示课程与教室，上课后自动收起；仅小米澎湃 OS 3 且已开启焦点通知权限时生效",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                islandDiagnostics = HyperIslandSupport.diagnostics(context)
+                                                showIslandDiagnostics = true
+                                            }
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("看不到超级岛？运行适配自检", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Switch(
+                                    checked = islandReminderEnabled,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            val needPermission =
+                                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                    ContextCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.POST_NOTIFICATIONS
+                                                    ) != PackageManager.PERMISSION_GRANTED
+                                            if (needPermission) {
+                                                // 未授权先申请，授权结果回到 launcher 里落库
+                                                pendingNotificationAction = NotificationAction.EnableReminder
+                                                notificationPermissionLauncher.launch(
+                                                    Manifest.permission.POST_NOTIFICATIONS
+                                                )
+                                            } else {
+                                                coroutineScope.launch {
+                                                    prefsManager.setClassIslandReminder(true)
+                                                    HyperIslandSupport.invalidate()
+                                                }
+                                            }
+                                        } else {
+                                            coroutineScope.launch {
+                                                prefsManager.setClassIslandReminder(false)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Section: 账号与数据（意见反馈 / 清理缓存 / 重新登录 / 退出登录 合并为一组）
                 item {
                     Text(
@@ -339,6 +469,39 @@ fun NoticesSettingsScreen(
                                     }
                                 }
                             )
+                            // 调试构建专用：模拟 15 分钟后上课，不依赖真实课表与提醒窗口
+                            if (debugBuild) {
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                SettingsActionRow(
+                                    icon = Icons.Default.BugReport,
+                                    title = if (mockReminderEnabled) "关闭模拟上课提醒" else "模拟上课提醒（调试）",
+                                    subtitle = if (mockReminderEnabled) {
+                                        "已开启：按「15 分钟后上课」生成模拟通知，到点自动收起；点击关闭"
+                                    } else {
+                                        "生成一条「15 分钟后上课」的模拟通知，用于验证通知与超级岛样式（仅调试包）"
+                                    },
+                                    onClick = {
+                                        if (mockReminderEnabled) {
+                                            mockReminderEnabled = ClassReminderTicker.toggleMock(context)
+                                        } else {
+                                            val needPermission =
+                                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                    ContextCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.POST_NOTIFICATIONS
+                                                    ) != PackageManager.PERMISSION_GRANTED
+                                            if (needPermission) {
+                                                pendingNotificationAction = NotificationAction.MockReminder
+                                                notificationPermissionLauncher.launch(
+                                                    Manifest.permission.POST_NOTIFICATIONS
+                                                )
+                                            } else {
+                                                mockReminderEnabled = ClassReminderTicker.toggleMock(context)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.Outlined.Feedback,
@@ -532,6 +695,28 @@ fun NoticesSettingsScreen(
             }
         }
 
+        // 超级岛适配自检
+        if (showIslandDiagnostics) {
+            AlertDialog(
+                onDismissRequest = { showIslandDiagnostics = false },
+                containerColor = MaterialTheme.colorScheme.surface,
+                title = { Text("超级岛适配自检") },
+                text = {
+                    Text(
+                        text = islandDiagnostics,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState())
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { showIslandDiagnostics = false }) { Text("关闭") }
+                }
+            )
+        }
+
         // Clear Cache Confirmation Dialog
         if (showClearCacheDialog) {
             AlertDialog(
@@ -645,6 +830,9 @@ private fun SettingsActionRow(
         )
     }
 }
+
+/** 通知权限申请的前置动作：授权回调后据此决定「落库开关」还是「启动模拟提醒」。 */
+private enum class NotificationAction { EnableReminder, MockReminder }
 
 /**
  * 打开 Release 页面（交系统浏览器 / GitHub 客户端处理）。

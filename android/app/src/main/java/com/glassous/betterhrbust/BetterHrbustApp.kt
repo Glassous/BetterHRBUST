@@ -81,6 +81,8 @@ class BetterHrbustApp : Application() {
             prefs = preferencesManager
         )
         feedbackRepository = FeedbackRepository()
+        // 上课提醒（小米超级岛）：非超级岛设备内部直接短路，不建通知通道也不轮询
+        com.glassous.betterhrbust.core.notify.ClassReminderTicker.start(this)
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {

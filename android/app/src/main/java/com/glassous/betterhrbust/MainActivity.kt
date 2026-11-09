@@ -1,13 +1,18 @@
 package com.glassous.betterhrbust
 
 import androidx.lifecycle.lifecycleScope
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,6 +34,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -37,6 +44,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.glassous.betterhrbust.core.model.AuthState
+import com.glassous.betterhrbust.core.notify.HyperIslandSupport
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.clearFocusOnTapOutside
@@ -95,6 +103,29 @@ class MainActivity : ComponentActivity() {
             val isSessionExpired by app.authRepository.isSessionExpired.collectAsState()
             val shouldPromptReLogin by app.authRepository.shouldPromptReLogin.collectAsState()
             val sessionPromptDismissed by app.authRepository.sessionPromptDismissed.collectAsState()
+
+            // 上课提醒（小米超级岛）依赖通知权限：只在「超级岛设备 + 已登录 + 开关开启 + 未授权」
+            // 时申请一次，非支持设备不会弹出与本功能无关的权限请求。
+            val context = LocalContext.current
+            var notificationPermissionAsked by remember { mutableStateOf(false) }
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { }
+            LaunchedEffect(prefs?.classIslandReminder, authState) {
+                val snapshot = prefs ?: return@LaunchedEffect
+                if (notificationPermissionAsked) return@LaunchedEffect
+                if (!snapshot.classIslandReminder) return@LaunchedEffect
+                if (authState !is AuthState.Authenticated) return@LaunchedEffect
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+                if (!HyperIslandSupport.supportsIsland(context)) return@LaunchedEffect
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+                if (granted) return@LaunchedEffect
+                notificationPermissionAsked = true
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
 
             val isSystemDark = isSystemInDarkTheme()
             val useDarkTheme = prefs?.darkTheme ?: isSystemDark

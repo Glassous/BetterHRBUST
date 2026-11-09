@@ -43,6 +43,8 @@ data class AppPreferences(
     val lastUpdateCheckAt: Long = 0L,
     /** 导航坞折叠态（用户手动在坞内展开 / 折叠后持久化，冷启动沿用） */
     val navigationDockCollapsed: Boolean = false,
+    /** 上课提醒（小米超级岛）：课前 20 分钟提示，默认开启；非超级岛设备上不展示该设置项 */
+    val classIslandReminder: Boolean = true,
     /** 「记住密码」保存的凭证（`学号\n混淆后的密码`），为空表示未保存 */
     val savedCredential: String = "",
     /** 空教室查询的默认教学楼（与教学区绑定，空串表示未设置） */
@@ -89,6 +91,7 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
         private val KEY_SAVED_PASSWORD = stringPreferencesKey("saved_password")
         private val KEY_LAST_UPDATE_CHECK_AT = longPreferencesKey("last_update_check_at")
         private val KEY_NAVIGATION_DOCK_COLLAPSED = booleanPreferencesKey("navigation_dock_collapsed")
+        private val KEY_CLASS_ISLAND_REMINDER = booleanPreferencesKey("class_island_reminder")
         /**
          * 「记住密码」保存的凭证（`学号\n混淆后的密码`）。
          * DataStore 位于应用私有目录，且不参与系统云备份与换机迁移
@@ -141,6 +144,7 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
             realName = prefs[KEY_REAL_NAME] ?: "",
             lastUpdateCheckAt = prefs[KEY_LAST_UPDATE_CHECK_AT] ?: 0L,
             navigationDockCollapsed = prefs[KEY_NAVIGATION_DOCK_COLLAPSED] ?: false,
+            classIslandReminder = prefs[KEY_CLASS_ISLAND_REMINDER] ?: true,
             savedCredential = prefs[KEY_SAVED_CREDENTIAL] ?: "",
             classroomDefaultAreaId = prefs[KEY_CLASSROOM_DEFAULT_AREA] ?: "",
             classroomDefaultBuildingId = prefs[KEY_CLASSROOM_DEFAULT_BUILDING] ?: "",
@@ -264,6 +268,13 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
     suspend fun setNavigationDockCollapsed(collapsed: Boolean) {
         store.edit { prefs ->
             prefs[KEY_NAVIGATION_DOCK_COLLAPSED] = collapsed
+        }
+    }
+
+    /** 上课提醒（小米超级岛）开关；关闭后调度器会立即取消已下发通知 */
+    suspend fun setClassIslandReminder(enabled: Boolean) {
+        store.edit { prefs ->
+            prefs[KEY_CLASS_ISLAND_REMINDER] = enabled
         }
     }
 
