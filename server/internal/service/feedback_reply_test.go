@@ -78,11 +78,23 @@ func (f *fakeSender) Send(_ context.Context, to, subject, body, operator string)
 type fakeStore struct {
 	item      *model.Feedback
 	getErr    error
+	createErr error
 	appendErr error
+	created   []*model.Feedback
 	appended  []model.FeedbackReply
 }
 
-func (f *fakeStore) Create(context.Context, *model.Feedback) error { return nil }
+func (f *fakeStore) Create(_ context.Context, feedback *model.Feedback) error {
+	if f.createErr != nil {
+		return f.createErr
+	}
+	// 与真实仓储保持一致：回填主键与创建时间，供提醒邮件引用。
+	feedback.ID = primitive.NewObjectID()
+	feedback.CreatedAt = time.Now().UTC()
+	f.created = append(f.created, feedback)
+	f.item = feedback
+	return nil
+}
 func (f *fakeStore) List(context.Context, repository.FeedbackFilter) ([]model.Feedback, int64, error) {
 	return nil, 0, nil
 }
@@ -129,7 +141,7 @@ func testOperator() *model.Admin {
 func TestReplySendsMailAndStoresRecord(t *testing.T) {
 	store := &fakeStore{item: newStoredFeedback("邮箱：student@example.com，谢谢")}
 	sender := &fakeSender{enabled: true}
-	svc := newFeedbackService(store, sender, nil)
+	svc := newFeedbackService(store, sender, nil, "")
 
 	got, err := svc.Reply(context.Background(), "any", ReplyInput{
 		Subject: "  关于成绩导出的建议  ",
@@ -196,7 +208,7 @@ func TestReplyRecipientResolution(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			store := &fakeStore{item: newStoredFeedback(tc.contact)}
 			sender := &fakeSender{enabled: true}
-			svc := newFeedbackService(store, sender, nil)
+			svc := newFeedbackService(store, sender, nil, "")
 
 			_, err := svc.Reply(context.Background(), "any", ReplyInput{
 				To:      tc.explicit,
@@ -225,7 +237,7 @@ func TestReplyRecipientResolution(t *testing.T) {
 func TestReplyRejectsContactWithoutEmail(t *testing.T) {
 	store := &fakeStore{item: newStoredFeedback("QQ 1234567")}
 	sender := &fakeSender{enabled: true}
-	svc := newFeedbackService(store, sender, nil)
+	svc := newFeedbackService(store, sender, nil, "")
 
 	_, err := svc.Reply(context.Background(), "any", ReplyInput{Subject: "标题", Body: "正文内容"}, nil)
 	if !errors.Is(err, ErrNoReplyTarget) {
@@ -238,7 +250,7 @@ func TestReplyRejectsContactWithoutEmail(t *testing.T) {
 
 func TestReplyWithoutMailerConfigured(t *testing.T) {
 	store := &fakeStore{item: newStoredFeedback("student@example.com")}
-	svc := newFeedbackService(store, nil, nil)
+	svc := newFeedbackService(store, nil, nil, "")
 
 	_, err := svc.Reply(context.Background(), "any", ReplyInput{Subject: "标题", Body: "正文内容"}, nil)
 	if !errors.Is(err, ErrMailNotConfigured) {
@@ -262,7 +274,7 @@ func TestReplyValidationErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			store := &fakeStore{item: newStoredFeedback("student@example.com")}
 			sender := &fakeSender{enabled: true}
-			svc := newFeedbackService(store, sender, nil)
+			svc := newFeedbackService(store, sender, nil, "")
 
 			_, err := svc.Reply(context.Background(), "any", tc.input, nil)
 			if !errors.Is(err, tc.wantErr) {
@@ -279,7 +291,7 @@ func TestReplyValidationErrors(t *testing.T) {
 func TestReplySendFailureLeavesNoRecord(t *testing.T) {
 	store := &fakeStore{item: newStoredFeedback("student@example.com")}
 	sender := &fakeSender{enabled: true, sendErr: errors.New("SMTP 认证失败")}
-	svc := newFeedbackService(store, sender, nil)
+	svc := newFeedbackService(store, sender, nil, "")
 
 	_, err := svc.Reply(context.Background(), "any", ReplyInput{Subject: "标题", Body: "正文内容"}, nil)
 	if !errors.Is(err, ErrReplySendFailed) {
@@ -295,7 +307,7 @@ func TestReplySendFailureLeavesNoRecord(t *testing.T) {
 
 func TestReplyMissingFeedback(t *testing.T) {
 	store := &fakeStore{getErr: repository.ErrNotFound}
-	svc := newFeedbackService(store, &fakeSender{enabled: true}, nil)
+	svc := newFeedbackService(store, &fakeSender{enabled: true}, nil, "")
 
 	_, err := svc.Reply(context.Background(), "missing", ReplyInput{Subject: "标题", Body: "正文内容"}, nil)
 	if !errors.Is(err, repository.ErrNotFound) {
@@ -304,7 +316,7 @@ func TestReplyMissingFeedback(t *testing.T) {
 }
 
 func TestReplyTemplatesFallbackAndIsolation(t *testing.T) {
-	svc := newFeedbackService(&fakeStore{}, nil, nil)
+	svc := newFeedbackService(&fakeStore{}, nil, nil, "")
 	templates := svc.ReplyTemplates()
 	if len(templates) != len(config.DefaultReplyTemplates) {
 		t.Fatalf("未配置模板时应回退内置文案，实际 %d 条", len(templates))
@@ -316,18 +328,18 @@ func TestReplyTemplatesFallbackAndIsolation(t *testing.T) {
 	}
 
 	custom := []config.ReplyTemplate{{Label: "自定义", Content: "自定义正文"}}
-	if got := newFeedbackService(&fakeStore{}, nil, custom).ReplyTemplates(); len(got) != 1 || got[0].Label != "自定义" {
+	if got := newFeedbackService(&fakeStore{}, nil, custom, "").ReplyTemplates(); len(got) != 1 || got[0].Label != "自定义" {
 		t.Fatalf("显式传入的模板应优先生效，实际: %+v", got)
 	}
 }
 
 // 管理端需要展示真实发件人前缀，未配置邮件时为空串（前端据此降级展示收件人）。
 func TestSenderNameReflectsMailer(t *testing.T) {
-	svc := newFeedbackService(&fakeStore{}, &fakeSender{enabled: true, fromName: "BetterHRBUST"}, nil)
+	svc := newFeedbackService(&fakeStore{}, &fakeSender{enabled: true, fromName: "BetterHRBUST"}, nil, "")
 	if got := svc.SenderName(); got != "BetterHRBUST" {
 		t.Fatalf("SenderName 应为配置的前缀，实际: %q", got)
 	}
-	if got := newFeedbackService(&fakeStore{}, nil, nil).SenderName(); got != "" {
+	if got := newFeedbackService(&fakeStore{}, nil, nil, "").SenderName(); got != "" {
 		t.Fatalf("未配置邮件时 SenderName 应为空串，实际: %q", got)
 	}
 }

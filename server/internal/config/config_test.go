@@ -24,6 +24,30 @@ func TestParseReplyTemplatesCustom(t *testing.T) {
 	}
 }
 
+// 提醒收件邮箱需要容忍常见的书写形式，非法值一律回退为空（关闭提醒）。
+func TestNormalizeMailbox(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{"纯邮箱", "inbox@example.com", "inbox@example.com"},
+		{"带空白", "  inbox@example.com  ", "inbox@example.com"},
+		{"带显示名", "反馈收件 <inbox@example.com>", "inbox@example.com"},
+		{"多个邮箱只接受单个", "a@b.com, c@d.cn", ""},
+		{"空值", "   ", ""},
+		{"非法邮箱", "not-an-email", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := normalizeMailbox(tc.raw); got != tc.want {
+				t.Fatalf("normalizeMailbox(%q) = %q，期望 %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
 // 省略 :: 时按钮文案自动取正文前 10 个字，避免出现空白按钮。
 func TestParseReplyTemplatesDerivesLabel(t *testing.T) {
 	got := parseReplyTemplates("这是一段很长很长很长的回复正文内容")

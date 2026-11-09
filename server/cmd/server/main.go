@@ -72,7 +72,13 @@ func main() {
 		UseTLS:   cfg.SMTPUseTLS,
 	})
 
-	feedbackService := service.NewFeedbackService(feedbackRepo, mailClient, cfg.ReplyTemplates)
+	// 未配置收件邮箱或显式关闭时为空串，服务端不会发提醒邮件
+	notifyEmail := ""
+	if cfg.NotifyEnabled {
+		notifyEmail = cfg.NotifyEmail
+	}
+
+	feedbackService := service.NewFeedbackService(feedbackRepo, mailClient, cfg.ReplyTemplates, notifyEmail)
 	adminService := service.NewAdminService(adminRepo, cfg.JWTSecret, cfg.JWTTTL)
 
 	limiter := middleware.NewRateLimiter(redisClient, cfg.JWTSecret, router.FeedbackRules...)
@@ -107,7 +113,8 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Printf("服务已启动，监听 :%s（限流: %v，数据库: %s，邮件回复: %v）", cfg.Port, limiter.Enabled(), cfg.MongoDB, mailClient.Enabled())
+		log.Printf("服务已启动，监听 :%s（限流: %v，数据库: %s，邮件回复: %v，新反馈提醒: %v）",
+			cfg.Port, limiter.Enabled(), cfg.MongoDB, mailClient.Enabled(), notifyEmail != "")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("HTTP 服务异常退出: %v", err)
 		}

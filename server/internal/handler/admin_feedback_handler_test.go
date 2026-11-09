@@ -18,7 +18,7 @@ func TestReplyTemplatesResponseShape(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// 未配置 SMTP 的服务：仓储可为 nil，这两个方法不访问仓储
-	feedback := service.NewFeedbackService(nil, nil, nil)
+	feedback := service.NewFeedbackService(nil, nil, nil, "")
 	engine := gin.New()
 	engine.GET("/reply-templates", handler.NewAdminFeedbackHandler(feedback).ReplyTemplates)
 

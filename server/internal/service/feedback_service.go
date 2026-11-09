@@ -4,9 +4,12 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"net/mail"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -157,23 +160,33 @@ type FeedbackService struct {
 	// mailer 为 nil 时表示未配置 SMTP，回复功能降级为不可用。
 	mailer    mailSender
 	templates []config.ReplyTemplate
+	// notifyEmail 是新反馈提醒邮件的收件地址；为空表示不发送提醒。
+	notifyEmail string
+	// dispatch 决定提醒邮件的执行方式：生产环境异步发送，测试中可替换为同步执行。
+	dispatch func(task func(ctx context.Context))
 }
 
 // NewFeedbackService 构造反馈服务；mailClient 允许为 nil（未配置 SMTP）。
-func NewFeedbackService(repo feedbackStore, mailClient *mailer.Mailer, templates []config.ReplyTemplate) *FeedbackService {
+// notifyEmail 为新反馈提醒的收件邮箱，留空表示关闭提醒。
+func NewFeedbackService(repo feedbackStore, mailClient *mailer.Mailer, templates []config.ReplyTemplate, notifyEmail string) *FeedbackService {
 	if mailClient == nil {
 		// 显式落入 nil 接口：避免接口持有 nil 指针后在调用发信时 panic。
-		return newFeedbackService(repo, nil, templates)
+		return newFeedbackService(repo, nil, templates, notifyEmail)
 	}
-	return newFeedbackService(repo, mailClient, templates)
+	return newFeedbackService(repo, mailClient, templates, notifyEmail)
 }
 
 // newFeedbackService 内部构造入口，便于测试注入自定义发信器。
-func newFeedbackService(repo feedbackStore, sender mailSender, templates []config.ReplyTemplate) *FeedbackService {
+func newFeedbackService(repo feedbackStore, sender mailSender, templates []config.ReplyTemplate, notifyEmail string) *FeedbackService {
 	if len(templates) == 0 {
 		templates = config.DefaultReplyTemplates
 	}
-	svc := &FeedbackService{repo: repo, templates: templates}
+	svc := &FeedbackService{
+		repo:        repo,
+		templates:   templates,
+		notifyEmail: strings.TrimSpace(notifyEmail),
+		dispatch:    asyncDispatch,
+	}
 	if sender != nil && sender.Enabled() {
 		svc.mailer = sender
 	}
@@ -231,7 +244,7 @@ func NormalizeInput(input FeedbackSubmitInput) (*model.Feedback, error) {
 	}, nil
 }
 
-// Submit 校验并写入一条反馈。
+// Submit 校验并写入一条反馈，落库成功后向配置邮箱发送新反馈提醒。
 func (s *FeedbackService) Submit(ctx context.Context, input FeedbackSubmitInput) (*model.Feedback, error) {
 	feedback, err := NormalizeInput(input)
 	if err != nil {
@@ -240,6 +253,8 @@ func (s *FeedbackService) Submit(ctx context.Context, input FeedbackSubmitInput)
 	if err := s.repo.Create(ctx, feedback); err != nil {
 		return nil, err
 	}
+	// 提醒邮件属于附带能力：发送失败只记日志，不影响本次提交的结果。
+	s.notify(feedback)
 	return feedback, nil
 }
 
@@ -343,6 +358,76 @@ func (s *FeedbackService) Delete(ctx context.Context, id string) error {
 // UnreadCount 未读数量。
 func (s *FeedbackService) UnreadCount(ctx context.Context) (int64, error) {
 	return s.repo.UnreadCount(ctx)
+}
+
+// 新反馈提醒邮件相关常量。
+const (
+	// notifySubject 提醒邮件标题，固定文案便于在邮箱侧按规则归集。
+	notifySubject = "【BetterHRBUST】收到一条新的意见反馈"
+	// notifyTimeout 单封提醒邮件的发送上限，避免慢 SMTP 长期占用后台 goroutine。
+	notifyTimeout = 30 * time.Second
+)
+
+// asyncDispatch 在后台 goroutine 中执行发信任务：
+// SMTP 交互最长可达十几秒，不能阻塞前端的反馈提交响应。
+func asyncDispatch(task func(ctx context.Context)) {
+	go func() {
+		defer func() {
+			// 后台 goroutine 中的 panic 会直接终止进程，这里兜底记录。
+			if r := recover(); r != nil {
+				log.Printf("[feedback] 新反馈提醒发送异常: %v", r)
+			}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), notifyTimeout)
+		defer cancel()
+		task(ctx)
+	}()
+}
+
+// notify 向配置邮箱投递新反馈提醒；未配置收件邮箱或 SMTP 不可用时静默跳过。
+func (s *FeedbackService) notify(feedback *model.Feedback) {
+	if feedback == nil || s.notifyEmail == "" || !s.MailEnabled() {
+		return
+	}
+	subject, body := buildNotifyMessage(feedback)
+	dispatch := s.dispatch
+	if dispatch == nil {
+		dispatch = asyncDispatch
+	}
+	dispatch(func(ctx context.Context) {
+		// 日志中不打印反馈正文，避免用户内容散落到日志系统。
+		if err := s.mailer.Send(ctx, s.notifyEmail, subject, body, ""); err != nil {
+			log.Printf("[feedback] 新反馈提醒发送失败: %v", err)
+		}
+	})
+}
+
+// buildNotifyMessage 组装提醒邮件的标题与正文。
+// 正文只搬运用户主动提交的字段（内容、联系方式、署名），不附加任何推断信息。
+func buildNotifyMessage(feedback *model.Feedback) (string, string) {
+	author := "匿名"
+	if !feedback.Anonymous && feedback.Signature != "" {
+		author = feedback.Signature + "（实名）"
+	}
+	contact := feedback.Contact
+	if contact == "" {
+		contact = "未填写"
+	}
+
+	var builder strings.Builder
+	builder.WriteString("收到一条新的意见反馈，请登录管理端查看并处理。\r\n\r\n")
+	builder.WriteString("---------- 反馈信息 ----------\r\n")
+	fmt.Fprintf(&builder, "提交时间：%s\r\n", feedback.CreatedAt.Local().Format("2006-01-02 15:04:05"))
+	if !feedback.ID.IsZero() {
+		fmt.Fprintf(&builder, "反馈编号：%s\r\n", feedback.ID.Hex())
+	}
+	fmt.Fprintf(&builder, "提交方式：%s\r\n", author)
+	fmt.Fprintf(&builder, "联系方式：%s\r\n", contact)
+	builder.WriteString("\r\n---------- 反馈内容 ----------\r\n")
+	builder.WriteString(feedback.Content)
+	builder.WriteString("\r\n---------- 反馈内容结束 ----------\r\n\r\n")
+	builder.WriteString("本邮件由 BetterHRBUST 服务端在收到反馈时自动发送，无需回复。\r\n")
+	return notifySubject, builder.String()
 }
 
 // sanitizeText 去除首尾空白并剔除控制字符（保留换行与制表符），

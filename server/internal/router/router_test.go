@@ -15,7 +15,7 @@ func TestNewRegistersReplyRoutes(t *testing.T) {
 	const secret = "test-secret"
 	deps := router.Deps{
 		Config:       config.Config{JWTSecret: secret},
-		Feedback:     service.NewFeedbackService(nil, nil, nil),
+		Feedback:     service.NewFeedbackService(nil, nil, nil, ""),
 		Limiter:      middleware.NewRateLimiter(nil, secret, router.FeedbackRules...),
 		LoginLimiter: middleware.NewRateLimiter(nil, secret, router.LoginRules...),
 	}

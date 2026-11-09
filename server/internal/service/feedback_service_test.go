@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -91,6 +92,150 @@ func TestNormalizeInputRejectsLongSignature(t *testing.T) {
 }
 
 // 控制字符必须被剔除，防止不可见字符绕过长度校验或污染管理端展示。
+// ---------- 新反馈提醒邮件 ----------
+
+// syncDispatch 让提醒邮件在测试中同步发送，便于直接断言。
+func syncDispatch(task func(ctx context.Context)) { task(context.Background()) }
+
+func TestSubmitSendsNotifyMailWithContent(t *testing.T) {
+	store := &fakeStore{}
+	sender := &fakeSender{enabled: true}
+	svc := newFeedbackService(store, sender, nil, "inbox@example.com")
+	svc.dispatch = syncDispatch
+
+	feedback, err := svc.Submit(context.Background(), FeedbackSubmitInput{
+		Content: "  成绩页导出按钮点了没有反应  ",
+		Contact: " 邮箱：student@example.com  ",
+	})
+	if err != nil {
+		t.Fatalf("期望提交成功，实际错误: %v", err)
+	}
+	if len(store.created) != 1 {
+		t.Fatalf("期望写入 1 条反馈，实际 %d 条", len(store.created))
+	}
+	if len(sender.sent) != 1 {
+		t.Fatalf("期望发送 1 封提醒邮件，实际 %d 封", len(sender.sent))
+	}
+
+	mail := sender.sent[0]
+	if mail.To != "inbox@example.com" {
+		t.Fatalf("提醒邮件应发往配置的邮箱，实际: %q", mail.To)
+	}
+	if mail.Subject != notifySubject {
+		t.Fatalf("提醒邮件标题不符合预期: %q", mail.Subject)
+	}
+	for _, want := range []string{
+		"成绩页导出按钮点了没有反应",
+		"student@example.com",
+		feedback.ID.Hex(),
+		"匿名",
+		"提交时间",
+		"联系方式",
+	} {
+		if !strings.Contains(mail.Body, want) {
+			t.Fatalf("提醒邮件正文应包含 %q，实际正文:\n%s", want, mail.Body)
+		}
+	}
+	if mail.Operator != "" {
+		t.Fatalf("系统提醒不应伪装成管理员发送，实际 operator: %q", mail.Operator)
+	}
+}
+
+// 实名反馈需要在提醒邮件中体现署名，匿名反馈则不应泄露姓名。
+func TestNotifyMailReflectsSignature(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     FeedbackSubmitInput
+		want      string
+		notWanted string
+	}{
+		{
+			name:      "实名",
+			input:     FeedbackSubmitInput{Content: "希望增加课表导出功能", Signature: "张三", Anonymous: false},
+			want:      "张三（实名）",
+			notWanted: "提交方式：匿名",
+		},
+		{
+			name:      "匿名",
+			input:     FeedbackSubmitInput{Content: "希望增加课表导出功能", Signature: "张三", Anonymous: true},
+			want:      "提交方式：匿名",
+			notWanted: "张三（实名）",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sender := &fakeSender{enabled: true}
+			svc := newFeedbackService(&fakeStore{}, sender, nil, "inbox@example.com")
+			svc.dispatch = syncDispatch
+
+			if _, err := svc.Submit(context.Background(), tc.input); err != nil {
+				t.Fatalf("期望提交成功，实际错误: %v", err)
+			}
+			if len(sender.sent) != 1 {
+				t.Fatalf("期望发送 1 封提醒邮件，实际 %d 封", len(sender.sent))
+			}
+			if !strings.Contains(sender.sent[0].Body, tc.want) {
+				t.Fatalf("正文应包含 %q，实际:\n%s", tc.want, sender.sent[0].Body)
+			}
+			if strings.Contains(sender.sent[0].Body, tc.notWanted) {
+				t.Fatalf("正文不应包含 %q，实际:\n%s", tc.notWanted, sender.sent[0].Body)
+			}
+		})
+	}
+}
+
+// 未配置收件邮箱时不应产生任何发信行为。
+func TestSubmitWithoutNotifyEmailSendsNothing(t *testing.T) {
+	sender := &fakeSender{enabled: true}
+	svc := newFeedbackService(&fakeStore{}, sender, nil, "")
+	svc.dispatch = syncDispatch
+
+	if _, err := svc.Submit(context.Background(), FeedbackSubmitInput{Content: "反馈正文内容合规"}); err != nil {
+		t.Fatalf("期望提交成功，实际错误: %v", err)
+	}
+	if len(sender.sent) != 0 {
+		t.Fatalf("未配置收件邮箱时不应发信，实际 %d 封", len(sender.sent))
+	}
+}
+
+// 提醒只是附带能力：SMTP 未配置或发信失败都不能影响提交结果。
+func TestSubmitNotificationFailureIsNotFatal(t *testing.T) {
+	t.Run("发信失败", func(t *testing.T) {
+		sender := &fakeSender{enabled: true, sendErr: errors.New("SMTP 认证失败")}
+		svc := newFeedbackService(&fakeStore{}, sender, nil, "inbox@example.com")
+		svc.dispatch = syncDispatch
+
+		if _, err := svc.Submit(context.Background(), FeedbackSubmitInput{Content: "反馈正文内容合规"}); err != nil {
+			t.Fatalf("提醒发送失败不应影响提交，实际错误: %v", err)
+		}
+	})
+
+	t.Run("未配置 SMTP", func(t *testing.T) {
+		svc := newFeedbackService(&fakeStore{}, nil, nil, "inbox@example.com")
+		svc.dispatch = syncDispatch
+
+		if _, err := svc.Submit(context.Background(), FeedbackSubmitInput{Content: "反馈正文内容合规"}); err != nil {
+			t.Fatalf("未配置 SMTP 时提交仍应成功，实际错误: %v", err)
+		}
+	})
+}
+
+// 落库失败时不应发出「有新反馈」的提醒。
+func TestSubmitCreateFailureSkipsNotification(t *testing.T) {
+	sender := &fakeSender{enabled: true}
+	store := &fakeStore{createErr: errors.New("mongo 不可用")}
+	svc := newFeedbackService(store, sender, nil, "inbox@example.com")
+	svc.dispatch = syncDispatch
+
+	if _, err := svc.Submit(context.Background(), FeedbackSubmitInput{Content: "反馈正文内容合规"}); err == nil {
+		t.Fatal("落库失败应返回错误")
+	}
+	if len(sender.sent) != 0 {
+		t.Fatalf("落库失败不应发信，实际 %d 封", len(sender.sent))
+	}
+}
+
 func TestSanitizeTextStripsControlCharacters(t *testing.T) {
 	got := sanitizeText("正常\x00文本\x07带\r\n换行")
 	if strings.ContainsAny(got, "\x00\x07\r") {

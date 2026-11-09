@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
@@ -88,6 +89,13 @@ type Config struct {
 	// ReplyTemplates 管理端快捷回复预设文案，未配置时使用 DefaultReplyTemplates。
 	ReplyTemplates []ReplyTemplate
 
+	// ---------- 「收到新反馈」提醒邮件 ----------
+	// NotifyEmail 为新反馈提醒邮件的收件地址（团队公共邮箱可填群组地址）；
+	// 为空表示关闭提醒。发信复用上面的 SMTP 参数，SMTP 未配置时提醒同样不可用。
+	NotifyEmail string
+	// NotifyEnabled 单独控制是否发送提醒，便于保留收件配置的前提下临时关闭。
+	NotifyEnabled bool
+
 	// Warnings 收集启动期的降级提示，由调用方决定是否输出（命令行工具可静默忽略）。
 	Warnings []string
 }
@@ -124,6 +132,9 @@ func Load() Config {
 		SMTPFromName:   envString("SMTP_FROM_NAME", mailer.DefaultFromName),
 		SMTPUseTLS:     envBool("SMTP_USE_TLS", smtpPort == smtpImplicitTLSPort),
 		ReplyTemplates: parseReplyTemplates(os.Getenv("REPLY_TEMPLATES")),
+
+		NotifyEmail:   normalizeMailbox(os.Getenv("FEEDBACK_NOTIFY_EMAIL")),
+		NotifyEnabled: envBool("FEEDBACK_NOTIFY_ENABLED", true),
 	}
 
 	if cfg.JWTSecret == "" {
@@ -140,7 +151,16 @@ func Load() Config {
 		cfg.MaxPageSize = defaultMaxPage
 	}
 	if cfg.SMTPHost == "" || cfg.SMTPFrom == "" {
-		cfg.Warnings = append(cfg.Warnings, "未完整配置 SMTP_HOST / SMTP_FROM，管理端「回复邮件」功能已降级为不可用")
+		cfg.Warnings = append(cfg.Warnings, "未完整配置 SMTP_HOST / SMTP_FROM，管理端「回复邮件」与新反馈提醒功能已降级为不可用")
+	}
+	if cfg.NotifyEmail == "" {
+		if raw := strings.TrimSpace(os.Getenv("FEEDBACK_NOTIFY_EMAIL")); raw != "" {
+			cfg.Warnings = append(cfg.Warnings, "FEEDBACK_NOTIFY_EMAIL 不是合法邮箱地址，新反馈提醒已关闭")
+		}
+	} else if cfg.SMTPHost == "" || cfg.SMTPFrom == "" {
+		cfg.Warnings = append(cfg.Warnings, "已配置 FEEDBACK_NOTIFY_EMAIL，但 SMTP 未就绪，新反馈提醒无法发送")
+	} else if !cfg.NotifyEnabled {
+		cfg.Warnings = append(cfg.Warnings, "FEEDBACK_NOTIFY_ENABLED=false，新反馈提醒已关闭")
 	}
 	return cfg
 }
@@ -177,6 +197,20 @@ func parseReplyTemplates(raw string) []ReplyTemplate {
 		return DefaultReplyTemplates
 	}
 	return templates
+}
+
+// normalizeMailbox 校验并规范化单个收件邮箱；允许填写「昵称 <邮箱>」形式，
+// 统一取其中的地址部分。非法或为空时返回空串（调用方据此关闭提醒）。
+func normalizeMailbox(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	address, err := mail.ParseAddress(value)
+	if err != nil || address.Address == "" {
+		return ""
+	}
+	return address.Address
 }
 
 // truncateRunes 按字符（而非字节）截断，避免截出半个汉字。
