@@ -151,7 +151,7 @@ internal object TimetableWidgetLoader {
 
         val timetable = runCatching {
             app.database.timetableDao().getTimetable(prefs.studentId).firstOrNull()?.json
-                ?.let { json.decodeFromString<TimetableResult>(it) }
+                ?.let { AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(it)) }
         }.getOrNull() ?: TimetableResult()
 
         val week = (snapshot.week ?: return TimetableWidgetData.empty(todayDay)).coerceIn(1, prefs.semesterTeachingWeeks)

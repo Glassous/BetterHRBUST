@@ -5,6 +5,7 @@ import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.datastore.AppPreferences
 import com.glassous.betterhrbust.core.model.PersonalInfo
 import com.glassous.betterhrbust.core.model.TimetableResult
+import com.glassous.betterhrbust.core.parser.AcademicParsers
 import com.glassous.betterhrbust.core.ui.theme.CourseColorPalette
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -25,7 +26,7 @@ object WidgetDataSource {
         val profile=if(prefs.studentId.isBlank())null else app.database.profileDao().getProfile(prefs.username).first()
         val verified=profile?.let { runCatching { json.decodeFromString<PersonalInfo>(it.json).studentNumber==prefs.username }.getOrDefault(false) }==true
         val entity=if(verified)app.database.timetableDao().getTimetable(prefs.studentId).first() else null
-        val table=entity?.let { runCatching { json.decodeFromString<TimetableResult>(it.json) }.getOrNull() }
+        val table=entity?.let { runCatching { AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(it.json)) }.getOrNull() }
         table?.let { CourseColorPalette.register(it.cells.map { cell->CourseColorPalette.keyOf(cell.courseName,cell.courseSeq,cell.courseId,cell.id) }) }
         val nextWeek=prefs.teachingWeekOn(date.plusDays(1))
         val today=if(week!=null && table!=null)TimetableWidgetModel.dayCourses(table.cells,week,date,time) else emptyList()

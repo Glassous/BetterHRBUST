@@ -8,6 +8,14 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.min
 
+/** 课表单元格拆解结果，见 [AcademicParsers.splitCellFields]。 */
+data class TimetableCellFields(
+    val location: String,
+    val teacher: String,
+    val weeks: String,
+    val hoursType: String
+)
+
 object AcademicParsers {
 
     private val NAMED_ENTITIES = mapOf(
@@ -250,10 +258,8 @@ object AcademicParsers {
                     }
                     courseName = courseName.replace(Regex("""^[<《]+|[>》]+$"""), "").trim()
 
-                    val location = lines.getOrNull(1) ?: ""
-                    val teacher = lines.getOrNull(2) ?: ""
-                    val weeks = lines.getOrNull(3) ?: ""
-                    val hoursType = lines.getOrNull(4) ?: ""
+                    // 单元格行数并不固定（缺教师行 / 周次后多一行说明），按内容定位周次行再取字段
+                    val fields = splitCellFields(lines)
 
                     var day = dayIndex + 1
                     var courseId = ""
@@ -273,10 +279,10 @@ object AcademicParsers {
                             sectionLabel = sectionLabel,
                             courseName = courseName,
                             courseSeq = courseSeq,
-                            location = location,
-                            teacher = teacher,
-                            weeks = weeks,
-                            hoursType = hoursType,
+                            location = fields.location,
+                            teacher = fields.teacher,
+                            weeks = fields.weeks,
+                            hoursType = fields.hoursType,
                             rawLines = lines
                         )
                     )
@@ -307,6 +313,77 @@ object AcademicParsers {
         }
 
         return TimetableResult(cells = cells, unarranged = unarranged)
+    }
+
+    /**
+     * 从单元格各行拆出地点 / 教师 / 周次 / 学时类型。
+     *
+     * 教务单元格的常规格式是「课程名 / 地点 / 教师 / 周次 / 学时类型」五行，但行数并不固定：
+     * - 没录入任课教师的课程（军训、体育等实践类）会少一行，后续字段整体前移；
+     * - 部分课程在周次之后还会多出一行说明（如「一上午」），学时类型被挤到下一行。
+     *
+     * 按固定下标读取就会错位：缺教师时「学时类型」被当成周次，[isCourseActiveInWeek]
+     * 随之判断失效 —— 已结束的课程在后续教学周仍显示为正常颜色。
+     * 这里以「周次行」为锚点（同时包含数字与「周」）定位，再按相对位置取其余字段。
+     */
+    fun splitCellFields(lines: List<String>): TimetableCellFields {
+        // 兜底：无法识别周次行时按常规五行位置读取，与原实现保持一致
+        val fallback = TimetableCellFields(
+            location = lines.getOrNull(1) ?: "",
+            teacher = lines.getOrNull(2) ?: "",
+            weeks = lines.getOrNull(3) ?: "",
+            hoursType = lines.getOrNull(4) ?: ""
+        )
+
+        val rest = lines.drop(1)
+        val weeksIndex = rest.indexOfFirst { it.contains("周") && it.any { ch -> ch.isDigit() } }
+        if (weeksIndex < 0) return fallback
+
+        val before = rest.take(weeksIndex)
+        val after = rest.drop(weeksIndex + 1)
+
+        var location = ""
+        var teacher = ""
+        if (before.size >= 2) {
+            location = before[0]
+            teacher = before.drop(1).joinToString(" ")
+        } else if (before.size == 1) {
+            // 只剩一行时无法可靠区分地点与教师：按地点处理（教务中地点通常必填、教师可缺省）。
+            // 即便实际是教师名，也只影响这一行的展示，不影响周次判断。
+            location = before[0]
+        }
+
+        // 周次之后是学时类型；存在多余说明行时优先取带「学时」的那一行
+        val hoursType = after.firstOrNull { it.contains("学时") } ?: after.firstOrNull() ?: ""
+
+        return TimetableCellFields(
+            location = location,
+            teacher = teacher,
+            weeks = rest[weeksIndex],
+            hoursType = hoursType
+        )
+    }
+
+    /**
+     * 修复历史缓存中的课表单元格。
+     *
+     * 旧解析器按固定行号取字段，缺教师行时会把学时类型当成周次。本地缓存的 JSON 里
+     * 一直保留着 rawLines，读取时按内容重算即可，无需等待下一次联网同步。
+     */
+    fun normalizeTimetableCells(result: TimetableResult): TimetableResult {
+        if (result.cells.isEmpty()) return result
+        return result.copy(
+            cells = result.cells.map { cell ->
+                if (cell.rawLines.size < 2) return@map cell
+                val fields = splitCellFields(cell.rawLines)
+                cell.copy(
+                    location = fields.location,
+                    teacher = fields.teacher,
+                    weeks = fields.weeks,
+                    hoursType = fields.hoursType
+                )
+            }
+        )
     }
 
     fun isCourseActiveInWeek(weeksExpr: String?, targetWeek: Int): Boolean {

@@ -20,6 +20,14 @@ class AcademicRepository(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * 读取课表缓存时统一修复字段：旧版解析器按固定行号取「地点/教师/周次/学时类型」，
+     * 缺教师行的课程（军训、体育等）会把学时类型当成周次，导致已结束的课程仍显示为正常颜色。
+     * 修复只用缓存里已有的 rawLines，不需要重新联网。
+     */
+    private fun decodeCachedTimetable(jsonText: String): TimetableResult =
+        AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(jsonText))
+
     /** 旧账号的网络请求即使迟到，也不能写入或显示到新会话中。 */
     private suspend fun requireCurrentSession(snapshot: com.glassous.betterhrbust.core.datastore.AppPreferences?) {
         val current = prefs.preferencesFlow.firstOrNull()
@@ -44,7 +52,7 @@ class AcademicRepository(
         val localEntity = database.timetableDao().getTimetable(studentId).firstOrNull()
         if (localEntity != null && !forceRefresh) {
             try {
-                val cached = json.decodeFromString<TimetableResult>(localEntity.json)
+                val cached = decodeCachedTimetable(localEntity.json)
                 requireCurrentSession(session)
                 emit(Resource.Success(cached, isOfflineCache = true))
                 // 离线只读模式：命中缓存后不再联网
@@ -70,7 +78,7 @@ class AcademicRepository(
             // 远端返回空（异常页 / 登录页被解析为空结果）时保留既有缓存，
             // 避免一次失败的刷新把已持久化的课表永久覆盖为空
             if (parsed.cells.isEmpty() && parsed.unarranged.isEmpty() && localEntity != null) {
-                val cached = json.decodeFromString<TimetableResult>(localEntity.json)
+                val cached = decodeCachedTimetable(localEntity.json)
                 if (cached.cells.isNotEmpty() || cached.unarranged.isNotEmpty()) {
                     requireCurrentSession(session)
                     emit(Resource.Success(cached, isOfflineCache = true))
@@ -92,7 +100,7 @@ class AcademicRepository(
         } catch (e: Exception) {
             if (localEntity != null) {
                 try {
-                    val cached = json.decodeFromString<TimetableResult>(localEntity.json)
+                    val cached = decodeCachedTimetable(localEntity.json)
                     requireCurrentSession(session)
                     emit(Resource.Success(cached, isOfflineCache = true))
                     return@flow

@@ -3,6 +3,8 @@ package com.glassous.betterhrbust
 import com.glassous.betterhrbust.core.model.ClassroomOccupancy
 import com.glassous.betterhrbust.core.model.ExamItem
 import com.glassous.betterhrbust.core.model.ScoreItem
+import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableResult
 import com.glassous.betterhrbust.core.parser.AcademicParsers
 import com.glassous.betterhrbust.core.parser.ClassroomScheduleLogic
 import org.junit.Assert.*
@@ -114,6 +116,94 @@ class AcademicParsersTest {
             assertTrue("Section index must be between 1 and 6", cell.sectionIndex in 1..6)
             assertTrue("Course name must not be blank", cell.courseName.isNotBlank())
         }
+    }
+
+    /**
+     * 单元格行数并不固定：缺教师行 / 周次后多一行说明时，
+     * 按固定下标读取会把学时类型当成周次，已结束的课程因此仍显示为正常颜色。
+     */
+    @Test
+    fun splitCellFieldsHandlesVariableLineCount() {
+        val standard = AcademicParsers.splitCellFields(
+            listOf("<<算法设计与分析>>;2", "西-新A306", "张淑丽B", "4-10周", "讲课学时")
+        )
+        assertEquals("西-新A306", standard.location)
+        assertEquals("张淑丽B", standard.teacher)
+        assertEquals("4-10周", standard.weeks)
+        assertEquals("讲课学时", standard.hoursType)
+
+        // 缺教师行（军训 / 体育等实践课）：字段整体前移一行
+        val noTeacher = AcademicParsers.splitCellFields(
+            listOf("<<军事技能训练>>", "西-区田径场", "4-5周", "实践学时")
+        )
+        assertEquals("西-区田径场", noTeacher.location)
+        assertEquals("", noTeacher.teacher)
+        assertEquals("4-5周", noTeacher.weeks)
+        assertEquals("实践学时", noTeacher.hoursType)
+
+        // 地点与教师都没有
+        val onlyWeeks = AcademicParsers.splitCellFields(listOf("<<军事技能训练>>", "4-5周", "实践学时"))
+        assertEquals("", onlyWeeks.teacher)
+        assertEquals("4-5周", onlyWeeks.weeks)
+
+        // 周次后多一行说明（真实数据：复变函数与积分变换 → 一上午 → 讲课学时）
+        val extraLine = AcademicParsers.splitCellFields(
+            listOf("<<复变函数与积分变换>>;334", "西-新B502", "张三", "1-6周", "一上午", "讲课学时")
+        )
+        assertEquals("1-6周", extraLine.weeks)
+        assertEquals("讲课学时", extraLine.hoursType)
+    }
+
+    private fun timetableCellHtml(cellInner: String): String = """
+        <table id="timetable" class="infolist_hr">
+        <tr><th>&nbsp;</th><th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th><th>周六</th><th>周日</th></tr>
+        <tr class="infolist_hr_common"><th>第二大节<br></th>
+        <td id="1-4368">&nbsp;</td><td id="2-4368">&nbsp;</td><td id="3-4368">&nbsp;</td>
+        <td id="4-4368">&nbsp;</td><td id="5-4368">&nbsp;</td><td id="6-4368">$cellInner</td><td id="7-4368">&nbsp;</td></tr>
+        </table>
+    """.trimIndent()
+
+    /** 军训这类没有教师行的课程，周次必须解析成真实区间，才能在后续周次正确置灰 */
+    @Test
+    fun timetableWithoutTeacherKeepsRealWeekRange() {
+        val html = timetableCellHtml("&lt;&lt;军事技能训练&gt;&gt;<br>西-区田径场<br>4-5周<br>实践学时")
+        val cell = AcademicParsers.parseTimetable(html).cells.single()
+
+        assertEquals(6, cell.day)
+        assertEquals("", cell.teacher)
+        assertEquals("4-5周", cell.weeks)
+        assertEquals("实践学时", cell.hoursType)
+        assertTrue("第 5 周仍有课", AcademicParsers.isCourseActiveInWeek(cell.weeks, 5))
+        assertFalse("第 11 周不应再显示 4-5 周的课程", AcademicParsers.isCourseActiveInWeek(cell.weeks, 11))
+    }
+
+    /** 旧版本写入的缓存按 rawLines 重算即可修复，无需重新联网 */
+    @Test
+    fun cachedTimetableIsRepairedFromRawLines() {
+        val legacy = TimetableResult(
+            cells = listOf(
+                TimetableCell(
+                    id = "6-4368",
+                    courseId = "4368",
+                    day = 6,
+                    sectionIndex = 2,
+                    sectionLabel = "第二大节",
+                    courseName = "军事技能训练",
+                    courseSeq = "",
+                    location = "西-区田径场",
+                    teacher = "4-5周", // 旧解析：周次被当成教师
+                    weeks = "实践学时", // 旧解析：学时类型被当成周次
+                    hoursType = "",
+                    rawLines = listOf("<<军事技能训练>>", "西-区田径场", "4-5周", "实践学时")
+                )
+            )
+        )
+
+        val fixed = AcademicParsers.normalizeTimetableCells(legacy).cells.single()
+        assertEquals("", fixed.teacher)
+        assertEquals("4-5周", fixed.weeks)
+        assertEquals("实践学时", fixed.hoursType)
+        assertFalse("修复后第 11 周应判定为无课", AcademicParsers.isCourseActiveInWeek(fixed.weeks, 11))
     }
 
     @Test
