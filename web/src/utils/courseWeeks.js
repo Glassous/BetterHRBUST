@@ -52,5 +52,6 @@ export function expandCourseWeeks(weeksExpr, maxWeek = 26) {
       for (let w = start; w <= to && w <= maxWeek; w += 1) weeks.push(w);
     }
   }
-  return weeks.filter(w => (!isOdd || w % 2 !== 0) && (!isEven || w % 2 !== 0));
+  // 单周保留奇数周，双周保留偶数周（两者互斥，同时出现时按更严格的一侧过滤）
+  return weeks.filter(w => (!isOdd || w % 2 !== 0) && (!isEven || w % 2 === 0));
 }

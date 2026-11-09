@@ -1,4 +1,5 @@
 import { semesterOn, teachingWeekOn } from '../../utils/schoolCalendar.js';
+import { splitCourseCellFields } from '../../utils/courseCell.js';
 /**
  * 教务在线 HTML 响应解析器
  * 基于 DOMParser 与精确字段抽取，实现现代化前端结构化数据输出
@@ -358,10 +359,8 @@ export function parseTimetable(html) {
         }
         courseName = courseName.replace(/^[<《]+|[>》]+$/g, '').trim();
 
-        const location = lines[1] || '';
-        const teacher = lines[2] || '';
-        const weeks = lines[3] || '';
-        const hoursType = lines[4] || '';
+        // 单元格行数并不固定（缺教师行 / 周次后多一行说明），按内容定位周次行再取字段
+        const { location, teacher, weeks, hoursType } = splitCourseCellFields(lines);
 
         // id 格式形如 "1-4367" 或 "1-1"，前缀为星期几 (1~7)，后缀为课程排课 ID
         let day = dayIndex + 1;

@@ -13,6 +13,7 @@ import { academicApi } from '@/services/academic/api.js';
 import { useSession } from '@/composables/useSession.js';
 import { registerDataCacheCleaner, clearRegisteredDataCaches } from '@/composables/dataCacheBridge.js';
 import { registerCourseColors } from '@/utils/courseColors.js';
+import { splitCourseCellFields } from '@/utils/courseCell.js';
 import { storageGetItem, storageSetItem, storageRemoveItem } from '@/services/storage.js';
 
 const CACHE_KEYS = {
@@ -54,6 +55,25 @@ function writeJson(key, value) {
   }
 }
 
+/**
+ * 修复历史缓存中的课表单元格。
+ *
+ * 旧解析器按固定行号读取「地点/教师/周次/学时类型」，遇到没有教师行的课程
+ * （军训、体育等）会整体错位，把学时类型当成周次 —— 周次判断因此失效，
+ * 已结束的课程在后续教学周仍显示为正常颜色。
+ * rawLines 一直随缓存持久化，这里按内容重算字段，无需等待下一次全量同步。
+ */
+function normalizeTimetable(cached) {
+  const data = cached && Array.isArray(cached.cells) ? cached : { cells: [], unarranged: [] };
+  return {
+    ...data,
+    cells: data.cells.map(cell => {
+      if (!cell || !Array.isArray(cell.rawLines) || cell.rawLines.length < 2) return cell;
+      return { ...cell, ...splitCourseCellFields(cell.rawLines) };
+    })
+  };
+}
+
 /** 历史版本曾用当天日期伪造公告日期（源页面并无该信息）：读取缓存时统一清除 */
 function sanitizeNotices(list) {
   if (!Array.isArray(list) || !list.some(n => n && n.date)) return list;
@@ -84,8 +104,8 @@ function loadCache() {
   scores.value = readJson(CACHE_KEYS.scores, []);
   yearOptions.value = readJson(CACHE_KEYS.yearOptions, []);
   plan.value = readJson(CACHE_KEYS.plan, { groups: [] }) || { groups: [] };
-  timetableCombine.value = readJson(CACHE_KEYS.timetableCombine, { cells: [], unarranged: [] });
-  timetableBase.value = readJson(CACHE_KEYS.timetableBase, { cells: [], unarranged: [] });
+  timetableCombine.value = normalizeTimetable(readJson(CACHE_KEYS.timetableCombine, { cells: [], unarranged: [] }));
+  timetableBase.value = normalizeTimetable(readJson(CACHE_KEYS.timetableBase, { cells: [], unarranged: [] }));
   exams.value = readJson(CACHE_KEYS.exams, []);
   notices.value = sanitizeNotices(readJson(CACHE_KEYS.notices, []));
   currentCourses.value = readJson(CACHE_KEYS.currentCourses, []);

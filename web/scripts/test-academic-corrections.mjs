@@ -116,6 +116,31 @@ for (const line of longIcs.split('\r\n')) {
 }
 assert.equal(folded, true, '超长中文 SUMMARY 必须产生以空格开头的折叠续行');
 
+// ---- 课表单元格字段拆解：行数可变，缺教师行不能把学时类型当成周次 ----
+const { splitCourseCellFields } = await import('../src/utils/courseCell.js');
+// 标准五行
+assert.deepEqual(splitCourseCellFields(['<<算法设计与分析>>;2', '西-新A306', '张淑丽B', '4-10周', '讲课学时']),
+  { location: '西-新A306', teacher: '张淑丽B', weeks: '4-10周', hoursType: '讲课学时' });
+// 缺教师行（军训 / 体育等实践课）：周次只剩三行位置，必须仍取到「4-5周」
+assert.deepEqual(splitCourseCellFields(['<<军事技能训练>>', '西-区田径场', '4-5周', '实践学时']),
+  { location: '西-区田径场', teacher: '', weeks: '4-5周', hoursType: '实践学时' });
+// 地点与教师都没有
+assert.deepEqual(splitCourseCellFields(['<<军事技能训练>>', '4-5周', '实践学时']),
+  { location: '', teacher: '', weeks: '4-5周', hoursType: '实践学时' });
+// 周次后多一行说明（真实数据：复变函数与积分变换 → 一上午 → 讲课学时）
+assert.deepEqual(splitCourseCellFields(['<<复变函数与积分变换>>;334', '西-新B502', '张三', '1-6周', '一上午', '讲课学时']),
+  { location: '西-新B502', teacher: '张三', weeks: '1-6周', hoursType: '讲课学时' });
+
+// ---- 已结束课程必须判定为不在本周（否则课表里仍显示为正常颜色）----
+const { isCourseActiveInWeek, expandCourseWeeks } = await import('../src/utils/courseWeeks.js');
+assert.equal(isCourseActiveInWeek({ weeks: '4-5周' }, 5), true);
+assert.equal(isCourseActiveInWeek({ weeks: '4-5周' }, 11), false, '第 11 周不应再显示 4-5 周的课程');
+assert.equal(isCourseActiveInWeek({ weeks: '4-5周' }, 6), false);
+assert.equal(isCourseActiveInWeek({ weeks: '4-5周(单)' }, 5), true);
+assert.equal(isCourseActiveInWeek({ weeks: '4-5周(单)' }, 4), false);
+assert.equal(isCourseActiveInWeek({ weeks: '' }, 11), true, '无周次信息视为全学期');
+assert.deepEqual(expandCourseWeeks('1-8周(双)', 8), [2, 4, 6, 8], '双周应保留偶数周');
+
 const { execFileSync } = await import('node:child_process');
 const { fileURLToPath } = await import('node:url');
 execFileSync(process.execPath,[fileURLToPath(new URL('../../tools/generate-school-calendar.mjs',import.meta.url)),'--check']);
