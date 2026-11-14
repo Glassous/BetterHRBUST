@@ -26,12 +26,13 @@ npm run preview  # 预览构建产物
 poster/
 ├─ public/
 │  ├─ BetterHRBUST.png             # 图标（复制自 landing/public）
-│  ├─ classroom-desktop.png        # 空教室 · 桌面端截图
-│  └─ classroom-android.jpg        # 空教室 · Android 截图
+│  ├─ island-expanded.jpg          # 上课提示 · 灵动岛展开态截图
+│  ├─ island-capsule.jpg           # 上课提示 · 灵动岛折叠态截图
+│  └─ cli-exams.png                # 命令行模式 · BetterHRBUSTCLI 终端截图
 └─ src/
    ├─ App.vue                      # 工具条 + 预览缩放 + 导出逻辑
    ├─ posters/registry.ts          # 海报清单
-   ├─ posters/Release130Poster.vue # v1.2.0 → v1.3.0 海报（内容硬编码）
+   ├─ posters/Release140Poster.vue # v1.3.0 → v1.4.0 海报（内容硬编码）
    └─ assets/                      # Android 图标与下载二维码
 ```
 
