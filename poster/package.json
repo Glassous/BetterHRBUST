@@ -1,7 +1,7 @@
 {
   "name": "better-hrbust-poster",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.4.0",
   "type": "module",
   "description": "BetterHRBUST 版本更新海报 - 本地离线生成与导出 PNG",
   "scripts": {
