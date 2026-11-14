@@ -53,17 +53,28 @@ WebView2 窗口 → http://127.0.0.1:1950（固定端口，占用向后顺延）
 它**只读**桌面端已落盘的缓存，不联网、不写数据、不启动服务：
 
 ```powershell
-BetterHRBUSTCLI status        # 登录状态、本地数据条数、上次同步时间
-BetterHRBUSTCLI summary       # 概览：身份、今日课程、近期考试、学业指标
-BetterHRBUSTCLI timetable     # 课程表（--week N / --day N / --today / --base）
-BetterHRBUSTCLI scores        # 成绩与 GPA（必修课口径，与图形界面完全一致）
-BetterHRBUSTCLI exams         # 考试日程（默认近期，--all 查看全部）
-BetterHRBUSTCLI plan          # 培养方案各课组学分完成度
-BetterHRBUSTCLI notices       # 教学公告（--week N）
-BetterHRBUSTCLI profile       # 学籍档案（证件号 / 手机号 / 邮箱 / 地址默认打码）
-BetterHRBUSTCLI courses       # 本学期课程名录
-BetterHRBUSTCLI doctor        # 数据文件、路径与缓存键诊断
-BetterHRBUSTCLI skill --save .   # 输出给 AI 工具使用的 SKILL
+BetterHRBUSTCLI status         # 登录状态、本地数据条数、上次同步时间
+BetterHRBUSTCLI summary        # 概览：身份、当日课程、近期考试、学业指标
+BetterHRBUSTCLI timetable      # 课程表：--week N / --day N / --today / --date 2026-11-13 / --base / --course 关键字
+BetterHRBUSTCLI scores         # 成绩与 GPA：--year / --term / --course / --property 必修 / --failed / --merged
+BetterHRBUSTCLI exams          # 考试日程：--days N 窗口（默认 7 天）/ --all / --course 关键字
+BetterHRBUSTCLI plan           # 培养方案各课组学分完成度（--group 关键字）
+BetterHRBUSTCLI notices        # 教学公告（--week N / --query 关键字 / --limit N）
+BetterHRBUSTCLI profile        # 学籍档案（证件号 / 手机号 / 邮箱 / 地址默认打码）
+BetterHRBUSTCLI courses        # 本学期课程名录（--query 关键字 / --limit N）
+BetterHRBUSTCLI check          # 错误检查：数据完整性、会话、同步失败项、数据新鲜度（--strict 当门禁用）
+BetterHRBUSTCLI doctor         # 数据文件、路径与缓存键诊断
+BetterHRBUSTCLI skill --save . # 输出给 AI 工具使用的 SKILL
+```
+
+常见粒度查询：
+
+```powershell
+BetterHRBUSTCLI timetable --date 2026-11-13        # 某一天上什么课（自动换算教学周与星期）
+BetterHRBUSTCLI timetable --week 11 --course 软件   # 某周里名字含"软件"的课
+BetterHRBUSTCLI scores --course 线性代数 --merged    # 单门课的全部记录 + 合并后的最终结论
+BetterHRBUSTCLI scores --failed                     # 只看挂科
+BetterHRBUSTCLI exams --days 30                     # 未来与过去 30 天的考试
 ```
 
 任意命令追加 `--json` 输出机器可读结果（固定字段：`command` / `ok` / `generatedAt` /
@@ -74,12 +85,18 @@ BetterHRBUSTCLI skill --save .   # 输出给 AI 工具使用的 SKILL
 不做任何登录尝试。未登录且没有任何本地缓存时命令以退出码 `2` 结束并提示先打开
 图形界面登录；已登录或仅有缓存时照常查询（页脚标注"离线缓存"）。
 
+**报错与错误检查**：正常查询命令只输出数据与"数据同步时间"，不再在结果后面夹带
+历史同步报错——需要排查时执行 `BetterHRBUSTCLI check`，它会逐项给出
+数据文件 / 解析 / 数据量 / 登录态 / 同步失败项 / 数据新鲜度 / 培养方案 / 公告 /
+成绩可读性的结论与处理建议；`check --strict` 在存在注意项时也返回非零退出码，
+便于脚本与 CI 当门禁用。
+
 | 退出码 | 含义 |
 | --- | --- |
 | 0 | 正常 |
-| 1 | 参数或内部错误 |
+| 1 | 参数或内部错误（含 `check --strict` 发现注意项） |
 | 2 | 未登录且无本地数据 → 请先在图形界面登录 |
-| 3 | 存储不可用，或已登录但缓存为空 → 请到图形界面刷新 |
+| 3 | 存储不可用，或已登录但缓存为空（`check` 有失败项时同样是 3） → 请到图形界面刷新 |
 
 **PATH 机制**：安装器在 `NSIS_HOOK_POSTINSTALL` 调用
 `BetterHRBUSTCLI.exe path --install`，由它自己把安装目录追加到 `HKCU\Environment` 的

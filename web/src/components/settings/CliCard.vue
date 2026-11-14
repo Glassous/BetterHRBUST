@@ -138,11 +138,15 @@ import { computed, onMounted, ref } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import Icon from '@/components/icons/Icon.vue';
-import { isDesktopApp } from '@/utils/platform.js';
+import { isDesktopApp, isUserscript } from '@/utils/platform.js';
 import { fetchCliInfo, fetchCliSkill } from '@/services/cliDocs.js';
 
-/** 仅桌面端（含 tauri dev）渲染；网页与油猴没有本地服务与 CLI */
-const supported = isDesktopApp;
+/**
+ * 仅桌面端（含 tauri dev）渲染：
+ * 网页与油猴既没有本地服务（/__app/cli），也没有随安装包分发的 BetterHRBUSTCLI.exe，
+ * 显示这张卡片只会给出无法照做的指引，因此一律隐藏。
+ */
+const supported = isDesktopApp && !isUserscript;
 
 const info = ref(null);
 const skill = ref('');
@@ -151,19 +155,21 @@ const copied = ref('');
 
 const commands = [
   { command: 'BetterHRBUSTCLI status', description: '登录状态、本地数据条数、上次同步时间' },
-  { command: 'BetterHRBUSTCLI summary', description: '概览：身份、今日课程、近期考试、学业指标' },
-  { command: 'BetterHRBUSTCLI timetable', description: '课程表（--week 指定周次、--today 只看今日）' },
-  { command: 'BetterHRBUSTCLI scores', description: '成绩与 GPA（必修课口径，与当前页面一致）' },
-  { command: 'BetterHRBUSTCLI exams', description: '考试日程（默认近期，--all 查看全部）' },
-  { command: 'BetterHRBUSTCLI plan', description: '培养方案各课组学分完成度' },
-  { command: 'BetterHRBUSTCLI notices', description: '教学公告（--week 查看指定周次）' },
+  { command: 'BetterHRBUSTCLI summary [--date 日期]', description: '概览：身份、当日课程、近期考试、学业指标' },
+  { command: 'BetterHRBUSTCLI timetable', description: '课程表（--week 周次 / --today 今日 / --date 指定日期 / --course 关键字）' },
+  { command: 'BetterHRBUSTCLI scores', description: '成绩与 GPA（--course 课程 / --property 属性 / --failed 挂科 / --merged 合并清单）' },
+  { command: 'BetterHRBUSTCLI exams [--days N]', description: '考试日程（默认近期，--all 全部，--days 调整窗口）' },
+  { command: 'BetterHRBUSTCLI plan [--group 关键字]', description: '培养方案各课组学分完成度' },
+  { command: 'BetterHRBUSTCLI notices [--query 关键字]', description: '教学公告（--week 指定周次、--limit 限制条数）' },
   { command: 'BetterHRBUSTCLI profile', description: '学籍档案（证件号、手机号默认打码）' },
-  { command: 'BetterHRBUSTCLI courses', description: '本学期课程名录' },
+  { command: 'BetterHRBUSTCLI courses [--query 关键字]', description: '本学期课程名录' },
+  { command: 'BetterHRBUSTCLI check [--strict]', description: '错误检查：数据完整性、会话、同步失败项与数据新鲜度' },
   { command: 'BetterHRBUSTCLI doctor', description: '数据文件、路径与缓存键诊断' },
   { command: 'BetterHRBUSTCLI skill --save .', description: '把 SKILL 写入当前目录，供 AI 工具使用' }
 ];
 
 async function reload() {
+  if (!supported) return; // 非桌面端不发起请求（卡片本身也不渲染）
   loading.value = true;
   try {
     const [infoResult, skillResult] = await Promise.all([fetchCliInfo(), fetchCliSkill()]);
@@ -234,7 +240,7 @@ const notice = computed(() => {
   if (value.lastSyncError) {
     return {
       title: '上次同步存在失败项',
-      text: value.lastSyncError
+      text: `${value.lastSyncError}（在终端执行 BetterHRBUSTCLI check 可查看完整错误检查明细）`
     };
   }
   return null;

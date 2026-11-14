@@ -286,16 +286,33 @@ async fn unreachable_upstream_aborts_connection() {
 
 #[tokio::test]
 async fn port_falls_back_when_occupied() {
-    // 占住 1950，服务应顺延绑定 1951
-    let occupant = std::net::TcpListener::bind(("127.0.0.1", server::PORT_BASE)).unwrap();
+    // 不直接用 PORT_BASE：开发者本机可能正运行桌面端（固定占用 1950），
+    // 那会让这条与"端口顺延逻辑"无关的用例误报。这里自己找一对连续空闲端口：
+    // 先占住 base，要求服务顺延到 base+1。
+    let (occupant, base) = {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+            assert!(attempt < 100, "找不到可用的连续端口对");
+            let candidate = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+            let port = candidate.local_addr().unwrap().port();
+            if port == u16::MAX {
+                continue;
+            }
+            // 探测下一个端口是否空闲（探测用的监听器立刻释放）
+            if std::net::TcpListener::bind(("127.0.0.1", port + 1)).is_ok() {
+                break (candidate, port);
+            }
+        }
+    };
     let config = ServerConfig {
         upstream: Upstream::parse("http://127.0.0.1:1"),
-        port_base: server::PORT_BASE,
+        port_base: base,
         port_tries: server::PORT_TRIES,
         storage_dir: None,
     };
     let addr = server::start(config).await.expect("端口顺延后应绑定成功");
-    assert_eq!(addr.port(), server::PORT_BASE + 1);
+    assert_eq!(addr.port(), base + 1, "被占用时应顺延到下一个端口");
     drop(occupant);
 }
 

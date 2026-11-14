@@ -278,6 +278,147 @@ fn plan_reports_credit_progress() {
     assert_eq!(progress["categories"][0]["earned"], 3.0);
 }
 
+/// 同步失败项不再跟着每条查询输出，只在 `check` 里出现
+fn fixture_with_sync_error() -> tempfile::TempDir {
+    let fixture = fixture_dir();
+    let path = fixture.path().join("storage.json");
+    let text = fs::read_to_string(&path).unwrap();
+    let mut map: serde_json::Map<String, Value> = serde_json::from_str(&text).unwrap();
+    map.insert(
+        "better_hrbust_cache_sync_meta".to_string(),
+        Value::String(
+            json!({
+                "lastSyncAt": 1794648221617u64,
+                "lastSyncDate": "2026-11-14",
+                "lastError": "培养方案：学校未返回培养方案学分要求"
+            })
+            .to_string(),
+        ),
+    );
+    fs::write(&path, Value::Object(map).to_string()).unwrap();
+    fixture
+}
+
+#[test]
+fn query_output_stays_clean_and_check_reports_sync_errors() {
+    let fixture = fixture_with_sync_error();
+
+    // 正常查询：结果后面不再夹带历史同步报错
+    for args in [vec!["scores"], vec!["timetable"], vec!["summary"]] {
+        let output = run(fixture.path(), &args);
+        assert_eq!(output.status.code(), Some(0), "{args:?} 应正常返回");
+        let text = stdout(&output);
+        assert!(
+            !text.contains("上次同步存在失败项"),
+            "{args:?} 不应输出同步报错：{text}"
+        );
+    }
+
+    // 错误检查：必须把失败项报出来，但默认仍以 0 结束（不阻断查询）
+    let output = run(fixture.path(), &["check", "--json"]);
+    assert_eq!(output.status.code(), Some(0), "仅有注意项时 check 返回 0");
+    let value = json_of(&output);
+    assert_eq!(value["command"], "check");
+    let checks = value["data"]["checks"].as_array().unwrap();
+    let sync = checks
+        .iter()
+        .find(|item| item["id"] == "sync")
+        .expect("check 必须包含同步检查项");
+    assert_eq!(sync["level"], "warn");
+    assert!(sync["detail"].as_str().unwrap().contains("培养方案"));
+    assert_eq!(value["data"]["summary"]["fail"], 0);
+
+    // 门禁模式：--strict 让注意项也变成非零退出码
+    let strict = run(fixture.path(), &["check", "--strict"]);
+    assert_eq!(strict.status.code(), Some(1), "--strict 下注意项应返回 1");
+}
+
+#[test]
+fn check_fails_when_storage_is_unusable() {
+    let empty = empty_dir();
+    let output = run(empty.path(), &["check"]);
+    assert_eq!(output.status.code(), Some(3), "数据文件缺失属于失败项");
+    let text = stdout(&output);
+    assert!(text.contains("错误检查"), "{text}");
+    assert!(text.contains("图形界面"), "应提示去图形界面登录：{text}");
+}
+
+#[test]
+fn timetable_accepts_explicit_date_and_course_filter() {
+    let fixture = fixture_dir();
+    // 2026-11-13（周五）落在 2026 秋第 11 教学周，对应夹具里 1-18 周的周五课程
+    let value = json_of(&run(fixture.path(), &["timetable", "--json", "--date", "2026-11-13"]));
+    assert!(value["data"]["singleDay"].as_bool().unwrap());
+    assert_eq!(value["data"]["date"], "2026-11-13");
+    assert_eq!(value["data"]["week"], 11);
+    let days = value["data"]["days"].as_array().unwrap();
+    assert_eq!(days.len(), 1);
+    assert_eq!(days[0]["courses"].as_array().unwrap().len(), 1);
+
+    // 课程过滤：只留命中的那门课（这门课只在第 4-5 周上，需要同时指定周次）
+    let filtered =
+        json_of(&run(fixture.path(), &["timetable", "--json", "--week", "5", "--course", "短学期"]));
+    let days = filtered["data"]["days"].as_array().unwrap();
+    assert_eq!(days.len(), 1, "只有周一那门匹配");
+    assert_eq!(days[0]["day"], 1);
+    assert_eq!(filtered["data"]["courseFilter"], "短学期");
+    // 未排课课程同样按关键字裁剪，不匹配时整个列表为空
+    let unmatched = json_of(&run(fixture.path(), &["timetable", "--json", "--course", "没有这门课"]));
+    assert_eq!(unmatched["data"]["unarranged"].as_array().unwrap().len(), 0);
+}
+
+#[test]
+fn scores_supports_granular_filters_and_merged_view() {
+    let fixture = fixture_dir();
+
+    let by_course = json_of(&run(fixture.path(), &["scores", "--json", "--course", "高等"]));
+    assert_eq!(by_course["data"]["scores"].as_array().unwrap().len(), 1);
+
+    let by_property = json_of(&run(fixture.path(), &["scores", "--json", "--property", "任选"]));
+    assert_eq!(by_property["data"]["scores"].as_array().unwrap().len(), 1);
+    assert_eq!(by_property["data"]["scores"][0]["courseId"], "E1");
+
+    let failed = json_of(&run(fixture.path(), &["scores", "--json", "--failed"]));
+    assert_eq!(failed["data"]["scores"].as_array().unwrap().len(), 1);
+    assert_eq!(failed["data"]["scores"][0]["courseId"], "REQ2");
+
+    let merged = json_of(&run(fixture.path(), &["scores", "--json", "--merged"]));
+    assert_eq!(merged["data"]["filters"]["merged"], true);
+    assert_eq!(merged["data"]["courses"].as_array().unwrap().len(), 3);
+    // 统计始终基于全部成绩，筛选不影响口径
+    assert_eq!(merged["data"]["stats"]["rawCourseCount"], 3);
+}
+
+#[test]
+fn exams_notices_courses_and_plan_accept_filters() {
+    let fixture = fixture_dir();
+
+    // 窗口天数：放宽到 3650 天后连 2020 年的历史考试也会包含
+    let wide = json_of(&run(fixture.path(), &["exams", "--json", "--days", "3650"]));
+    assert_eq!(wide["data"]["exams"].as_array().unwrap().len(), 2);
+    assert_eq!(wide["data"]["windowDays"], 3650);
+
+    // 课程过滤在"全部"范围内验证：线性代数的考试在很久以前，默认窗口不含
+    let by_course = json_of(&run(fixture.path(), &["exams", "--json", "--all", "--course", "线性"]));
+    assert_eq!(by_course["data"]["exams"].as_array().unwrap().len(), 1);
+    let no_match = json_of(&run(fixture.path(), &["exams", "--json", "--all", "--course", "没有这门课"]));
+    assert_eq!(no_match["data"]["exams"].as_array().unwrap().len(), 0);
+
+    let notices = json_of(&run(fixture.path(), &["notices", "--json", "--query", "期中"]));
+    assert_eq!(notices["data"]["notices"].as_array().unwrap().len(), 1);
+    let missed = json_of(&run(fixture.path(), &["notices", "--json", "--query", "不存在的关键字"]));
+    assert_eq!(missed["data"]["notices"].as_array().unwrap().len(), 0);
+
+    let courses = json_of(&run(fixture.path(), &["courses", "--json", "--query", "高等"]));
+    assert_eq!(courses["data"]["courses"].as_array().unwrap().len(), 1);
+    assert_eq!(courses["data"]["total"], 1);
+
+    let groups = json_of(&run(fixture.path(), &["plan", "--json", "--group", "学科"]));
+    assert_eq!(groups["data"]["matchedGroups"], 1);
+    let none = json_of(&run(fixture.path(), &["plan", "--json", "--group", "不存在的课组"]));
+    assert_eq!(none["data"]["matchedGroups"], 0);
+}
+
 #[test]
 fn profile_and_doctor_never_leak_private_data() {
     let fixture = fixture_dir();

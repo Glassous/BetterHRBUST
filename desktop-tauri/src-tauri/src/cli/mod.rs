@@ -68,6 +68,26 @@ pub struct Options {
     /// 成绩：学年 / 学期筛选
     pub year: Option<String>,
     pub term: Option<String>,
+    /// 课表 / 概览：指定日期（`YYYY-MM-DD`），用于查看某一天的课程
+    pub date: Option<String>,
+    /// 课程类命令：按课程名 / 课程号关键字过滤（大小写不敏感的子串匹配）
+    pub course: Option<String>,
+    /// 成绩：按选课属性过滤（必修 / 限选 / 任选 / 其他）
+    pub property: Option<String>,
+    /// 成绩：只看未通过（明确不及格且有结论）的记录
+    pub failed: bool,
+    /// 成绩：输出去重合并后的课程清单（默认输出原始记录）
+    pub merged: bool,
+    /// 考试：近期窗口的天数（默认 7 天，任一方向）
+    pub days: Option<u32>,
+    /// 公告 / 课程名录：最多输出条数
+    pub limit: Option<usize>,
+    /// 公告：标题 / 正文关键字
+    pub query: Option<String>,
+    /// 培养方案：课组名关键字
+    pub group: Option<String>,
+    /// check：存在注意项时也返回非零退出码（适合脚本门禁）
+    pub strict: bool,
     /// 考试：是否显示全部（默认只显示近期）
     pub all: bool,
     /// SKILL：保存目标路径
@@ -102,6 +122,7 @@ pub enum Command {
     Profile,
     Courses,
     Doctor,
+    Check,
     Skill,
     Path,
     Help,
@@ -122,6 +143,7 @@ impl Command {
             "profile" | "学籍" | "档案" => Some(Command::Profile),
             "courses" | "course" | "课程" => Some(Command::Courses),
             "doctor" | "诊断" => Some(Command::Doctor),
+            "check" | "selfcheck" | "自检" | "检查" => Some(Command::Check),
             "skill" | "技能" => Some(Command::Skill),
             "path" | "环境变量" => Some(Command::Path),
             "help" | "--help" | "-h" | "帮助" => Some(Command::Help),
@@ -136,6 +158,7 @@ impl Command {
             self,
             Command::Status
                 | Command::Doctor
+                | Command::Check
                 | Command::Skill
                 | Command::Path
                 | Command::Help
@@ -155,6 +178,7 @@ impl Command {
             Command::Profile => "profile",
             Command::Courses => "courses",
             Command::Doctor => "doctor",
+            Command::Check => "check",
             Command::Skill => "skill",
             Command::Path => "path",
             Command::Help => "help",
@@ -227,6 +251,46 @@ fn parse(raw: &[String]) -> Result<Parsed, String> {
             }
             "--today" => options.today = true,
             "--base" => options.base = true,
+            "--date" => {
+                let value = option_value(raw, &mut index, inline, "--date")?;
+                if clock::parse_iso_date(&value).is_none() {
+                    return Err(format!("--date 需要 YYYY-MM-DD 格式，收到 `{value}`"));
+                }
+                options.date = Some(value);
+            }
+            "--course" => options.course = Some(option_value(raw, &mut index, inline, "--course")?),
+            "--property" => {
+                let value = option_value(raw, &mut index, inline, "--property")?;
+                if stats::property_filter(&value).is_none() {
+                    return Err(format!(
+                        "--property 需要 必修 / 限选 / 任选 / 其他，收到 `{value}`"
+                    ));
+                }
+                options.property = Some(value);
+            }
+            "--failed" => options.failed = true,
+            "--merged" => options.merged = true,
+            "--strict" => options.strict = true,
+            "--days" => {
+                let value = option_value(raw, &mut index, inline, "--days")?;
+                let days: u32 =
+                    value.parse().map_err(|_| format!("--days 需要正整数天数，收到 `{value}`"))?;
+                if days == 0 || days > 3650 {
+                    return Err(format!("--days 需要在 1~3650 之间，收到 `{days}`"));
+                }
+                options.days = Some(days);
+            }
+            "--limit" => {
+                let value = option_value(raw, &mut index, inline, "--limit")?;
+                let limit: usize =
+                    value.parse().map_err(|_| format!("--limit 需要正整数，收到 `{value}`"))?;
+                if limit == 0 {
+                    return Err("--limit 需要正整数（至少 1 条）".to_string());
+                }
+                options.limit = Some(limit);
+            }
+            "--query" => options.query = Some(option_value(raw, &mut index, inline, "--query")?),
+            "--group" => options.group = Some(option_value(raw, &mut index, inline, "--group")?),
             "--year" => options.year = Some(option_value(raw, &mut index, inline, "--year")?),
             "--term" => options.term = Some(option_value(raw, &mut index, inline, "--term")?),
             "--all" => options.all = true,
@@ -301,6 +365,9 @@ fn execute(command: Command, options: Options) -> i32 {
             commands::doctor(&store, &options, &mut stdout);
             EXIT_OK
         }
+        // 错误检查专用入口：正常查询命令不再顺带打印同步失败等报错，
+        // 需要排查时显式执行 check（有失败项时以 3 结束，便于脚本门禁）
+        Command::Check => commands::check(&store, &options, &mut stdout),
         Command::Status => {
             commands::status(&store, &options, &mut stdout);
             EXIT_OK
@@ -465,6 +532,7 @@ fn print_help(out: &mut render::Printer) {
     out.line("  profile                   学籍档案（证件号 / 手机号默认打码）");
     out.line("  courses                   本学期课程名录");
     out.line("  doctor                    数据文件、路径与可用性诊断");
+    out.line("  check [--strict]          错误检查：数据完整性、会话与同步失败项");
     out.line("  skill [--save <路径>]     输出 / 保存给 AI 工具使用的 SKILL");
     out.line("  path [--install|--uninstall|--print]");
     out.line("                            查看 / 维护用户 PATH（安装器使用）");
@@ -476,10 +544,20 @@ fn print_help(out: &mut render::Printer) {
     out.line("  --data-dir <路径>         指定数据目录（默认 %APPDATA%\\edu.hrbust.betterhrbust）");
     out.line("  --week <1-26>             课表：指定教学周");
     out.line("  --day <1-7>               课表：指定星期（1 = 周一）");
-    out.line("  --today                   课表：只看今日剩余课程");
+    out.line("  --today                   课表 / 概览：只看今日（含已下课过滤）");
+    out.line("  --date <YYYY-MM-DD>       课表 / 概览：只看指定日期（自动换算教学周）");
     out.line("  --base                    课表：使用小节课表（默认大节）");
+    out.line("  --course <关键字>         课表 / 成绩 / 考试 / 课程名录：按课程名或课程号过滤");
     out.line("  --year <学年> --term <学期>  成绩：筛选学年 / 学期");
+    out.line("  --property <属性>         成绩：只显示 必修 / 限选 / 任选 / 其他");
+    out.line("  --failed                  成绩：只看未通过记录");
+    out.line("  --merged                  成绩：输出去重合并后的课程清单");
+    out.line("  --days <N>                考试：近期窗口天数（默认 7，向前向后各 N 天）");
     out.line("  --all                     考试：显示全部（含已结束）");
+    out.line("  --query <关键字>          公告 / 课程名录：按关键字过滤");
+    out.line("  --limit <N>               公告 / 课程名录：最多输出 N 条");
+    out.line("  --group <关键字>          培养方案：只看名称包含关键字的课组");
+    out.line("  --strict                  check：存在注意项时也返回非零退出码");
     out.line("  --dir <路径>              path：指定要操作的目录（默认当前 exe 所在目录）");
     out.blank();
     out.line("退出码：0 正常 · 1 参数/内部错误 · 2 未登录且无本地数据（请先在图形界面登录）");
@@ -521,6 +599,43 @@ mod tests {
         assert!(parse(&args(&["timetable", "--day", "9"])).is_err());
         assert!(parse(&args(&["scores", "extra"])).is_err());
         assert!(parse(&args(&["scores", "--unknown"])).is_err());
+        // 日期必须能解析，属性必须是已知口径
+        assert!(parse(&args(&["timetable", "--date", "2026-13-01"])).is_err());
+        assert!(parse(&args(&["scores", "--property", "随便"])).is_err());
+        assert!(parse(&args(&["exams", "--days", "0"])).is_err());
+        assert!(parse(&args(&["notices", "--limit", "0"])).is_err());
+    }
+
+    #[test]
+    fn parses_granular_filters() {
+        let parsed = parse(&args(&[
+            "scores",
+            "--course",
+            "算法",
+            "--property=必修",
+            "--failed",
+            "--merged",
+            "--year",
+            "2026",
+        ]))
+        .unwrap();
+        assert_eq!(parsed.options.course.as_deref(), Some("算法"));
+        assert_eq!(parsed.options.property.as_deref(), Some("必修"));
+        assert!(parsed.options.failed && parsed.options.merged);
+        assert_eq!(parsed.options.year.as_deref(), Some("2026"));
+
+        let parsed =
+            parse(&args(&["timetable", "--date", "2026-11-13", "--course", "软件"])).unwrap();
+        assert_eq!(parsed.options.date.as_deref(), Some("2026-11-13"));
+        assert_eq!(parsed.options.course.as_deref(), Some("软件"));
+
+        let parsed = parse(&args(&["notices", "--query", "选课", "--limit", "5"])).unwrap();
+        assert_eq!(parsed.options.query.as_deref(), Some("选课"));
+        assert_eq!(parsed.options.limit, Some(5));
+
+        let parsed = parse(&args(&["check", "--strict", "--json"])).unwrap();
+        assert_eq!(parsed.command, Command::Check);
+        assert!(parsed.options.strict && parsed.options.json);
     }
 
     #[test]
@@ -528,6 +643,7 @@ mod tests {
         for command in [
             Command::Status,
             Command::Doctor,
+            Command::Check,
             Command::Skill,
             Command::Path,
             Command::Help,

@@ -143,6 +143,17 @@ pub fn resolve_property(property: &str) -> Property {
     Property::Other
 }
 
+/// `--property` 取值映射：只接受四类明确口径，其余返回 None 供参数校验报错
+pub fn property_filter(text: &str) -> Option<Property> {
+    match text.trim() {
+        "必修" | "required" => Some(Property::Required),
+        "限选" | "limited" => Some(Property::Limited),
+        "任选" | "elective" | "公选" | "通识" => Some(Property::Elective),
+        "其他" | "other" => Some(Property::Other),
+        _ => None,
+    }
+}
+
 pub fn is_required(property: &str) -> bool {
     resolve_property(property) == Property::Required
 }

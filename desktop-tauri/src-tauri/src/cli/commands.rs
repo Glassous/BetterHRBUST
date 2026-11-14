@@ -92,6 +92,9 @@ fn header(out: &mut Printer, title: &str) {
 }
 
 /// 页脚：数据时间 + 离线提示（命令行不联网，用户需要知道数据是什么时候的）
+///
+/// 这里刻意只放"数据是什么时候的"这类中性信息：查询结果后面不再夹带同步报错，
+/// 报错统一由 `check`（错误检查）按需输出，避免每条命令都被历史故障刷屏。
 fn footer(out: &mut Printer, store: &Store, offline: bool) {
     let sync = store.sync_meta();
     out.blank();
@@ -105,9 +108,6 @@ fn footer(out: &mut Printer, store: &Store, offline: bool) {
     }
     if offline {
         out.line("提示：当前为离线缓存（登录状态已失效），如需更新请在图形界面手动刷新。");
-    }
-    if !sync.last_error.is_empty() {
-        out.line(&format!("上次同步存在失败项：{}", sync.last_error));
     }
 }
 
@@ -306,6 +306,15 @@ pub fn doctor(store: &Store, options: &Options, out: &mut Printer) {
                     "尚未同步".to_string()
                 },
             ),
+            (
+                "同步失败项",
+                if sync.last_error.is_empty() {
+                    "无".to_string()
+                } else {
+                    sync.last_error.clone()
+                },
+            ),
+            ("数据自检", "执行 `BetterHRBUSTCLI check` 查看错误检查明细".to_string()),
         ],
         16,
     );
@@ -320,6 +329,241 @@ pub fn doctor(store: &Store, options: &Options, out: &mut Printer) {
     }
     out.blank();
     out.line("说明：命令行只读本地缓存，不联网；登录与刷新请在图形界面完成。");
+}
+
+// ---------------- check（错误检查专用） ----------------
+
+/// 单条检查结果：脚本/AI 只需看 `level`，人只需要看 `title + detail`
+#[derive(Debug, Clone, serde::Serialize)]
+struct CheckItem {
+    id: &'static str,
+    level: &'static str,
+    title: &'static str,
+    detail: String,
+    hint: String,
+}
+
+impl CheckItem {
+    fn ok(id: &'static str, title: &'static str, detail: impl Into<String>) -> Self {
+        Self { id, level: "ok", title, detail: detail.into(), hint: String::new() }
+    }
+
+    fn warn(id: &'static str, title: &'static str, detail: impl Into<String>, hint: &str) -> Self {
+        Self { id, level: "warn", title, detail: detail.into(), hint: hint.to_string() }
+    }
+
+    fn fail(id: &'static str, title: &'static str, detail: impl Into<String>, hint: &str) -> Self {
+        Self { id, level: "fail", title, detail: detail.into(), hint: hint.to_string() }
+    }
+
+    fn label(&self) -> &'static str {
+        match self.level {
+            "fail" => "失败",
+            "warn" => "注意",
+            _ => "正常",
+        }
+    }
+}
+
+/// 错误检查：正常查询命令不再夹带报错，排查统一走这里
+///
+/// 退出码：存在 `fail`（数据不可用）→ 3；仅 `warn` 且带 `--strict` → 1；
+/// 其余 0。这样脚本可以把它当门禁使用，而普通查询的退出码语义保持不变。
+pub fn check(store: &Store, options: &Options, out: &mut Printer) -> i32 {
+    let info = store.info();
+    let sync = store.sync_meta();
+    let counts = store.counts();
+    let today = clock::now();
+    let mut items: Vec<CheckItem> = Vec::new();
+
+    // 1. 数据文件
+    if !info.storage_exists {
+        items.push(CheckItem::fail(
+            "storage",
+            "数据文件",
+            format!("{} 不存在", info.storage_path),
+            "请先打开 BetterHRBUST 图形界面并登录一次，登录后会写入本地缓存。",
+        ));
+    } else {
+        items.push(CheckItem::ok(
+            "storage",
+            "数据文件",
+            format!("{}（{}）", info.storage_path, store::human_size(store.storage_size())),
+        ));
+    }
+
+    // 2. JSON 解析（损坏文件会被 GUI 改名 .corrupt，这里只报告）
+    match &store.load_error {
+        Some(error) => items.push(CheckItem::fail(
+            "parse",
+            "数据解析",
+            error.clone(),
+            "数据文件可能已损坏：请在图形界面重新登录并同步一次以重建缓存。",
+        )),
+        None => items.push(CheckItem::ok("parse", "数据解析", "键值 JSON 正常")),
+    }
+
+    // 3. 本地数据量
+    if info.has_data {
+        items.push(CheckItem::ok(
+            "data",
+            "本地数据",
+            format!(
+                "成绩 {} 条 · 考试 {} 条 · 课表 {} 格 · 课组 {} 个 · 公告 {} 条",
+                counts.scores, counts.exams, counts.timetable_cells, counts.plan_groups, counts.notices
+            ),
+        ));
+    } else {
+        items.push(CheckItem::warn(
+            "data",
+            "本地数据",
+            "缓存中没有可查询的教务数据",
+            "请在图形界面登录（或手动刷新）一次。",
+        ));
+    }
+
+    // 4. 登录态
+    if info.logged_in {
+        items.push(CheckItem::ok(
+            "session",
+            "登录状态",
+            format!("已登录（账号 {}）", if info.account.is_empty() { "未知" } else { &info.account }),
+        ));
+    } else if info.session_expired && info.has_data {
+        items.push(CheckItem::warn(
+            "session",
+            "登录状态",
+            "会话已失效，当前为只读离线缓存",
+            "需要更新数据时请在图形界面重新登录。",
+        ));
+    } else {
+        items.push(CheckItem::warn(
+            "session",
+            "登录状态",
+            "未登录",
+            "登录需要学号、密码与图片验证码，请在图形界面完成。",
+        ));
+    }
+
+    // 5. 上次同步的失败项（图形界面记录了部分模块同步失败时才有）
+    if sync.last_error.is_empty() {
+        items.push(CheckItem::ok("sync", "上次同步", "没有失败项"));
+    } else {
+        items.push(CheckItem::warn(
+            "sync",
+            "上次同步失败项",
+            sync.last_error.clone(),
+            "对应模块的数据可能仍是旧缓存；在图形界面手动刷新可重试。",
+        ));
+    }
+
+    // 6. 数据新鲜度（超过 7 天未同步只提醒，不阻断查询）
+    if sync.last_sync_at == 0 {
+        items.push(CheckItem::warn("fresh", "数据新鲜度", "尚未记录同步时间", "请在图形界面刷新一次。"));
+    } else {
+        let synced = clock::from_epoch_ms(sync.last_sync_at);
+        let days = today.day_number() - synced.day_number();
+        let detail = format!("{}（{} 天前）", clock::format_minute(synced), days.max(0));
+        if days > 7 {
+            items.push(CheckItem::warn(
+                "fresh",
+                "数据新鲜度",
+                detail,
+                "数据可能已过期：在图形界面手动刷新可获取最新成绩与考试。",
+            ));
+        } else {
+            items.push(CheckItem::ok("fresh", "数据新鲜度", detail));
+        }
+    }
+
+    // 7. 培养方案 / 公告缺失（源站点常返回空，属提示级）
+    if counts.plan_groups == 0 {
+        items.push(CheckItem::warn(
+            "plan",
+            "培养方案",
+            "本地没有课组数据",
+            "学校未返回方案学分要求时无法生成进度，可在图形界面「培养方案」页重试。",
+        ));
+    } else {
+        items.push(CheckItem::ok("plan", "培养方案", format!("{} 个课组", counts.plan_groups)));
+    }
+    if counts.notices == 0 {
+        items.push(CheckItem::warn(
+            "notices",
+            "教学公告",
+            "本地没有公告内容",
+            "源页面未返回内容时会为空，可在图形界面手动刷新。",
+        ));
+    } else {
+        items.push(CheckItem::ok("notices", "教学公告", format!("{} 条", counts.notices)));
+    }
+
+    // 8. 成绩可解析性：有成绩但折算不出分数，会让 GPA 统计偏低
+    let unparsable: Vec<String> = store
+        .scores()
+        .into_iter()
+        .filter(|record| {
+            !record.score.trim().is_empty()
+                && stats::parse_score_value(&record.score).estimated.is_none()
+        })
+        .map(|record| format!("{}（{}）", record.course_name, record.score))
+        .collect();
+    if unparsable.is_empty() {
+        items.push(CheckItem::ok("scores", "成绩可读性", "全部成绩均可换算为绩点"));
+    } else {
+        items.push(CheckItem::warn(
+            "scores",
+            "成绩可读性",
+            format!("{} 条成绩无法换算绩点：{}", unparsable.len(), unparsable.join("、")),
+            "这些记录不计入 GPA 与学分统计，属源数据表现（如缓考、免修等）。",
+        ));
+    }
+
+    let ok_count = items.iter().filter(|item| item.level == "ok").count();
+    let warn_count = items.iter().filter(|item| item.level == "warn").count();
+    let fail_count = items.iter().filter(|item| item.level == "fail").count();
+
+    if options.json {
+        let data = json!({
+            "summary": { "ok": ok_count, "warn": warn_count, "fail": fail_count },
+            "strict": options.strict,
+            "checks": items,
+        });
+        print_json(out, &envelope(Command::Check, store, !store.logged_in(), data));
+    } else {
+        header(out, "错误检查");
+        for item in &items {
+            out.line(&format!(
+                "  [{}] {}  {}",
+                item.label(),
+                render::pad_end(item.title, 14),
+                item.detail
+            ));
+            if !item.hint.is_empty() {
+                for line in render::wrap(&item.hint, 72) {
+                    out.line(&format!("          {line}"));
+                }
+            }
+        }
+        out.blank();
+        out.line(&format!(
+            "共 {} 项：正常 {ok_count} · 注意 {warn_count} · 失败 {fail_count}",
+            items.len()
+        ));
+        if fail_count == 0 && warn_count == 0 {
+            out.line("没有发现需要处理的问题。");
+        } else if warn_count > 0 && !options.strict {
+            out.line("提示：注意项不会影响查询；需要门禁时加 --strict 让退出码非零。");
+        }
+    }
+
+    if fail_count > 0 {
+        super::EXIT_NO_DATA
+    } else if options.strict && warn_count > 0 {
+        super::EXIT_ERROR
+    } else {
+        super::EXIT_OK
+    }
 }
 
 // ---------------- 数据命令分发 ----------------
@@ -351,12 +595,20 @@ pub fn run_data_command(
 
 // ---------------- summary ----------------
 
-fn today_courses(store: &Store, today: LocalDateTime) -> Vec<super::store::TimetableCell> {
-    let Some(week) = calendar::teaching_week_on(today) else {
+/// 某一天的课程。
+///
+/// `drop_ended` 只在"今天"时为真：查历史 / 未来日期时，课程都没有"已下课"的概念，
+/// 否则 `summary --date 2026-11-13` 会永远返回空列表。
+fn day_courses(
+    store: &Store,
+    date: LocalDateTime,
+    drop_ended: bool,
+) -> Vec<super::store::TimetableCell> {
+    let Some(week) = calendar::teaching_week_on(date) else {
         return Vec::new();
     };
-    let day = today.weekday_index();
-    let minutes = today.minutes_of_day();
+    let day = date.weekday_index();
+    let minutes = date.minutes_of_day();
     let mut cells: Vec<super::store::TimetableCell> = store
         .timetable(false)
         .cells
@@ -366,16 +618,30 @@ fn today_courses(store: &Store, today: LocalDateTime) -> Vec<super::store::Timet
             !cell.course_name.trim().is_empty()
                 && cell.day == day
                 && calendar::is_course_active_in_week(&cell.weeks, week)
-                && !calendar::has_combine_slot_ended(cell.section_index, minutes)
+                && (!drop_ended || !calendar::has_combine_slot_ended(cell.section_index, minutes))
         })
         .collect();
     cells.sort_by_key(|cell| cell.section_index);
     cells
 }
 
-/// 近期考试：未来 + 过去 7 天（与概览页同口径），按时间升序
-fn recent_exams(store: &Store, today: LocalDateTime) -> Vec<(ExamRecord, Option<calendar::ExamTime>)> {
+/// `--date` 指定的日期（缺省为今天），并告知调用方它是否就是今天
+fn anchor_date(options: &Options) -> (LocalDateTime, bool) {
+    let now = clock::now();
+    match options.date.as_deref().and_then(clock::parse_iso_date) {
+        Some(date) => (date, date.day_number() == now.day_number()),
+        None => (now, true),
+    }
+}
+
+/// 近期考试：未来 + 过去 `days` 天（默认 7，与概览页同口径），按时间升序
+fn recent_exams(
+    store: &Store,
+    today: LocalDateTime,
+    days: u32,
+) -> Vec<(ExamRecord, Option<calendar::ExamTime>)> {
     let today_number = today.day_number();
+    let window = i64::from(days);
     let mut list: Vec<(ExamRecord, Option<calendar::ExamTime>)> = store
         .exams()
         .into_iter()
@@ -388,7 +654,7 @@ fn recent_exams(store: &Store, today: LocalDateTime) -> Vec<(ExamRecord, Option<
                 return true;
             }
             match parsed {
-                Some(time) => time.date.day_number() >= today_number - 7,
+                Some(time) => time.date.day_number() >= today_number - window,
                 None => true,
             }
         })
@@ -412,12 +678,13 @@ fn exam_status(parsed: Option<&calendar::ExamTime>, today: LocalDateTime) -> Str
 }
 
 fn summary(store: &Store, options: &Options, out: &mut Printer) -> Value {
-    let today = clock::now();
+    // `--date` 可以把"今日课程 / 考试倒计时"的基准日挪到指定日期
+    let (today, is_today) = anchor_date(options);
     let profile = store.profile();
     let scores = store.scores();
     let stats = stats::build_academic_stats(&scores);
-    let courses = today_courses(store, today);
-    let exams = recent_exams(store, today);
+    let courses = day_courses(store, today, is_today);
+    let exams = recent_exams(store, today, options.days.unwrap_or(7));
     let week = calendar::teaching_week_on(today);
     let semester = calendar::semester_on(today);
 
@@ -481,13 +748,20 @@ fn summary(store: &Store, options: &Options, out: &mut Printer) -> Value {
 
         out.blank();
         out.line(&format!(
-            "今日课程（{} · {}）{} 门待上",
+            "{}（{} · {}）{} 门",
+            if is_today { "今日课程" } else { "指定日期课程" },
             clock::weekday_name(today.weekday_index()),
             clock::format_date(today),
             courses.len()
         ));
         if courses.is_empty() {
-            let reason = if week.is_none() { "当前处于假期" } else { "今日无课或课程已结束" };
+            let reason = if week.is_none() {
+                "该日期不在校历教学周内"
+            } else if is_today {
+                "今日无课或课程已结束"
+            } else {
+                "该日期没有课程"
+            };
             out.line(&format!("  （{reason}）"));
         } else {
             for cell in &courses {
@@ -539,6 +813,8 @@ fn summary(store: &Store, options: &Options, out: &mut Printer) -> Value {
 
     json!({
         "profile": profile,
+        "date": clock::format_date(today),
+        "isToday": is_today,
         "semester": {
             "label": semester.map(|item| item.label.clone()),
             "teachingWeek": week,
@@ -557,26 +833,45 @@ fn summary(store: &Store, options: &Options, out: &mut Printer) -> Value {
 // ---------------- timetable ----------------
 
 fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
-    let today = clock::now();
+    let now = clock::now();
+    // 指定日期时以该日期为基准：自动换算教学周与星期，"已下课"过滤只对今天生效
+    let (today, is_today) = anchor_date(options);
+    let single_day = options.today || options.date.is_some();
     let current_week = calendar::teaching_week_on(today);
     let teaching_weeks = calendar::teaching_weeks(today);
-    let week = options.week.or(current_week).unwrap_or(1).min(teaching_weeks.max(1));
+    let week = options
+        .week
+        .or(current_week)
+        .or_else(|| calendar::teaching_week_on(now))
+        .unwrap_or(1)
+        .min(teaching_weeks.max(1));
     let table = store.timetable(options.base);
+    let course_keyword = options.course.as_deref().map(str::to_lowercase);
     let mut cells: Vec<super::store::TimetableCell> = table
         .cells
         .into_iter()
         .filter(|cell| {
             !cell.course_name.trim().is_empty() && calendar::is_course_active_in_week(&cell.weeks, week)
         })
+        .filter(|cell| match &course_keyword {
+            Some(keyword) => {
+                cell.course_name.to_lowercase().contains(keyword)
+                    || cell.course_id.to_lowercase().contains(keyword)
+            }
+            None => true,
+        })
         .collect();
 
-    // 只看今日：与概览页"今日剩余课程"同口径（含"已下课不再显示"）
-    if options.today {
+    // 单日视图：`--today` 与概览页"今日剩余课程"同口径（含"已下课不再显示"），
+    // `--date` 查历史 / 未来日期时不做已下课过滤
+    if single_day {
         let day = today.weekday_index();
         let minutes = today.minutes_of_day();
         cells.retain(|cell| {
             cell.day == day
-                && (options.base || !calendar::has_combine_slot_ended(cell.section_index, minutes))
+                && (options.base
+                    || !is_today
+                    || !calendar::has_combine_slot_ended(cell.section_index, minutes))
         });
     }
     if let Some(day) = options.day {
@@ -584,7 +879,7 @@ fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
     }
     cells.sort_by_key(|cell| (cell.day, cell.section_index));
 
-    let days: Vec<u32> = if options.today {
+    let days: Vec<u32> = if single_day {
         vec![today.weekday_index()]
     } else if let Some(day) = options.day {
         vec![day]
@@ -595,15 +890,47 @@ fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
         present
     };
 
+    // 未排课课程按同一关键字裁剪：文本与 JSON 必须给出同一份列表
+    let unarranged: Vec<super::store::UnarrangedCourse> = table
+        .unarranged
+        .iter()
+        .filter(|course| match &course_keyword {
+            Some(keyword) => course.course_name.to_lowercase().contains(keyword),
+            None => true,
+        })
+        .cloned()
+        .collect();
+
     if !options.json {
+        let day_label = format!(
+            "{} {}",
+            clock::weekday_name(today.weekday_index()),
+            clock::format_date(today)
+        );
         let label = if options.today {
-            format!("今日（{} {}）", clock::weekday_name(today.weekday_index()), clock::format_date(today))
+            format!("今日（{day_label}）")
+        } else if options.date.is_some() {
+            format!("指定日期（{day_label}）")
+        } else if options.day.is_some() {
+            format!("第 {week} 教学周 · 指定星期")
         } else {
             format!("第 {week} 教学周")
         };
         header(out, &format!("课程表 · {label}"));
+        if let Some(keyword) = &options.course {
+            out.line(&format!("  筛选：课程名或课程号包含「{keyword}」"));
+        }
         if cells.is_empty() {
-            out.line(if options.today { "  今日无课或课程已结束。" } else { "  该范围内没有课程。" });
+            let reason = if single_day && current_week.is_none() {
+                "  该日期不在校历教学周内（或处于假期）。"
+            } else if options.today {
+                "  今日无课或课程已结束。"
+            } else if options.date.is_some() {
+                "  该日期没有课程。"
+            } else {
+                "  该范围内没有课程。"
+            };
+            out.line(reason);
         }
         // 没有课时不打印空的日期标题（避免"今日剩余"下面一片空白）
         for (index, day) in days.iter().enumerate().filter(|_| !cells.is_empty()) {
@@ -620,7 +947,13 @@ fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
                 "{} {}{}",
                 clock::weekday_name(*day),
                 date,
-                if options.today { " · 今日剩余" } else { "" }
+                if options.today {
+                    " · 今日剩余"
+                } else if options.date.is_some() {
+                    " · 当日课程"
+                } else {
+                    ""
+                }
             ));
             let mut rows: Vec<&super::store::TimetableCell> = cells.iter().filter(|cell| cell.day == *day).collect();
             rows.sort_by_key(|cell| cell.section_index);
@@ -644,12 +977,11 @@ fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
                 out.line(line.trim_end());
             }
         }
-        // 未安排课程只在整周视图里列出：查"今日"时它们没有具体日期，列出来只会干扰
-        let show_unarranged = !table.unarranged.is_empty() && !options.today && options.day.is_none();
-        if show_unarranged {
+        // 未安排课程只在整周视图里列出：查单日时它们没有具体日期，列出来只会干扰
+        if !unarranged.is_empty() && !single_day && options.day.is_none() {
             out.blank();
-            out.line(&format!("未安排上课时间的课程（{} 门）", table.unarranged.len()));
-            for course in &table.unarranged {
+            out.line(&format!("未安排上课时间的课程（{} 门）", unarranged.len()));
+            for course in &unarranged {
                 out.line(&format!(
                     "  {}  {}  {}  {}",
                     render::pad_end(&render::truncate(&course.course_name, 24), 26),
@@ -667,13 +999,16 @@ fn timetable(store: &Store, options: &Options, out: &mut Printer) -> Value {
         "teachingWeeks": teaching_weeks,
         "base": options.base,
         "today": options.today,
+        "date": clock::format_date(today),
+        "singleDay": single_day,
+        "courseFilter": options.course,
         "days": days.iter().map(|day| json!({
             "day": day,
             "weekday": clock::weekday_name(*day),
             "date": calendar::timetable_day_date(current_week.unwrap_or(week), week, *day, today),
             "courses": cells.iter().filter(|cell| cell.day == *day).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
-        "unarranged": table.unarranged,
+        "unarranged": unarranged,
     })
 }
 
@@ -689,6 +1024,25 @@ fn score_matches(record: &ScoreRecord, options: &Options) -> bool {
         if !record.term.contains(term.as_str()) {
             return false;
         }
+    }
+    if let Some(course) = &options.course {
+        let keyword = course.to_lowercase();
+        if !record.course_name.to_lowercase().contains(&keyword)
+            && !record.course_id.to_lowercase().contains(&keyword)
+        {
+            return false;
+        }
+    }
+    if let Some(property) = &options.property {
+        if let Some(kind) = stats::property_filter(property) {
+            if stats::resolve_property(&record.property) != kind {
+                return false;
+            }
+        }
+    }
+    // 只保留"明确不及格且有结论"的记录：pending（缓考 / 未出分）不算挂科
+    if options.failed && (record.passed || record.pending) {
+        return false;
     }
     true
 }
@@ -746,20 +1100,65 @@ fn scores(store: &Store, options: &Options, out: &mut Printer) -> Value {
             12,
         );
 
-        let mut filter_note = String::new();
+        let mut notes: Vec<String> = Vec::new();
         if let Some(year) = &options.year {
-            filter_note.push_str(&format!("学年含「{year}」"));
+            notes.push(format!("学年含「{year}」"));
         }
         if let Some(term) = &options.term {
-            if !filter_note.is_empty() {
-                filter_note.push(' ');
-            }
-            filter_note.push_str(&format!("学期含「{term}」"));
+            notes.push(format!("学期含「{term}」"));
         }
+        if let Some(course) = &options.course {
+            notes.push(format!("课程含「{course}」"));
+        }
+        if let Some(property) = &options.property {
+            notes.push(format!("属性={property}"));
+        }
+        if options.failed {
+            notes.push("仅未通过".to_string());
+        }
+        let filter_note = notes.join(" ");
 
         out.blank();
         if filtered.is_empty() {
             out.line("  没有匹配的成绩记录。");
+        } else if options.merged {
+            // 去重合并视图：同一门课只看最终结论（重修/补考取通过且折算分最高的一条）
+            if !filter_note.is_empty() {
+                out.line(&format!("课程清单 · 去重合并（筛选：{filter_note}）"));
+            } else {
+                out.line("课程清单 · 去重合并（重修补考取最优一条）");
+            }
+            let mut table = Table::new(&[
+                "课程号",
+                "课程名称",
+                "学分",
+                "总评",
+                "绩点",
+                "属性",
+                "重修",
+                "记录",
+            ])
+            .right_align(&[2, 3, 4, 7])
+            .max_width(0, 15)
+            .max_width(1, 30);
+            let mut sorted = deduped.clone();
+            sorted.sort_by_key(|record| {
+                std::cmp::Reverse(stats::semester_sort_key(&record.year, &record.term))
+            });
+            for record in sorted {
+                let grade = stats::parse_score_value(&record.score);
+                table.push(vec![
+                    record.course_id.clone(),
+                    record.course_name.clone(),
+                    num(record.credit),
+                    record.score.clone(),
+                    num(grade.grade_point),
+                    record.property.clone(),
+                    if record.is_retake { "是".to_string() } else { "-".to_string() },
+                    record.record_count.to_string(),
+                ]);
+            }
+            table.indent(2).render(out);
         } else {
             if !filter_note.is_empty() {
                 out.line(&format!("成绩明细（筛选：{filter_note}）"));
@@ -798,9 +1197,21 @@ fn scores(store: &Store, options: &Options, out: &mut Printer) -> Value {
 
     json!({
         "stats": stats,
-        "filters": { "year": options.year, "term": options.term },
+        "filters": {
+            "year": options.year,
+            "term": options.term,
+            "course": options.course,
+            "property": options.property,
+            "failedOnly": options.failed,
+            "merged": options.merged,
+        },
         "years": store.score_years(),
         "scores": filtered,
+        "courses": deduped.iter().map(|record| json!({
+            "record": record,
+            "isRetake": record.is_retake,
+            "recordCount": record.record_count,
+        })).collect::<Vec<_>>(),
         "dedupedCount": deduped.len(),
     })
 }
@@ -809,18 +1220,38 @@ fn scores(store: &Store, options: &Options, out: &mut Printer) -> Value {
 
 fn exams(store: &Store, options: &Options, out: &mut Printer) -> Value {
     let today = clock::now();
+    let days = options.days.unwrap_or(7);
     let all = store.exams();
-    let list: Vec<(ExamRecord, Option<calendar::ExamTime>)> = if options.all {
+    let mut list: Vec<(ExamRecord, Option<calendar::ExamTime>)> = if options.all {
         all.into_iter().map(|exam| {
             let parsed = calendar::parse_exam_datetime(&exam.time);
             (exam, parsed)
         }).collect()
     } else {
-        recent_exams(store, today)
+        recent_exams(store, today, days)
     };
+    if let Some(course) = &options.course {
+        let keyword = course.to_lowercase();
+        list.retain(|(exam, _)| {
+            exam.course_name.to_lowercase().contains(&keyword)
+                || exam.course_id.to_lowercase().contains(&keyword)
+        });
+    }
 
     if !options.json {
-        header(out, if options.all { "考试日程（全部）" } else { "考试日程（近期）" });
+        header(
+            out,
+            if options.all {
+                "考试日程（全部）"
+            } else if options.days.is_some() {
+                "考试日程（指定窗口）"
+            } else {
+                "考试日程（近期）"
+            },
+        );
+        if let Some(course) = &options.course {
+            out.line(&format!("  筛选：课程名或课程号包含「{course}」"));
+        }
         if list.is_empty() {
             out.line("  暂无考试安排。");
         } else {
@@ -843,13 +1274,21 @@ fn exams(store: &Store, options: &Options, out: &mut Printer) -> Value {
         }
         if !options.all {
             out.line("");
-            out.line("提示：默认只显示近期安排（未来与过去 7 天），使用 --all 查看全部。");
+            if options.days.is_some() {
+                out.line(&format!("提示：当前窗口为未来与过去 {days} 天，--all 可查看全部。"));
+            } else {
+                out.line(&format!(
+                    "提示：默认只显示近期安排（未来与过去 {days} 天），使用 --all 查看全部、--days N 调整窗口。"
+                ));
+            }
         }
         footer(out, store, !store.logged_in());
     }
 
     json!({
         "filter": if options.all { "all" } else { "recent" },
+        "windowDays": if options.all { Value::Null } else { json!(days) },
+        "courseFilter": options.course,
         "total": store.counts().exams,
         "exams": list.iter().map(|(exam, parsed)| json!({
             "exam": exam,
@@ -870,6 +1309,12 @@ fn plan(store: &Store, options: &Options, out: &mut Printer) -> Value {
         stats::EARNED_CREDITS_REQUIRED_ONLY,
     );
 
+    // `--group` 只裁剪展示，不改统计口径（总学分与完成度仍是整份方案）
+    let mut matched: Vec<usize> = (0..progress.categories.len()).collect();
+    if let Some(keyword) = &options.group {
+        matched.retain(|index| progress.categories[*index].name.contains(keyword.as_str()));
+    }
+
     if !options.json {
         header(out, "培养方案与学分进度");
         if all_plan.groups.is_empty() {
@@ -882,11 +1327,18 @@ fn plan(store: &Store, options: &Options, out: &mut Printer) -> Value {
                 num(progress.earned_total),
                 progress.completion_percent
             ));
+            if let Some(keyword) = &options.group {
+                out.line(&format!("  筛选：课组名称包含「{keyword}」（{} 个）", matched.len()));
+            }
             out.blank();
+            if matched.is_empty() {
+                out.line("  没有名称匹配的课组。");
+            }
             let mut table = Table::new(&["课组", "要求学分", "已获学分", "进度", "完成度"])
                 .right_align(&[1, 2])
                 .max_width(0, 26);
-            for category in &progress.categories {
+            for index in &matched {
+                let category = &progress.categories[*index];
                 let requirement = if let Some(candidates) = category.elective_candidates {
                     format!(
                         "{}（{} 门候选）",
@@ -925,6 +1377,8 @@ fn plan(store: &Store, options: &Options, out: &mut Printer) -> Value {
         "progress": progress,
         "planTotalCredits": all_plan.total_required_credits,
         "groups": all_plan.groups.len(),
+        "groupFilter": options.group,
+        "matchedGroups": matched.len(),
     })
 }
 
@@ -934,7 +1388,7 @@ fn notices(store: &Store, options: &Options, out: &mut Printer) -> Value {
     let today = clock::now();
     let week = options.week.or_else(|| calendar::teaching_week_on(today));
     let mut source = "当前公告".to_string();
-    let list = match week {
+    let mut list = match week {
         Some(week) => {
             let weeks = store.notice_weeks();
             match weeks.get(&week.to_string()) {
@@ -947,11 +1401,31 @@ fn notices(store: &Store, options: &Options, out: &mut Printer) -> Value {
         }
         None => store.notices(),
     };
+    let total = list.len();
+    if let Some(query) = &options.query {
+        let keyword = query.to_lowercase();
+        list.retain(|notice| {
+            notice.title.to_lowercase().contains(&keyword)
+                || notice.content.to_lowercase().contains(&keyword)
+        });
+    }
+    if let Some(limit) = options.limit {
+        list.truncate(limit);
+    }
 
     if !options.json {
         header(out, &format!("教学公告 · {source}"));
+        if let Some(query) = &options.query {
+            out.line(&format!("  筛选：标题或正文包含「{query}」（命中 {} / {total} 条）", list.len()));
+        } else if options.limit.is_some() && total > list.len() {
+            out.line(&format!("  仅显示前 {} / {total} 条", list.len()));
+        }
         if list.is_empty() {
-            out.line("  暂无公告（源页面未返回内容）。");
+            out.line(if options.query.is_some() {
+                "  没有匹配的公告。"
+            } else {
+                "  暂无公告（源页面未返回内容）。"
+            });
         } else {
             for (index, notice) in list.iter().enumerate() {
                 out.blank();
@@ -967,6 +1441,9 @@ fn notices(store: &Store, options: &Options, out: &mut Printer) -> Value {
     json!({
         "week": week,
         "source": source,
+        "total": total,
+        "query": options.query,
+        "limit": options.limit,
         "notices": list,
     })
 }
@@ -1108,14 +1585,34 @@ fn profile(store: &Store, options: &Options, out: &mut Printer) -> Value {
 // ---------------- courses ----------------
 
 fn courses(store: &Store, options: &Options, out: &mut Printer) -> Value {
-    let list = store.current_courses();
+    let mut list = store.current_courses();
+    let total = list.len();
+    // `--course` 与 `--query` 在这里等价：课程名 / 课程号子串匹配
+    let keyword = options.course.as_deref().or(options.query.as_deref()).map(str::to_lowercase);
+    if let Some(keyword) = &keyword {
+        list.retain(|course| {
+            course.course_name.to_lowercase().contains(keyword)
+                || course.course_id.to_lowercase().contains(keyword)
+        });
+    }
+    if let Some(limit) = options.limit {
+        list.truncate(limit);
+    }
 
     if !options.json {
         header(out, "本学期课程名录");
         if list.is_empty() {
-            out.line("  本地缓存中没有本学期课程名录（上下文接口未返回课程表）。");
+            out.line(if keyword.is_some() {
+                "  没有匹配的课程。"
+            } else {
+                "  本地缓存中没有本学期课程名录（上下文接口未返回课程表）。"
+            });
         } else {
-            out.line(&format!("  共 {} 门", list.len()));
+            if keyword.is_some() {
+                out.line(&format!("  命中 {} / {total} 门", list.len()));
+            } else {
+                out.line(&format!("  共 {} 门", list.len()));
+            }
             out.blank();
             let mut table = Table::new(&["课程号", "课序号", "课程名称", "教师", "学分"])
                 .right_align(&[4])
@@ -1134,5 +1631,10 @@ fn courses(store: &Store, options: &Options, out: &mut Printer) -> Value {
         footer(out, store, !store.logged_in());
     }
 
-    json!({ "courses": list })
+    json!({
+        "total": total,
+        "limit": options.limit,
+        "query": keyword,
+        "courses": list,
+    })
 }

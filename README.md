@@ -241,10 +241,13 @@ npm run dist    # 构建 web + 打包 + 统一命名，产物见 desktop-tauri/r
 安装版与便携版都附带命令行程序（安装时自动写入用户 PATH），数据与图形界面同源：
 
 ```powershell
-BetterHRBUSTCLI status         # 登录状态与本地数据概览
-BetterHRBUSTCLI summary        # 今日课程、近期考试、学业指标
-BetterHRBUSTCLI scores --json  # 成绩与 GPA（机器可读，供脚本 / AI 工具）
-BetterHRBUSTCLI skill --save . # 导出给 AI 工具使用的 SKILL
+BetterHRBUSTCLI status                  # 登录状态与本地数据概览
+BetterHRBUSTCLI summary                 # 今日课程、近期考试、学业指标
+BetterHRBUSTCLI timetable --date 2026-11-13   # 指定某天的课程
+BetterHRBUSTCLI scores --course 线性代数 --merged  # 单门课记录与合并结论
+BetterHRBUSTCLI scores --json           # 成绩与 GPA（机器可读，供脚本 / AI 工具）
+BetterHRBUSTCLI check                   # 错误检查（数据完整性、会话、同步失败项）
+BetterHRBUSTCLI skill --save .          # 导出给 AI 工具使用的 SKILL
 ```
 
 命令行严格只读本地缓存、不联网；登录（图片验证码）仍需在图形界面完成。
