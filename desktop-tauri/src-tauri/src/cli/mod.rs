@@ -541,7 +541,11 @@ fn print_help(out: &mut render::Printer) {
     out.blank();
     out.line("选项：");
     out.line("  --json                    机器可读输出（脚本 / AI 工具）");
-    out.line("  --data-dir <路径>         指定数据目录（默认 %APPDATA%\\edu.hrbust.betterhrbust）");
+    #[cfg(windows)]
+    let default_dir = r"%APPDATA%\edu.hrbust.betterhrbust";
+    #[cfg(not(windows))]
+    let default_dir = "~/.local/share/edu.hrbust.betterhrbust";
+    out.line(&format!("  --data-dir <路径>         指定数据目录（默认 {default_dir}）"));
     out.line("  --week <1-26>             课表：指定教学周");
     out.line("  --day <1-7>               课表：指定星期（1 = 周一）");
     out.line("  --today                   课表 / 概览：只看今日（含已下课过滤）");

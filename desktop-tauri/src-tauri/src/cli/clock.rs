@@ -2,8 +2,8 @@
 //!
 //! 命令行需要"当前教学周 / 今日剩余课程 / 考试倒计时"这类依赖本地时钟的判断，
 //! 而项目没有引入 chrono 之类的依赖（体积与依赖面优先）。
-//! Windows 下直接用 `GetLocalTime` / `FileTimeToLocalFileTime` + `FileTimeToSystemTime`
-//! 取本地时间，非 Windows 平台用 UTC 兜底（本项目只发布 Windows 版）。
+//! Windows 用 `GetLocalTime` / `FileTimeToLocalFileTime` + `FileTimeToSystemTime`，
+//! Unix 用 `localtime_r`，均失败才退 UTC 兜底。
 
 /// 本地日期时间（字段与 SYSTEMTIME 对齐）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,7 +110,13 @@ pub fn now() -> LocalDateTime {
             return dt;
         }
     }
-    // 兜底：按 UTC 计算（非 Windows 平台或 API 失败时仍能给出可用结果）
+    #[cfg(unix)]
+    {
+        if let Some(dt) = unix_time::now_local() {
+            return dt;
+        }
+    }
+    // 兜底：按 UTC 计算（平台 API 失败时仍能给出可用结果）
     let seconds = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
@@ -131,6 +137,12 @@ pub fn from_epoch_ms(ms: u64) -> LocalDateTime {
     #[cfg(windows)]
     {
         if let Some(dt) = win_time::local_from_epoch_ms(ms) {
+            return dt;
+        }
+    }
+    #[cfg(unix)]
+    {
+        if let Some(dt) = unix_time::local_from_epoch_ms(ms) {
             return dt;
         }
     }
@@ -249,6 +261,44 @@ mod win_time {
     type Reserved = *mut c_void;
 }
 
+#[cfg(unix)]
+mod unix_time {
+    use super::LocalDateTime;
+
+    pub fn now_local() -> Option<LocalDateTime> {
+        let secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_secs() as i64;
+        local_from_epoch_secs(secs)
+    }
+
+    pub fn local_from_epoch_ms(ms: u64) -> Option<LocalDateTime> {
+        local_from_epoch_secs((ms / 1000) as i64)
+    }
+
+    fn local_from_epoch_secs(secs: i64) -> Option<LocalDateTime> {
+        let time: libc::time_t = secs as libc::time_t;
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        let tm_ptr = unsafe { libc::localtime_r(&time, &mut tm) };
+        if tm_ptr.is_null() {
+            return None;
+        }
+        Some(from_tm(&tm))
+    }
+
+    pub(super) fn from_tm(tm: &libc::tm) -> LocalDateTime {
+        LocalDateTime {
+            year: tm.tm_year + 1900,
+            month: (tm.tm_mon + 1) as u32,
+            day: tm.tm_mday as u32,
+            hour: tm.tm_hour as u32,
+            minute: tm.tm_min as u32,
+            second: tm.tm_sec as u32,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -271,5 +321,25 @@ mod tests {
         assert_eq!(dt.weekday_index(), 7, "2026-11-15 是周日");
         assert_eq!(dt.minutes_of_day(), 750);
         assert_eq!(format_minute(dt), "2026-11-15 12:30");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn unix_tm_maps_to_local_datetime() {
+        // 2026-11-15 12:34:56 + tm_mon 从 0 起
+        let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+        tm.tm_year = 2026 - 1900;
+        tm.tm_mon = 10;
+        tm.tm_mday = 15;
+        tm.tm_hour = 12;
+        tm.tm_min = 34;
+        tm.tm_sec = 56;
+        let dt = unix_time::from_tm(&tm);
+        assert_eq!(
+            (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second),
+            (2026, 11, 15, 12, 34, 56)
+        );
+        // 星期由 LocalDateTime::weekday_index 从年月日推导，无需 tm_wday
+        assert_eq!(dt.weekday_index(), 7); // 2026-11-15 是周日
     }
 }

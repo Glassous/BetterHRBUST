@@ -499,7 +499,8 @@ async fn cli_endpoint_reports_state_and_serves_skill() {
     let info: serde_json::Value = serde_json::from_str(&body_text(res).await).unwrap();
     assert_eq!(info["loggedIn"], false);
     assert_eq!(info["hasData"], false);
-    assert!(info["cliPath"].as_str().unwrap().ends_with("BetterHRBUSTCLI.exe"));
+    let cli_bin = if cfg!(windows) { "BetterHRBUSTCLI.exe" } else { "BetterHRBUSTCLI" };
+    assert!(info["cliPath"].as_str().unwrap().ends_with(cli_bin));
     assert_eq!(info["dataDir"].as_str().unwrap(), dir.path().to_string_lossy());
 
     // 写入缓存后状态跟随变化（与命令行 doctor 同源）

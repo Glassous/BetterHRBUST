@@ -12,9 +12,12 @@
 use std::path::Path;
 
 /// 用户级环境变量注册表键（安装模式为 currentUser，无需管理员）
+#[cfg(windows)]
 const ENV_SUBKEY: &str = "Environment";
+#[cfg(windows)]
 const PATH_VALUE: &str = "Path";
 /// PATH 最大长度（Windows 上限）
+#[cfg(windows)]
 const MAX_PATH_CHARS: usize = 32_767;
 
 /// 一次 PATH 操作的结果
@@ -309,6 +312,11 @@ mod user32 {
         ) -> usize;
     }
 }
+
+/// 非 Windows：仅让 install() 中的默认 kind 字面量可解析，
+/// 运行时不可达（read_path() 总是 Err，`?` 提前返回）
+#[cfg(not(windows))]
+const REG_EXPAND_SZ: u32 = 2;
 
 #[cfg(not(windows))]
 fn read_path() -> Result<Option<(String, u32)>, String> {
