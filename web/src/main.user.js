@@ -9,6 +9,19 @@ import cssText from './assets/main.css?inline';
 import { createApp } from 'vue';
 import App from './App.vue';
 
+const HOST_STYLE_SNAPSHOT_KEY = '__betterHrbustHostStyles';
+
+// Vite IIFE 会在模块顶层先把 Vue SFC 的 <style>/<style scoped> 插入 document.head；
+// 必须在 bootstrap() 清理宿主 <head> 之前认领出来，否则组件样式会随宿主样式一并被删掉。
+function collectInjectedComponentStyles() {
+  const hostStyles = globalThis[HOST_STYLE_SNAPSHOT_KEY];
+  delete globalThis[HOST_STYLE_SNAPSHOT_KEY];
+  if (!hostStyles || !document.head) return [];
+  return Array.from(document.head.querySelectorAll('style')).filter((el) => !hostStyles.has(el));
+}
+
+const componentStyles = collectInjectedComponentStyles();
+
 // 与 index.html 的 <body class> 保持一致;写在 JS 里才能被 Tailwind 扫描到
 const BODY_CLASSES = 'bg-[#f4f5f7] text-[#1e2329] dark:bg-[#14161a] dark:text-[#f0f2f5] min-h-screen transition-colors duration-200 antialiased selection:bg-zinc-200 selection:text-zinc-900 dark:selection:bg-zinc-800 dark:selection:text-zinc-100';
 
@@ -54,8 +67,15 @@ function bootstrap() {
   doc.body.innerHTML = '<div id="app"></div>';
 
   const style = doc.createElement('style');
+  style.dataset.betterHrbustStyle = 'base';
   style.textContent = cssText;
   doc.head.appendChild(style);
+
+  // 组件 <style>/<style scoped> 紧随基础样式挂回，保持与 Web 版一致的层叠顺序
+  for (const compStyle of componentStyles) {
+    compStyle.dataset.betterHrbustStyle = 'component';
+    doc.head.appendChild(compStyle);
+  }
 
   ensureViewport();
   doc.title = 'BetterHRBUST · 现代教务在线';
