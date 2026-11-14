@@ -67,6 +67,9 @@
       </div>
     </UiCard>
 
+    <!-- 命令行模式（桌面端 Tauri 专属：Web / 油猴环境内部自行隐藏） -->
+    <CliCard />
+
     <!-- 版本更新（桌面端 Tauri 专属：Web / 油猴环境内部自行隐藏） -->
     <UpdateCard />
   </div>
@@ -77,6 +80,7 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import Icon from '@/components/icons/Icon.vue';
+import CliCard from '@/components/settings/CliCard.vue';
 import UpdateCard from '@/components/settings/UpdateCard.vue';
 import { useTheme } from '@/composables/useTheme.js';
 import { useSession } from '@/composables/useSession.js';

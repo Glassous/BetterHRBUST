@@ -3,8 +3,9 @@
 //! 架构：WebView2 窗口 → http://127.0.0.1:1950 本地服务（server.rs）
 //!   ├─ 静态文件：web/dist（嵌入二进制）
 //!   ├─ /academic/* → 反向代理 → http://jwzx.hrbust.edu.cn（proxy.rs）
-//!   └─ /__app/storage → 键值持久化（storage.rs，落盘 app_data_dir，
-//!      存教务数据缓存与会话元数据，见前端 services/storage.js 门面）
+//!   ├─ /__app/storage → 键值持久化（storage.rs，落盘 app_data_dir，
+//!   │   存教务数据缓存与会话元数据，见前端 services/storage.js 门面）
+//!   └─ /__app/cli → 命令行状态与 SKILL 文本（设置页"命令行模式"卡片）
 //!
 //! 仅监听 127.0.0.1，不对局域网暴露；http://127.0.0.1 在 WebView2
 //! 中属于 secure context，无明文/混合内容限制。教务会话 Cookie 由
@@ -13,6 +14,9 @@
 //! 窗口控制不走自定义 IPC 命令：shim.js 桥接 withGlobalTauri 的
 //! window.__TAURI__，权限经 capabilities/main.json 的 remote.urls 授予。
 
+// 命令行模式（BetterHRBUSTCLI.exe）：只读本地缓存，供终端与 AI 工具查询。
+// 逻辑放在库里，本地服务 `/__app/cli` 复用同一套路径与登录态判定。
+pub mod cli;
 mod proxy;
 pub mod server;
 mod storage;

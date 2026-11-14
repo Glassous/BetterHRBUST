@@ -256,6 +256,7 @@ dependencies = [
  "mime_guess",
  "percent-encoding",
  "rust-embed",
+ "serde",
  "serde_json",
  "tauri",
  "tauri-build",

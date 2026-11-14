@@ -43,7 +43,7 @@ BetterHRBUST/
 ├── server/          # 意见反馈服务端（Go + Gin + MongoDB，Redis 限流）
 ├── admin/           # 意见反馈管理端（Vue 3 + Vite + Tailwind CSS，独立部署）
 ├── android/         # Android 原生客户端（Kotlin + Jetpack Compose + Room）
-└── desktop-tauri/   # Windows 桌面端（Tauri + Rust，内置本地反向代理）
+└── desktop-tauri/   # Windows 桌面端（Tauri + Rust，内置本地反向代理）+ 命令行程序
 ```
 
 ---
@@ -71,6 +71,7 @@ BetterHRBUST/
 - **学籍档案与我的课程名录**：学籍关键信息一览，查看自己本学期修读的课程。
 - **原生 Android 客户端**：Kotlin + Jetpack Compose 原生实现，Material You 动态取色与深浅色主题、边到边全屏 + 悬浮胶囊导航坞、自适应双栏成绩页（列表 / 明细）、下拉刷新；Room 本地持久化 + DataStore 会话偏好，离线同样可用。
 - **版本更新检测**：桌面端（设置页底部）与 Android 端（「更多」页底部）内置基于 GitHub Release 的更新检测——启动时静默检查一次（按天节流），并提供手动「检查更新」；发现新版本时展示版本号与更新日志，一键跳转 Release 页面自行下载。网页与油猴版不显示该模块。
+- **桌面端命令行模式**：安装包附带独立控制台程序 `BetterHRBUSTCLI.exe`，在终端查询概览、课表、成绩与 GPA、考试、培养方案、公告、学籍与课程名录，支持 `--json` 供脚本与 AI 工具解析；安装时自动把安装目录写入用户 PATH。命令行只读本地缓存、不联网：终端无法输入图片验证码，未登录且无本地数据时以退出码 `2` 提示先到图形界面登录。设置页内置命令文档与可一键复制的 AI SKILL。
 - **四端统一口径**：Web、油猴、桌面端与 Android 共用同一套业务口径（API 路径、解析规则、五分制绩点与特色算法、缓存与刷新策略），任一端的结果可互相印证。
 
 ---
@@ -237,7 +238,17 @@ npm install
 npm run dist    # 构建 web + 打包 + 统一命名，产物见 desktop-tauri/release/
 ```
 
-架构、体积/内存目标、开发与分发细节见
+安装版与便携版都附带命令行程序（安装时自动写入用户 PATH），数据与图形界面同源：
+
+```powershell
+BetterHRBUSTCLI status         # 登录状态与本地数据概览
+BetterHRBUSTCLI summary        # 今日课程、近期考试、学业指标
+BetterHRBUSTCLI scores --json  # 成绩与 GPA（机器可读，供脚本 / AI 工具）
+BetterHRBUSTCLI skill --save . # 导出给 AI 工具使用的 SKILL
+```
+
+命令行严格只读本地缓存、不联网；登录（图片验证码）仍需在图形界面完成。
+架构、体积/内存目标、开发与分发细节、命令与退出码语义见
 [`desktop-tauri/README.md`](./desktop-tauri/README.md)。
 
 ---
@@ -418,6 +429,10 @@ node tools/probe/probe.mjs --user 你的学号
 
 - **容器**：Tauri 2（Rust 主进程 + 系统 WebView2）
 - **内置服务**：仅监听 `127.0.0.1` 的本地反向代理，静态托管 `web/dist`
+- **命令行**：`BetterHRBUSTCLI.exe`（独立 console 子系统二进制，与主程序同目录）；
+  只读 `%APPDATA%\edu.hrbust.betterhrbust\storage.json`，与前端共用同一套
+  五分制 / 周次算法（Rust 复刻并有对齐测试），Windows 控制台走 `WriteConsoleW`
+  避免中文乱码；安装器通过 `path --install` 维护用户 PATH
 
 ### 服务端 (`server/`)
 

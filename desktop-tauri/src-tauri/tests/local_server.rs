@@ -462,6 +462,83 @@ async fn storage_disabled_returns_503() {
     assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
+// ---------------------------------------------------------------- 命令行端点
+
+/// 设置页"命令行模式"卡片的数据源：状态 JSON 与 SKILL 文本
+#[tokio::test]
+async fn cli_endpoint_reports_state_and_serves_skill() {
+    let dir = tempfile::tempdir().unwrap();
+    let origin = spawn_server_with_storage(dir.path().to_path_buf()).await;
+
+    // 空目录：端点仍可访问，状态为"未登录、无数据"（设置页据此给出登录引导）
+    let res = get(&format!("{origin}/__app/cli"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()[header::CACHE_CONTROL].to_str().unwrap().contains("no-store"));
+    let info: serde_json::Value = serde_json::from_str(&body_text(res).await).unwrap();
+    assert_eq!(info["loggedIn"], false);
+    assert_eq!(info["hasData"], false);
+    assert!(info["cliPath"].as_str().unwrap().ends_with("BetterHRBUSTCLI.exe"));
+    assert_eq!(info["dataDir"].as_str().unwrap(), dir.path().to_string_lossy());
+
+    // 写入缓存后状态跟随变化（与命令行 doctor 同源）
+    put(
+        &format!("{origin}/__app/storage"),
+        "better_hrbust_cache_exams",
+        r#"[{"courseName":"高等数学"}]"#,
+    )
+    .await
+    .unwrap();
+    let res = get(&format!("{origin}/__app/cli"), &[]).await.unwrap();
+    let info: serde_json::Value = serde_json::from_str(&body_text(res).await).unwrap();
+    assert_eq!(info["hasData"], true);
+    assert_eq!(info["counts"]["exams"], 1);
+
+    // SKILL 端点返回内嵌 Markdown（设置页预览 / 一键复制）
+    let res = get(&format!("{origin}/__app/cli/skill"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()[header::CONTENT_TYPE].to_str().unwrap().contains("text/markdown"));
+    let skill = body_text(res).await;
+    assert!(skill.contains("name: betterhrbust"), "SKILL 缺少 frontmatter");
+    assert!(skill.contains("--json"));
+
+    // 只读：非 GET 方法不允许（避免被当成写入接口）
+    let request = Request::builder()
+        .method(http::Method::POST)
+        .uri(format!("{origin}/__app/cli"))
+        .body(Full::new(Bytes::new()))
+        .unwrap();
+    let res = tokio::time::timeout(Duration::from_secs(10), client().request(request))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+}
+
+/// 与 /__app/storage 同样的来源校验：跨源网页不能读取本机命令行状态
+#[tokio::test]
+async fn cli_endpoint_rejects_cross_origin() {
+    let dir = tempfile::tempdir().unwrap();
+    let origin = spawn_server_with_storage(dir.path().to_path_buf()).await;
+
+    let res = get(&format!("{origin}/__app/cli"), &[("origin", "http://evil.example.com")])
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    let res = get(&format!("{origin}/__app/cli/skill"), &[("sec-fetch-site", "cross-site")])
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+/// dev 模式没有数据目录：前端降级为静态文档
+#[tokio::test]
+async fn cli_endpoint_returns_503_without_data_dir() {
+    let origin = spawn_server("http://127.0.0.1:1").await;
+    let res = get(&format!("{origin}/__app/cli"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+}
+
 // ---------------------------------------------------------------- 来源校验
 
 /// 以覆盖头发起请求（伪造 Host / Origin / Sec-Fetch-Site 模拟重绑定与跨站页面）

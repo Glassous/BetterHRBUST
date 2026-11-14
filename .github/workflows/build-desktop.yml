@@ -60,6 +60,8 @@ jobs:
       - name: Rust tests
         run: cargo test --manifest-path desktop-tauri/src-tauri/Cargo.toml
 
+      # 注意：tauri build 会构建 crate 里的全部 bin，因此安装包内自动包含
+      # BetterHRBUSTCLI.exe（命令行），无需额外的 sidecar 步骤
       - name: Build bundles
         working-directory: desktop-tauri
         run: npx tauri build

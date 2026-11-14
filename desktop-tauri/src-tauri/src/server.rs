@@ -5,6 +5,7 @@
 //!    debug 模式直接读磁盘），SPA 回退、/assets 长缓存、路径穿越防护
 //!  - /academic/* → 反向代理 → http://jwzx.hrbust.edu.cn（见 proxy.rs）
 //!  - /__app/storage → 键值持久化（见 storage.rs，教务数据缓存落盘）
+//!  - /__app/cli、/__app/cli/skill → 命令行状态与内嵌 SKILL（见 cli_response）
 //!  - 来源校验：全部请求校验 Host 指向本服务自身（阻断 DNS rebinding），
 //!    /academic 与 /__app/storage 追加 Origin / Sec-Fetch-Site 白名单
 //!  - 端口策略：固定 1950 起（建校年份），被占用向后顺延至多 10 次。
@@ -169,6 +170,8 @@ struct AppState {
     client: Client<hyper_util::client::legacy::connect::HttpConnector, AppBody>,
     upstream: Upstream,
     storage: Option<Arc<crate::storage::Storage>>,
+    /// 数据目录：`/__app/cli` 需要按同一目录解析命令行状态（与 storage 同源）
+    data_dir: Option<PathBuf>,
 }
 
 /// 启动本地服务：绑定端口（含顺延逻辑）并进入 accept 循环。
@@ -191,6 +194,7 @@ pub async fn start(config: ServerConfig) -> io::Result<SocketAddr> {
         client: Client::builder(TokioExecutor::new()).build_http::<AppBody>(),
         upstream: config.upstream,
         storage,
+        data_dir: config.storage_dir,
     };
 
     tokio::spawn(async move {
@@ -260,9 +264,53 @@ async fn handle(state: AppState, req: Request<Incoming>) -> Result<Response<AppB
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
         }
         Ok(crate::storage::handle(&state.storage, req).await)
+    } else if path == "/__app/cli" || path == "/__app/cli/skill" {
+        if !browser_origin_allowed(req.headers(), state.port) {
+            return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
+        }
+        Ok(cli_response(&state, path, req.method()))
     } else {
         Ok(static_response(&req))
     }
+}
+
+/// 设置页的"命令行模式"数据源：
+///  - `GET /__app/cli`       命令行状态（路径、登录态、数据量），与 `doctor` 同源
+///  - `GET /__app/cli/skill` 内嵌 SKILL 文本，供预览与一键复制
+///
+/// 两个端点都只读，且与 `/__app/storage` 一样要求同源 Origin / Sec-Fetch-Site，
+/// 避免任意网页把本地服务当成"读取本机教务数据"的接口。
+fn cli_response(state: &AppState, path: &str, method: &Method) -> Response<AppBody> {
+    if *method != Method::GET {
+        return plain_response(StatusCode::METHOD_NOT_ALLOWED, "Method Not Allowed");
+    }
+    let Some(dir) = state.data_dir.as_deref() else {
+        // dev 模式（Vite 5173）没有本地服务，前端按"不可用"降级展示静态文档
+        return plain_response(StatusCode::SERVICE_UNAVAILABLE, "storage not enabled");
+    };
+    if path == "/__app/cli/skill" {
+        return text_response("text/markdown; charset=utf-8", crate::cli::skill_text());
+    }
+    match serde_json::to_vec(&crate::cli::info_for(dir)) {
+        Ok(body) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CACHE_CONTROL, "no-store")
+            .header("x-content-type-options", "nosniff")
+            .body(full_body(Bytes::from(body)))
+            .expect("cli 状态响应构造不会失败"),
+        Err(_) => plain_response(StatusCode::INTERNAL_SERVER_ERROR, "serialize failed"),
+    }
+}
+
+fn text_response(content_type: &str, text: &str) -> Response<AppBody> {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CACHE_CONTROL, "no-store")
+        .header("x-content-type-options", "nosniff")
+        .body(full_body(Bytes::copy_from_slice(text.as_bytes())))
+        .expect("文本响应构造不会失败")
 }
 
 /// Host 头白名单：只接受指向本服务实际端口的回环主机名（或无端口的裸主机名）。

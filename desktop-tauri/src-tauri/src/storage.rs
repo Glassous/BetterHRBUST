@@ -39,6 +39,29 @@ pub struct Storage {
     data: Mutex<BTreeMap<String, String>>,
 }
 
+/// 只读快照：读出 `dir/storage.json` 的全部键值，**不产生任何写副作用**。
+///
+/// 供命令行（BetterHRBUSTCLI）使用：CLI 只查询、不修复数据，
+/// 因此损坏时返回错误而不是像 `Storage::open` 那样把文件改名 `.corrupt`
+/// —— 一个只读查询命令不应该动用户的文件。
+/// 文件不存在返回空表（与前端"没有缓存"的语义一致）。
+pub fn read_snapshot(dir: &Path) -> io::Result<BTreeMap<String, String>> {
+    let bytes = match fs::read(dir.join("storage.json")) {
+        Ok(bytes) => bytes,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(BTreeMap::new()),
+        Err(err) => return Err(err),
+    };
+    // 容忍 BOM 与空文件：写入端是 serde_json + 换行，但手工编辑 / 第三方工具
+    // 可能留下 BOM 或全空白内容
+    let text = String::from_utf8_lossy(&bytes);
+    let text = text.trim_start_matches('\u{feff}').trim();
+    if text.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    serde_json::from_str::<BTreeMap<String, String>>(text)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+}
+
 impl Storage {
     /// 打开（或初始化）指定目录下的存储文件
     pub fn open(dir: &Path) -> io::Result<Self> {
@@ -136,6 +159,54 @@ mod tests {
         // 重新打开：损坏的 JSON 会被改名 .corrupt 并从空开始，键数对不上即暴露
         let reloaded = Storage::open(dir.path()).unwrap();
         assert_eq!(reloaded.snapshot().len(), 8 * 50, "全部键应完整落盘且文件可解析");
+    }
+
+    /// 只读快照与落盘内容一致，且不创建 / 改动任何文件
+    #[test]
+    fn read_snapshot_matches_written_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = Storage::open(dir.path()).unwrap();
+        storage.set("better_hrbust_has_session".into(), "true".into()).unwrap();
+        storage.set("better_hrbust_cache_scores".into(), "[]".into()).unwrap();
+
+        let snapshot = read_snapshot(dir.path()).unwrap();
+        assert_eq!(snapshot.get("better_hrbust_has_session").map(String::as_str), Some("true"));
+        assert_eq!(snapshot.len(), 2);
+    }
+
+    /// 文件不存在 → 空表（CLI 据此判定"没有本地数据"），不报错、不建目录
+    #[test]
+    fn read_snapshot_missing_file_is_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("not-created");
+        assert!(read_snapshot(&nested).unwrap().is_empty());
+        assert!(!nested.exists(), "只读快照不应创建目录");
+    }
+
+    /// 损坏文件：只读快照报错且**不改名、不删除**原文件
+    /// （命令行是诊断工具，不应该像 Storage::open 那样清理现场）
+    #[test]
+    fn read_snapshot_reports_corrupt_without_touching_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("storage.json");
+        fs::write(&path, b"{ not json").unwrap();
+
+        let err = read_snapshot(dir.path()).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(path.exists(), "损坏文件必须保留原样");
+        assert!(!dir.path().join("storage.json.corrupt").exists());
+    }
+
+    /// BOM / 空白内容按空表处理：手工编辑过的文件不应让 CLI 直接报错
+    #[test]
+    fn read_snapshot_tolerates_bom_and_blank() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("storage.json");
+        fs::write(&path, b"\xef\xbb\xbf{\"k\":\"v\"}\n").unwrap();
+        assert_eq!(read_snapshot(dir.path()).unwrap().get("k").map(String::as_str), Some("v"));
+
+        fs::write(&path, b"  \n\t").unwrap();
+        assert!(read_snapshot(dir.path()).unwrap().is_empty());
     }
 }
 

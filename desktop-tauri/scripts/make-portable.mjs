@@ -1,8 +1,10 @@
 /**
  * Windows 端发布产物整理（零 npm 依赖，仅用系统自带能力）：
  *
- *  1. 便携版：将构建好的 BetterHRBUST.exe（前端资产已嵌入二进制，单文件即可运行）
- *     压缩为 release/BetterHRBUST-<版本>-windows-portable.zip，解压即用的绿色免安装版；
+ *  1. 便携版：将构建好的 BetterHRBUST.exe（图形界面，前端资产已嵌入二进制）
+ *     与 BetterHRBUSTCLI.exe（命令行）一起压缩为
+ *     release/BetterHRBUST-<版本>-windows-portable.zip，解压即用的绿色免安装版；
+ *     两个 exe 必须同目录，命令行才能找到主程序与同一份本地缓存。
  *  2. 安装版：将 NSIS 安装包（tauri 默认名 BetterHRBUST_<版本>_x64-setup.exe）
  *     复制并统一命名为 release/BetterHRBUST-<版本>-windows-setup.exe。
  *
@@ -26,17 +28,24 @@ if (!existsSync(exe)) {
   process.exit(1);
 }
 
+// 命令行程序缺失时直接失败：便携版如果只有图形界面，用户按文档执行命令会全部落空
+const cliExe = path.join(root, 'src-tauri', 'target', 'release', 'BetterHRBUSTCLI.exe');
+if (!existsSync(cliExe)) {
+  console.error(`未找到 ${cliExe}，请先执行 npm run build:cli（npm run dist 已包含该步骤）`);
+  process.exit(1);
+}
+
 const releaseDir = path.join(root, 'release');
 mkdirSync(releaseDir, { recursive: true });
 
-// 1) 便携版：单 exe 压缩为 zip（PowerShell Compress-Archive）
+// 1) 便携版：图形界面 + 命令行同目录压缩为 zip（PowerShell Compress-Archive）
 const zip = path.join(releaseDir, `BetterHRBUST-${version}-windows-portable.zip`);
 execFileSync(
   'powershell.exe',
   [
     '-NoProfile',
     '-Command',
-    `Compress-Archive -Path "${exe}" -DestinationPath "${zip}" -Force`
+    `Compress-Archive -Path "${exe}","${cliExe}" -DestinationPath "${zip}" -Force`
   ],
   { stdio: 'inherit' }
 );
