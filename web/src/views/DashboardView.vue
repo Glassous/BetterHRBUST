@@ -206,7 +206,7 @@
       </div>
 
       <!-- 第三层：学业口径核对 + 考试与公告紧凑区 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
         <div class="lg:col-span-2 space-y-5 sm:space-y-6">
           <!-- 学业指标摘要（已修复原版缺少 title 导致 header-action 丢失的问题） -->
           <UiCard title="学业口径核对" subtitle="与成绩分析、培养方案共用同一去重规则">
@@ -306,40 +306,46 @@
           </UiCard>
         </div>
 
-        <!-- 最新教学运行公告 -->
-        <UiCard title="教学运行公告" :bodyClass="latestNotices.length === 0 ? 'px-6 py-5' : 'p-2.5'">
-          <template #header-action>
-            <UiButton size="sm" variant="ghost" @click="$emit('navigate', 'notice')">
-              <span>查看更多</span>
-              <template #suffix>
-                <Icon name="chevron-right" customClass="w-3.5 h-3.5" />
-              </template>
-            </UiButton>
-          </template>
+        <!-- 最新教学运行公告：高度交由左侧两卡决定（lg 下绝对定位铺满该列），公告过多时卡内滚动 -->
+        <div class="relative">
+          <UiCard
+            title="教学运行公告"
+            customClass="lg:absolute lg:inset-0 flex flex-col"
+            :bodyClass="latestNotices.length === 0 ? 'px-6 py-5 flex-1' : 'p-2.5 flex-1 min-h-0 overflow-y-auto'"
+          >
+            <template #header-action>
+              <UiButton size="sm" variant="ghost" @click="$emit('navigate', 'notice')">
+                <span>查看更多</span>
+                <template #suffix>
+                  <Icon name="chevron-right" customClass="w-3.5 h-3.5" />
+                </template>
+              </UiButton>
+            </template>
 
-          <div v-if="latestNotices.length === 0" class="flex items-center gap-2.5 text-[13px] text-[var(--ink-muted)]">
-            <Icon name="notice" customClass="w-4 h-4 text-[var(--ink-muted)] shrink-0" />
-            <span>本周暂无发布的教学运行新公告</span>
-          </div>
+            <div v-if="latestNotices.length === 0" class="flex items-center gap-2.5 text-[13px] text-[var(--ink-muted)]">
+              <Icon name="notice" customClass="w-4 h-4 text-[var(--ink-muted)] shrink-0" />
+              <span>本周暂无发布的教学运行新公告</span>
+            </div>
 
-          <div v-else class="divide-y divide-[var(--border-hairline)]">
-            <button
-              v-for="(n, idx) in latestNotices"
-              :key="idx"
-              type="button"
-              class="w-full text-left p-3.5 rounded-[var(--radius-control)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-              @click="$emit('navigate', 'notice')"
-            >
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <UiBadge size="sm" variant="default">教务通知</UiBadge>
-                <span v-if="n.date" class="text-xs text-[var(--ink-muted)] num-tabular font-mono">{{ n.date }}</span>
-              </div>
-              <h5 class="text-[13px] font-medium text-[var(--ink-primary)] line-clamp-2 leading-relaxed">
-                {{ n.title }}
-              </h5>
-            </button>
-          </div>
-        </UiCard>
+            <div v-else class="divide-y divide-[var(--border-hairline)]">
+              <button
+                v-for="(n, idx) in latestNotices"
+                :key="idx"
+                type="button"
+                class="w-full text-left p-3.5 rounded-[var(--radius-control)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                @click="$emit('navigate', 'notice')"
+              >
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <UiBadge size="sm" variant="default">教务通知</UiBadge>
+                  <span v-if="n.date" class="text-xs text-[var(--ink-muted)] num-tabular font-mono">{{ n.date }}</span>
+                </div>
+                <h5 class="text-[13px] font-medium text-[var(--ink-primary)] line-clamp-2 leading-relaxed">
+                  {{ n.title }}
+                </h5>
+              </button>
+            </div>
+          </UiCard>
+        </div>
       </div>
     </template>
   </div>

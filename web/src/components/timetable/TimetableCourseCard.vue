@@ -260,9 +260,10 @@ function playOpen() {
       0
     )
     .to(factsRef.value, { autoAlpha: 1, y: 0, duration: 0.26, ease: 'power2.out' }, OPEN_DURATION * 0.3)
+    // 关闭按钮只做轻微放大淡入：back.out 的回弹会让小圆钮看起来「弹一下」，与整体共享元素过渡不协调
     .to(
       closeRef.value,
-      { autoAlpha: 1, scale: 1, duration: 0.24, ease: 'back.out(1.7)', onStart: focusClose },
+      { autoAlpha: 1, scale: 1, duration: 0.22, ease: 'power2.out', onStart: focusClose },
       OPEN_DURATION * 0.34
     )
     .eventCallback('onComplete', showAll);
@@ -482,6 +483,12 @@ onBeforeUnmount(() => {
   cursor: default;
   overflow: hidden;
   opacity: 1;
+  /*
+   * 关键：展开/收起期间位移与尺寸完全交给 GSAP Flip（它用 transform: translate 插值）。
+   * 若这里仍保留 transform 的 CSS transition，每一帧写值都会被浏览器再补一段 150ms 缓动，
+   * 卡片会滞后于目标点、收尾时又被追平，观感就是多余的弹跳。
+   */
+  transition: none;
 }
 
 /* 大卡视觉：内边距 / 圆角 / 字号（FLIP 会以这些终值参与插值） */
