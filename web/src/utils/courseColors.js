@@ -58,7 +58,7 @@ export function registerCourseColors(courses) {
  * 非当前教学周课程的统一样式：中性灰 + 半透明，弱化但保持可点击。
  */
 export const COURSE_MUTED =
-  'bg-zinc-100 text-zinc-500 border-zinc-200/70 dark:bg-zinc-500/15 dark:text-zinc-400 dark:border-zinc-500/25 opacity-70 hover:opacity-100';
+  'bg-[var(--bg-subtle)] text-[var(--ink-muted)] border-[var(--border-hairline)] opacity-80 hover:opacity-100';
 
 /**
  * 取某门课程的配色。

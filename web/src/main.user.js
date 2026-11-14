@@ -23,7 +23,7 @@ function collectInjectedComponentStyles() {
 const componentStyles = collectInjectedComponentStyles();
 
 // 与 index.html 的 <body class> 保持一致;写在 JS 里才能被 Tailwind 扫描到
-const BODY_CLASSES = 'bg-[#f4f5f7] text-[#1e2329] dark:bg-[#14161a] dark:text-[#f0f2f5] min-h-screen transition-colors duration-200 antialiased selection:bg-zinc-200 selection:text-zinc-900 dark:selection:bg-zinc-800 dark:selection:text-zinc-100';
+const BODY_CLASSES = 'bg-[#f4f6f9] text-[#131820] dark:bg-[#06080b] dark:text-[#f1f5fb] min-h-screen transition-colors duration-200 antialiased selection:bg-[var(--accent-soft)] selection:text-[var(--ink-primary)]';
 
 // 宿主页面已执行脚本注册的轮询定时器会继续操作被清空的 DOM,统一清掉
 function clearHostTimers() {

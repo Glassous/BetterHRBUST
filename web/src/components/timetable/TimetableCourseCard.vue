@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { gsap, Flip } from '@/utils/gsapFlip.js';
 import Icon from '@/components/icons/Icon.vue';
 import { useTheme } from '@/composables/useTheme.js';
@@ -260,10 +260,12 @@ function playOpen() {
       0
     )
     .to(factsRef.value, { autoAlpha: 1, y: 0, duration: 0.26, ease: 'power2.out' }, OPEN_DURATION * 0.3)
-    .to(closeRef.value, { autoAlpha: 1, scale: 1, duration: 0.24, ease: 'back.out(1.7)' }, OPEN_DURATION * 0.34)
+    .to(
+      closeRef.value,
+      { autoAlpha: 1, scale: 1, duration: 0.24, ease: 'back.out(1.7)', onStart: focusClose },
+      OPEN_DURATION * 0.34
+    )
     .eventCallback('onComplete', showAll);
-
-  focusClose();
 }
 
 function focusClose() {
@@ -362,7 +364,29 @@ function finish() {
   }
 }
 
+function onDocumentKeydown(event) {
+  if (event.key === 'Escape' && props.expanded && !closing.value) {
+    event.stopPropagation();
+    requestClose();
+  }
+}
+
+watch(
+  () => props.expanded,
+  (open) => {
+    if (typeof document === 'undefined') return;
+    if (open) {
+      document.addEventListener('keydown', onDocumentKeydown, true);
+    } else {
+      document.removeEventListener('keydown', onDocumentKeydown, true);
+    }
+  }
+);
+
 onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('keydown', onDocumentKeydown, true);
+  }
   timeline?.kill();
   if (cardRef.value) gsap.killTweensOf(cardRef.value);
   if (scrimRef.value) gsap.killTweensOf(scrimRef.value);
@@ -378,16 +402,25 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 10px;
+  padding: 11px 12px;
   border-width: 1px;
   border-style: solid;
-  border-radius: 8px;
+  border-radius: var(--radius-panel);
   font-size: 14px;
-  line-height: 1.25;
+  line-height: 1.3;
   text-align: left;
   cursor: pointer;
   user-select: none;
   overflow: hidden;
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.tt-card:not(.is-floating):hover {
+  transform: translateY(-2px);
+}
+
+.tt-card:not(.is-floating):active {
+  transform: scale(0.985);
 }
 
 .tt-title {
@@ -543,6 +576,12 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tt-card,
+  .tt-card:not(.is-floating):hover,
+  .tt-card:not(.is-floating):active {
+    transition: none;
+    transform: none;
+  }
   .tt-scrim {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;

@@ -6,6 +6,45 @@
   color-scheme: light;
   /* 自定义标题栏占位高度：浏览器环境为 0，布局零影响 */
   --tb: 0px;
+
+  /* 冷静矿石与教务索引（Cool Mineral Ink & Slate Blue）— 浅色主题 */
+  --bg-canvas: #f4f6f9;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eceff4;
+  --bg-hover: #e2e7ee;
+  --bg-backdrop: rgba(15, 23, 36, 0.36);
+
+  --border-hairline: rgba(19, 24, 32, 0.09);
+  --border-strong: rgba(19, 24, 32, 0.17);
+
+  --ink-primary: #131820;
+  --ink-secondary: #475263;
+  --ink-muted: #616d7e;
+
+  --accent: #255585;
+  --accent-hover: #1d456d;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(37, 85, 133, 0.10);
+  --accent-border: rgba(37, 85, 133, 0.24);
+
+  --sem-success: #15803d;
+  --sem-success-soft: rgba(21, 128, 61, 0.10);
+  --sem-success-border: rgba(21, 128, 61, 0.24);
+
+  --sem-warning: #b45309;
+  --sem-warning-soft: rgba(180, 83, 9, 0.10);
+  --sem-warning-border: rgba(180, 83, 9, 0.24);
+
+  --sem-danger: #be123c;
+  --sem-danger-soft: rgba(190, 18, 60, 0.10);
+  --sem-danger-border: rgba(190, 18, 60, 0.24);
+
+  --radius-card: 16px;
+  --radius-panel: 12px;
+  --radius-control: 10px;
+  --radius-badge: 8px;
+
+  --shadow-float: 0 14px 34px -8px rgba(15, 23, 36, 0.15), 0 2px 8px -2px rgba(15, 23, 36, 0.07);
 }
 
 /* 桌面端（Tauri）：main.js 检测到 window.desktopWindow 时挂 desktop-chrome */
@@ -15,12 +54,153 @@ html.desktop-chrome {
 
 .dark {
   color-scheme: dark;
+
+  /* 冷静矿石与教务索引（Deep Carbon Obsidian）— 深邃碳黑深色主题 */
+  --bg-canvas: #06080b;
+  --bg-surface: #0c0f15;
+  --bg-subtle: #121721;
+  --bg-hover: #19202e;
+  --bg-backdrop: rgba(2, 3, 6, 0.80);
+
+  --border-hairline: rgba(232, 238, 248, 0.08);
+  --border-strong: rgba(232, 238, 248, 0.16);
+
+  --ink-primary: #f1f5fb;
+  --ink-secondary: #a8b4c6;
+  --ink-muted: #828ea2;
+
+  --accent: #72ace3;
+  --accent-hover: #8cc0ef;
+  --accent-ink: #06101c;
+  --accent-soft: rgba(114, 172, 227, 0.13);
+  --accent-border: rgba(114, 172, 227, 0.28);
+
+  --sem-success: #34d399;
+  --sem-success-soft: rgba(52, 211, 153, 0.14);
+  --sem-success-border: rgba(52, 211, 153, 0.28);
+
+  --sem-warning: #fbbf24;
+  --sem-warning-soft: rgba(251, 191, 36, 0.14);
+  --sem-warning-border: rgba(251, 191, 36, 0.28);
+
+  --sem-danger: #fb7185;
+  --sem-danger-soft: rgba(251, 113, 133, 0.14);
+  --sem-danger-border: rgba(251, 113, 133, 0.28);
+
+  --shadow-float: 0 22px 48px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(232, 238, 248, 0.08);
 }
 
 html {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Segoe UI Variable Text", "Segoe UI Variable", "SF Pro Text", "Inter", "MiSans", "OPPO Sans", "HarmonyOS Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--ink-primary);
+  line-height: 1.55;
+}
+
+.font-mono {
+  font-family: "Cascadia Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 等宽数字对齐：专用于绩点、学分、时间、倒计时、日期与统计表 */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- 页面与交互动效系统 ---------------- */
+@keyframes viewEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes drawerEnter {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes accordionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chartDraw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chartAreaReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.view-enter {
+  animation: viewEnter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal-panel-enter {
+  animation: modalEnter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.drawer-panel-enter {
+  animation: drawerEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.panel-expand,
+details[open] > div {
+  animation: accordionEnter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.chart-line-draw {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 0;
+  animation: chartDraw 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.chart-area-reveal {
+  animation: chartAreaReveal 450ms ease-out 150ms both;
 }
 
 /* ---------------- 课程动态配色 ----------------
@@ -28,25 +208,51 @@ html {
    每门课独占一个色相，颜色数量随课程数量增长，互不重复；
    --course-h 为后备值 220（中性蓝），仅用于异常兜底。 */
 .course-card {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 70% 92%);
-  color: hsl(calc(var(--course-h, 220) * 1deg) 45% 26%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 60% 80%);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-.dark .course-card {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 35% 20%);
-  color: hsl(calc(var(--course-h, 220) * 1deg) 55% 88%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 45% 60% / 0.35);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 62% 93%);
+  color: hsl(calc(var(--course-h, 220) * 1deg) 54% 23%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 50% 80%);
   box-shadow: none;
 }
 
+.course-card:hover {
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 64% 90%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 52% 70%);
+}
+
+.dark .course-card {
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 34% 14%);
+  color: hsl(calc(var(--course-h, 220) * 1deg) 62% 88%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 46% 56% / 0.32);
+  box-shadow: none;
+}
+
+.dark .course-card:hover {
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 38% 18%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 52% 62% / 0.48);
+}
+
 .course-dot {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 65% 55%);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 64% 48%);
 }
 
 .dark .course-dot {
   background-color: hsl(calc(var(--course-h, 220) * 1deg) 70% 64%);
+}
+
+/* 键盘焦点可见外框 */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 遵循系统减少动态效果偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Custom scrollbar */
@@ -58,16 +264,16 @@ html {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(140, 145, 155, 0.25);
+  background: rgba(110, 122, 140, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(140, 145, 155, 0.45);
+  background: rgba(110, 122, 140, 0.45);
 }
 
 /* 按内容实际可用宽度排列，适配高 DPI 与浏览器缩放后的窄窗口。 */
 .academic-main { container-type: inline-size; }
 .academic-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@container (min-width: 1000px) { .academic-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (min-width: 1020px) { .academic-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container (max-width: 500px) { .academic-summary-grid { grid-template-columns: minmax(0, 1fr); } }
 .academic-main details { min-width: 0; overflow-wrap: anywhere; }

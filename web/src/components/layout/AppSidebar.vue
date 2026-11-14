@@ -1,60 +1,56 @@
 <template>
   <aside
     :class="[
-      'h-[calc(100vh_-_var(--tb))] flex flex-col bg-white/95 dark:bg-[#14161a]/95 border-r border-zinc-200/80 dark:border-zinc-800/70 backdrop-blur-md select-none shadow-none',
+      'h-[calc(100vh_-_var(--tb))] flex flex-col bg-[var(--bg-surface)] border-r border-[var(--border-hairline)] select-none',
       // Desktop layout（sticky 顶部让出标题栏高度）
       'lg:sticky lg:top-[var(--tb)] lg:shrink-0 lg:z-30',
-      'lg:transition-[width] lg:duration-300 lg:ease-in-out',
-      isCollapsedState ? 'lg:w-[76px]' : 'lg:w-[280px]',
-      // Mobile / Responsive overlay layout（同样让出标题栏高度）
-      'fixed top-[var(--tb)] bottom-0 left-0 z-50 w-[280px] transition-transform duration-300 ease-in-out',
-      mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      'lg:transition-[width,background-color,border-color] lg:duration-200 lg:ease-out',
+      isCollapsedState ? 'lg:w-[72px]' : 'lg:w-[264px]',
+      // Mobile / Responsive overlay layout
+      'fixed top-[var(--tb)] bottom-0 left-0 z-50 w-[264px] transition-transform duration-250 ease-out',
+      mobileOpen ? 'translate-x-0 shadow-[var(--shadow-float)] lg:shadow-none' : '-translate-x-full lg:translate-x-0'
     ]"
   >
-    <!-- Brand / Header (Fixed logo position, circular cropped logo, mobile close button) -->
-    <div class="h-18 flex items-center px-3.5 overflow-hidden">
+    <!-- Brand / Header -->
+    <div class="h-[62px] flex items-center px-3.5 border-b border-[var(--border-hairline)] overflow-hidden shrink-0">
       <div class="w-full flex items-center justify-between">
-        <!-- Logo & Title -->
         <div class="flex items-center min-w-0">
-          <div class="w-12 h-12 flex items-center justify-center shrink-0">
-            <div class="w-9 h-9 rounded-full overflow-hidden shadow-xs shrink-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+          <div class="w-11 h-11 flex items-center justify-center shrink-0">
+            <div class="w-9 h-9 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-[var(--bg-subtle)] border border-[var(--border-hairline)]">
               <img
                 :src="logoUrl"
                 alt="HRBUST"
-                class="w-full h-full object-cover rounded-full shrink-0"
+                class="w-full h-full object-cover shrink-0"
               />
             </div>
           </div>
-          <div v-if="!isCollapsedState" class="ml-1.5 min-w-0 flex-1 whitespace-nowrap overflow-hidden">
-            <div class="font-bold text-base text-zinc-900 dark:text-zinc-100 tracking-tight truncate">
+          <div v-if="!isCollapsedState" class="ml-2 min-w-0 flex-1 whitespace-nowrap overflow-hidden">
+            <div class="font-semibold text-base text-[var(--ink-primary)] tracking-tight truncate">
               BetterHRBUST
             </div>
           </div>
         </div>
 
-        <!-- Mobile Close Button (X icon, strictly visible only in responsive mode, hidden on PC) -->
+        <!-- Mobile Close Button -->
         <button
           type="button"
-          class="lg:hidden p-2 -mr-1 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800/80 cursor-pointer transition-colors shrink-0"
+          class="lg:hidden w-9 h-9 rounded-[var(--radius-control)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors shrink-0 flex items-center justify-center"
           title="关闭侧边栏"
+          aria-label="关闭侧边栏"
           @click="$emit('close')"
         >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <Icon name="x" customClass="w-5 h-5" />
         </button>
       </div>
     </div>
 
-    <!-- Navigation List (Strictly fixed 2D coordinates, zero horizontal or vertical shifts) -->
-    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3.5 py-2 space-y-4">
+    <!-- Navigation List -->
+    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-5">
       <div v-for="group in navGroups" :key="group.title">
-        <!-- Reserved fixed height for group title to guarantee Y-axis stability -->
-        <div class="h-5 flex items-center px-2 mb-1.5 overflow-hidden select-none">
+        <div class="h-6 flex items-center px-2.5 mb-1 overflow-hidden select-none">
           <span
             v-if="!isCollapsedState"
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 whitespace-nowrap overflow-hidden truncate"
+            class="text-xs font-semibold tracking-wide text-[var(--ink-muted)] whitespace-nowrap overflow-hidden truncate"
           >
             {{ group.title }}
           </span>
@@ -66,25 +62,26 @@
             type="button"
             :title="isCollapsedState ? item.label : undefined"
             :class="[
-              'w-full h-11 flex items-center rounded-xl text-sm font-medium transition-colors duration-150 cursor-pointer select-none group overflow-hidden',
+              'relative w-full h-[42px] flex items-center rounded-[var(--radius-control)] text-[14px] font-medium transition-all duration-150 cursor-pointer select-none group overflow-hidden active:scale-[0.985]',
               activeTab === item.id
-                ? 'bg-zinc-800 text-zinc-50 dark:bg-zinc-700/80 dark:text-zinc-100 shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100/90 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-zinc-800/50'
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
+                : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]'
             ]"
             @click="$emit('update:activeTab', item.id)"
           >
-            <div class="w-12 h-11 flex items-center justify-center shrink-0">
+            <span
+              v-if="activeTab === item.id && !isCollapsedState"
+              class="absolute left-0 top-2.5 bottom-2.5 w-[3.5px] rounded-r-full bg-[var(--accent)] transition-all duration-200"
+            />
+            <div class="w-11 h-[42px] flex items-center justify-center shrink-0">
               <Icon
                 :name="item.icon"
-                :custom-class="[
-                  'w-5 h-5 shrink-0 transition-transform duration-150',
-                  activeTab === item.id ? '' : 'group-hover:scale-105'
-                ]"
+                customClass="w-[19px] h-[19px] shrink-0 transition-transform duration-150 group-hover:scale-105"
               />
             </div>
             <span
               v-if="!isCollapsedState"
-              class="ml-1.5 truncate whitespace-nowrap overflow-hidden select-none"
+              class="ml-1 truncate whitespace-nowrap overflow-hidden select-none"
             >
               {{ item.label }}
             </span>
@@ -93,27 +90,33 @@
       </div>
     </nav>
 
-    <!-- Bottom User Area (No gray background, no top divider, fixed avatar position) -->
-    <div class="p-3.5 overflow-hidden">
-      <div
-        class="w-full h-12 flex items-center rounded-xl cursor-pointer hover:bg-zinc-100/70 dark:hover:bg-zinc-800/50 transition-colors select-none overflow-hidden group"
+    <!-- Bottom User Area -->
+    <div class="p-3 border-t border-[var(--border-hairline)] overflow-hidden shrink-0">
+      <button
+        type="button"
+        class="w-full h-[52px] px-1 flex items-center text-left rounded-[var(--radius-panel)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-all duration-150 active:scale-[0.985] select-none overflow-hidden group"
         :title="isLoggedIn ? '已登录 · 点击可切换账号或重新认证' : '登录教务在线'"
         @click="openLoginModal()"
       >
-        <div class="w-12 h-12 flex items-center justify-center shrink-0">
-          <div class="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-sm flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+        <div class="w-10 h-10 flex items-center justify-center shrink-0">
+          <div
+            class="w-9 h-9 rounded-full font-semibold text-sm flex items-center justify-center shrink-0 transition-colors"
+            :class="isLoggedIn
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]'
+              : 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border border-[var(--border-hairline)]'"
+          >
             {{ isLoggedIn && userProfile.realName ? userProfile.realName.slice(0, 1) : '?' }}
           </div>
         </div>
-        <div v-if="!isCollapsedState" class="ml-1.5 min-w-0 flex-1 leading-tight whitespace-nowrap overflow-hidden">
-          <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+        <div v-if="!isCollapsedState" class="ml-2 min-w-0 flex-1 leading-tight whitespace-nowrap overflow-hidden">
+          <div class="text-sm font-semibold text-[var(--ink-primary)] truncate">
             {{ isLoggedIn ? (userProfile.realName || '已登录') : '未登录' }}
           </div>
-          <div class="text-xs text-zinc-400 dark:text-zinc-400 truncate mt-0.5">
+          <div class="text-xs text-[var(--ink-muted)] num-tabular truncate mt-0.5">
             {{ isLoggedIn ? (userProfile.studentNumber || studentNumber) : '点击登录教务' }}
           </div>
         </div>
-      </div>
+      </button>
     </div>
   </aside>
 </template>
@@ -171,22 +174,22 @@ const isCollapsedState = computed(() => {
 
 const navGroups = [
   {
-    title: '教务核心',
+    title: '日常查询',
     items: [
       { id: 'dashboard', label: '概览', icon: 'dashboard' },
       { id: 'timetable', label: '智能课程表', icon: 'timetable' },
-      { id: 'score', label: '成绩与GPA分析', icon: 'score' },
-      { id: 'evaluation', label: '教学评价助手', icon: 'course' },
       { id: 'exam', label: '考试日程与倒计时', icon: 'exam' }
     ]
   },
   {
-    title: '培养与资源',
+    title: '学业与工具',
     items: [
+      { id: 'score', label: '成绩与GPA分析', icon: 'score' },
       { id: 'program', label: '培养方案与学分', icon: 'program' },
-      { id: 'classroom', label: '空教室与自习', icon: 'classroom' },
       { id: 'course', label: '我的课程名录', icon: 'course' },
-      { id: 'resources', label: '资料查找', icon: 'notice' }
+      { id: 'classroom', label: '空教室与自习', icon: 'classroom' },
+      { id: 'evaluation', label: '教学评价助手', icon: 'evaluation' },
+      { id: 'resources', label: '资料查找', icon: 'resources' }
     ]
   },
   {

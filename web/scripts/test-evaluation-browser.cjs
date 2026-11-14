@@ -198,10 +198,15 @@ async function runScenario({ failSubmit = false } = {}) {
   await page.getByText('2024级', { exact: true }).waitFor();
   assert.equal(await page.getByText('2024级 级', { exact: true }).count(), 0);
   await page.emulateMedia({ colorScheme: 'dark' });
-  // 顶栏已移除主题开关：跟随系统模式遇系统深色应自动生效
-  assert.equal(await page.getByRole('button', { name: '切换浅色模式', exact: true }).count(), 0);
+  // 跟随系统模式遇系统深色应自动生效，顶栏快捷主题开关应同步展示并可快速切换
   await page.waitForFunction(() => document.documentElement.classList.contains('dark'));
-  // 主题切换改由设置页「外观与个性化设置」承担
+  await page.getByRole('button', { name: '切换浅色模式', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: '切换浅色模式', exact: true }).count(), 1);
+  await page.getByRole('button', { name: '切换浅色模式', exact: true }).click();
+  assert.equal(await page.locator('html').evaluate(element => element.classList.contains('dark')), false);
+  await page.getByRole('button', { name: '切换深色模式', exact: true }).click();
+  assert.equal(await page.locator('html').evaluate(element => element.classList.contains('dark')), true);
+  // 设置页「外观与个性化设置」同步生效
   await page.getByRole('button', { name: '设置与系统状态', exact: true }).click();
   await page.getByText('外观与个性化设置', { exact: true }).waitFor();
   await page.getByRole('button', { name: '浅色', exact: true }).click();
@@ -247,7 +252,7 @@ async function runScenario({ failSubmit = false } = {}) {
   await page.setViewportSize({ width: 1440, height: 1050 });
 
   assert.match(await page.locator('main').innerText(), /158\.5/);
-  for (const [label, heading] of [['考试日程与倒计时', '全部考试日程列表'], ['学籍档案与隐私', '学籍详细档案'], ['空教室与自习', '空教室与自习查询'], ['教学公告与校历', '教学运行公告']]) {
+  for (const [label, heading] of [['考试日程与倒计时', '全部考试日程列表'], ['学籍档案与隐私', '学籍详细档案'], ['空教室与自习', '教室占用矩阵'], ['教学公告与校历', '教学运行公告']]) {
     await page.getByRole('button', { name: label, exact: true }).click();
     await page.getByText(heading, { exact: true }).waitFor();
     assert.doesNotMatch(await page.locator('main').innerText(), /[a-zA-Z][a-zA-Z/]*\.(?:jsdo|do)/);
@@ -316,7 +321,7 @@ async function runScenario({ failSubmit = false } = {}) {
     checks: [
       '评教列表解析通过',
       '资料标题搜索、分类、附件链接、空结果与分页通过',
-      '顶栏不再显示主题开关，设置页主题切换、跟随系统变化与实际配色切换通过',
+      '顶栏快捷主题开关、设置页主题切换、跟随系统变化与实际配色切换通过',
       '配置预览无 POST 通过',
       '提交前重新读取隐藏令牌通过',
       '选择的评分和中文评语按 GBK 表单提交通过',

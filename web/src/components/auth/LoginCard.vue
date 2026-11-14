@@ -1,36 +1,36 @@
 <template>
-  <div :class="[embedded ? '' : 'p-6 rounded-2xl bg-white dark:bg-[#1c1e24] border border-zinc-200/80 dark:border-zinc-800 shadow-xl']">
-    <div class="mb-5 text-center">
-      <div class="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-zinc-800 text-white dark:bg-zinc-700 dark:text-zinc-100 mb-3 font-bold text-base shadow-sm">
-        JW
+  <div :class="[embedded ? '' : 'p-7 sm:p-8 rounded-[var(--radius-card)] bg-[var(--bg-surface)] border border-[var(--border-hairline)] shadow-[var(--shadow-float)]']">
+    <div class="mb-6 text-center">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl overflow-hidden border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-1 mb-3.5 mx-auto">
+        <img :src="logoUrl" alt="HRBUST" class="w-full h-full object-cover rounded-xl" />
       </div>
-      <h2 class="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">哈理工教务在线登录</h2>
-      <p class="text-xs text-zinc-500 mt-1">连接 http://jwzx.hrbust.edu.cn/academic · 真实账号数据直达</p>
+      <h2 class="text-xl font-semibold text-[var(--ink-primary)] tracking-tight">哈理工教务在线登录</h2>
+      <p class="text-[13px] text-[var(--ink-muted)] mt-1.5">连接 http://jwzx.hrbust.edu.cn/academic · 真实账号数据直达</p>
     </div>
 
     <!-- Current Session Notice if already logged in -->
     <div
       v-if="isLoggedIn"
-      class="mb-4 p-3 rounded-xl border border-zinc-200 dark:border-zinc-750 bg-zinc-50/70 dark:bg-zinc-800/40 text-xs flex items-center justify-between"
+      class="mb-5 p-3.5 rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[13px] flex items-center justify-between gap-2"
     >
-      <div class="flex items-center gap-2 min-w-0">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-        <span class="truncate font-medium text-zinc-800 dark:text-zinc-200">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <span class="w-2 h-2 rounded-full bg-[var(--sem-success)] shrink-0" />
+        <span class="truncate font-medium text-[var(--ink-primary)] num-tabular">
           当前用户：{{ userProfile.realName || studentNumber }} ({{ studentNumber }})
         </span>
       </div>
-      <span class="text-[11px] text-zinc-400 shrink-0">重新认证或换号</span>
+      <span class="text-xs text-[var(--ink-muted)] shrink-0">重新认证或换号</span>
     </div>
 
     <!-- Session Expired Notice -->
     <div
       v-if="showLoginPageExpiredHint && !isLoggedIn"
-      class="mb-4 p-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5"
+      class="mb-5 p-3.5 rounded-[var(--radius-panel)] border border-[var(--sem-warning-border)] bg-[var(--sem-warning-soft)] text-[var(--ink-primary)] text-[13px] flex items-start gap-2.5"
     >
-      <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-1" />
+      <span class="w-2 h-2 rounded-full bg-[var(--sem-warning)] shrink-0 mt-1.5" />
       <div class="min-w-0">
         <div class="font-semibold">登录状态已失效</div>
-        <div class="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+        <div class="text-xs text-[var(--sem-warning)] mt-0.5 leading-relaxed">
           本地缓存数据仍可离线查看，重新登录后即可手动刷新。
         </div>
       </div>
@@ -39,20 +39,20 @@
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
-      class="mb-4 p-3 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2 animate-shake"
+      class="mb-5 p-3.5 rounded-[var(--radius-panel)] border border-[var(--sem-danger-border)] bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] text-[13px] flex items-center gap-2 animate-shake"
     >
       <Icon name="warning" customClass="w-4 h-4 shrink-0" />
       <span class="flex-1">{{ errorMessage }}</span>
     </div>
 
     <!-- Form -->
-    <form @submit.prevent="handleLoginSubmit" class="space-y-4">
+    <form @submit.prevent="handleLoginSubmit" class="space-y-4.5">
       <!-- Username -->
       <div>
-        <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">学号</label>
+        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">学号</label>
         <UiInput
           v-model="form.username"
-              @blur="prepareAccount"
+          @blur="prepareAccount"
           placeholder="请输入教务学号 (如 2401234567)"
           autocomplete="username"
           clearable
@@ -66,7 +66,7 @@
 
       <!-- Password -->
       <div>
-        <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">密码</label>
+        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">密码</label>
         <div class="relative">
           <UiInput
             v-model="form.password"
@@ -76,18 +76,16 @@
             :disabled="isLoggingIn"
           >
             <template #prefix>
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
+              <Icon name="lock" customClass="w-4 h-4" />
             </template>
             <template #suffix>
               <button
                 type="button"
-                class="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                class="p-1 text-[var(--ink-muted)] hover:text-[var(--ink-primary)] cursor-pointer transition-colors"
+                :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                 @click="showPassword = !showPassword"
               >
-                <Icon :name="showPassword ? 'eye-off' : 'eye'" customClass="w-3.5 h-3.5" />
+                <Icon :name="showPassword ? 'eye-off' : 'eye'" customClass="w-4 h-4" />
               </button>
             </template>
           </UiInput>
@@ -96,7 +94,7 @@
 
       <!-- Captcha -->
       <div>
-        <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">验证码</label>
+        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">验证码</label>
         <div class="flex items-center gap-3">
           <div class="flex-1">
             <UiInput
@@ -106,16 +104,14 @@
               :disabled="isLoggingIn"
             >
               <template #prefix>
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
+                <Icon name="shield" customClass="w-4 h-4" />
               </template>
             </UiInput>
           </div>
 
           <!-- Captcha image container -->
           <div
-            class="relative h-[38px] w-28 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center cursor-pointer select-none group"
+            class="relative h-[42px] w-30 bg-[var(--bg-subtle)] rounded-[var(--radius-control)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] overflow-hidden flex items-center justify-center cursor-pointer select-none transition-colors"
             title="点击更换验证码"
             @click="refreshCaptcha"
           >
@@ -130,13 +126,13 @@
             />
             <div
               v-if="captchaLoading"
-              class="absolute inset-0 flex items-center justify-center bg-zinc-900/10 dark:bg-zinc-100/10"
+              class="absolute inset-0 flex items-center justify-center bg-[var(--bg-backdrop)]"
             >
-              <Icon name="refresh" customClass="w-4 h-4 animate-spin text-zinc-600 dark:text-zinc-300" />
+              <Icon name="refresh" customClass="w-4 h-4 animate-spin text-[var(--ink-primary)]" />
             </div>
             <div
               v-if="captchaError"
-              class="text-[11px] text-rose-500 font-medium px-1 text-center"
+              class="text-xs text-[var(--sem-danger)] font-medium px-1 text-center"
             >
               加载失败点击重试
             </div>
@@ -145,19 +141,19 @@
       </div>
 
       <!-- Remember & Network info -->
-      <div class="flex items-center justify-between text-xs pt-1">
+      <div class="flex items-center justify-between text-[13px] pt-1">
         <label
-          class="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 cursor-pointer select-none"
+          class="flex items-center gap-2 text-[var(--ink-secondary)] cursor-pointer select-none"
           title="密码混淆后仅保存在本机，下次登录自动填入"
         >
           <input
             type="checkbox"
             v-model="rememberMe"
-            class="rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 focus:ring-0 cursor-pointer"
+            class="w-4 h-4 rounded border-[var(--border-strong)] accent-[var(--accent)] cursor-pointer"
           />
           <span>记住密码</span>
         </label>
-        <span class="text-[11px] text-zinc-400">校园网 / VPN 环境直连</span>
+        <span class="text-xs text-[var(--ink-muted)]">校园网 / VPN 环境直连</span>
       </div>
 
       <!-- Submit button -->
@@ -166,6 +162,7 @@
           type="submit"
           variant="primary"
           block
+          size="lg"
           :loading="isLoggingIn"
           :disabled="!canSubmit"
         >
@@ -175,7 +172,7 @@
     </form>
 
     <!-- Footer Security Notice -->
-    <div class="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800/80 text-[11px] text-zinc-400 text-center leading-relaxed">
+    <div class="mt-6 pt-4 border-t border-[var(--border-hairline)] text-xs text-[var(--ink-muted)] text-center leading-relaxed">
       登录信息仅通过本地代理发送至哈尔滨理工大学教务系统，会话 Cookie 仅存储于当前浏览器中，无模拟假数据，无云端中转。
     </div>
   </div>
@@ -186,6 +183,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import Icon from '@/components/icons/Icon.vue';
+import logoUrl from '@/assets/HRBUST.png';
 import { useSession } from '@/composables/useSession.js';
 import { academicApi } from '@/services/academic/api.js';
 import { readSavedCredential, clearCredential } from '@/services/savedCredential.js';

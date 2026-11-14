@@ -2,21 +2,21 @@
   <svg
     :class="['inline-block shrink-0 fill-none stroke-current', customClass]"
     :viewBox="viewBox"
-    stroke-width="1.8"
+    stroke-width="1.95"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
   >
     <!-- Navigation Icons -->
     <g v-if="name === 'dashboard'">
-      <rect x="3" y="3" width="7" height="9" rx="1.5" />
-      <rect x="14" y="3" width="7" height="5" rx="1.5" />
-      <rect x="14" y="12" width="7" height="9" rx="1.5" />
-      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      <rect x="3" y="3" width="7" height="9" rx="2.5" />
+      <rect x="14" y="3" width="7" height="5" rx="2.2" />
+      <rect x="14" y="12" width="7" height="9" rx="2.5" />
+      <rect x="3" y="16" width="7" height="5" rx="2.2" />
     </g>
 
     <g v-else-if="name === 'timetable'">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <rect x="3" y="4" width="18" height="18" rx="3.5" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
@@ -25,12 +25,12 @@
 
     <g v-else-if="name === 'score'">
       <path d="M18 20V10M12 20V4M6 20v-6" />
-      <circle cx="12" cy="4" r="1" fill="currentColor" />
+      <circle cx="12" cy="4" r="1.2" fill="currentColor" />
     </g>
 
     <g v-else-if="name === 'exam'">
-      <path d="M9 11l3 3L22 4" />
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      <path d="m9 11 3 3L22 4" />
+      <path d="M21 12v6.5a3.5 3.5 0 0 1-3.5 3.5h-11A3.5 3.5 0 0 1 3 18.5v-12A3.5 3.5 0 0 1 6.5 3H16" />
     </g>
 
     <g v-else-if="name === 'program'">
@@ -39,7 +39,7 @@
     </g>
 
     <g v-else-if="name === 'classroom'">
-      <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3" />
+      <path d="M3 21h18M5 21V7.5L13 3v18M19 21V11.5l-6-3" />
       <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01" />
     </g>
 
@@ -55,7 +55,31 @@
 
     <g v-else-if="name === 'course'">
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M6.5 2H19a1.5 1.5 0 0 1 1.5 1.5v17A1.5 1.5 0 0 1 19 22H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </g>
+
+    <g v-else-if="name === 'evaluation'">
+      <path d="M9 5H7.5A3 3 0 0 0 4.5 8v11a3 3 0 0 0 3 3h9a3 3 0 0 0 3-3V8a3 3 0 0 0-3-3H15" />
+      <rect x="9" y="3" width="6" height="4" rx="2" />
+      <path d="m9 14 2 2 4-4" />
+    </g>
+
+    <g v-else-if="name === 'resources'">
+      <path d="M4.5 20h15a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-7.6a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.76 3H4.5a2.5 2.5 0 0 0-2.5 2.5V17.5A2.5 2.5 0 0 0 4.5 20Z" />
+      <path d="M8.5 13h7" />
+    </g>
+
+    <g v-else-if="name === 'external-link'">
+      <path d="M15 3h6v6" />
+      <path d="M10 14 21 3" />
+      <path d="M18 13v5.5a3 3 0 0 1-3 3H5.5a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3H11" />
+    </g>
+
+    <g v-else-if="name === 'file-text'">
+      <path d="M14 2H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V8Z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="13" y2="17" />
     </g>
 
     <g v-else-if="name === 'settings'">
@@ -143,7 +167,7 @@
     </g>
 
     <g v-else-if="name === 'calendar'">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <rect x="3" y="4" width="18" height="18" rx="3.5" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
@@ -202,7 +226,7 @@
     </g>
 
     <g v-else-if="name === 'lock'">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <rect x="3" y="11" width="18" height="11" rx="3" ry="3" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </g>
 
@@ -211,7 +235,7 @@
     </g>
 
     <g v-else-if="name === 'mail'">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <rect x="2" y="4" width="20" height="16" rx="3.5" />
       <path d="m22 6-10 7L2 6" />
     </g>
 
@@ -230,7 +254,7 @@
       <polyline points="22 4 12 14.01 9 11.01" />
     </g>
 
-    <g v-else-if="name === 'alert-triangle'">
+    <g v-else-if="name === 'alert-triangle' || name === 'warning'">
       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -242,13 +266,13 @@
     </g>
 
     <g v-else-if="name === 'collapse'">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <rect x="3" y="3" width="18" height="18" rx="3.5" />
       <path d="M9 3v18" />
       <path d="m14 9-3 3 3 3" />
     </g>
 
     <g v-else-if="name === 'expand'">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <rect x="3" y="3" width="18" height="18" rx="3.5" />
       <path d="M9 3v18" />
       <path d="m12 9 3 3-3 3" />
     </g>

@@ -7,37 +7,37 @@
       aria-haspopup="listbox"
       :aria-expanded="open"
       :class="[
-        'w-full flex items-center justify-between gap-1.5 border transition-all duration-150 outline-none cursor-pointer select-none',
+        'w-full flex items-center justify-between gap-1.5 border transition-colors duration-150 outline-none cursor-pointer select-none',
         sizeClass.trigger,
         open ? openClass : idleClass,
         disabled ? 'opacity-50 cursor-not-allowed' : ''
       ]"
       @click="togglePanel"
     >
-      <span class="truncate" :class="selectedLabel ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-500'">
+      <span class="truncate" :class="selectedLabel ? 'text-[var(--ink-primary)]' : 'text-[var(--ink-muted)]'">
         {{ selectedLabel || placeholder }}
       </span>
       <Icon
         name="chevron-down"
-        customClass="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 transition-transform duration-150"
+        customClass="w-3.5 h-3.5 text-[var(--ink-muted)] transition-transform duration-150 shrink-0"
         :class="open ? 'rotate-180' : ''"
       />
     </button>
 
     <Transition
-      enter-active-class="transition duration-100 ease-out"
-      enter-from-class="opacity-0 -translate-y-1"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition duration-75 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-1"
+      enter-active-class="transition duration-160 ease-out"
+      enter-from-class="opacity-0 -translate-y-1 scale-95"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition duration-110 ease-in"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 -translate-y-1 scale-95"
     >
       <div
         v-if="open"
         role="listbox"
-        class="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full w-max max-w-[18rem] overflow-hidden rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-[#1c1e24] shadow-lg shadow-zinc-900/10 dark:shadow-black/50"
+        class="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full w-max max-w-[18rem] overflow-hidden rounded-[var(--radius-panel)] border border-[var(--border-strong)] bg-[var(--bg-surface)] shadow-[var(--shadow-float)]"
       >
-        <UiScrollArea viewport-class="p-1 max-h-64">
+        <UiScrollArea viewport-class="p-1.5 max-h-64">
           <button
             v-for="(item, idx) in items"
             :key="String(item.value)"
@@ -47,12 +47,13 @@
             tabindex="-1"
             :aria-selected="item.value === modelValue"
             :class="[
-              'w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left cursor-pointer transition-colors duration-100',
+              'w-full flex items-center justify-between gap-2 rounded-[var(--radius-badge)] px-2.5 py-2 text-left cursor-pointer transition-colors duration-100',
               sizeClass.option,
-              highlightIndex === idx
-                ? 'bg-zinc-100 dark:bg-zinc-800/70 text-zinc-900 dark:text-zinc-100'
-                : 'text-zinc-600 dark:text-zinc-300',
-              item.value === modelValue ? 'font-semibold' : ''
+              item.value === modelValue
+                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
+                : highlightIndex === idx
+                  ? 'bg-[var(--bg-hover)] text-[var(--ink-primary)]'
+                  : 'text-[var(--ink-secondary)]'
             ]"
             @mouseenter="highlightIndex = idx"
             @click="choose(item)"
@@ -61,11 +62,11 @@
             <Icon
               v-if="item.value === modelValue"
               name="check"
-              customClass="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400"
+              customClass="w-3.5 h-3.5 text-[var(--accent)] shrink-0"
             />
           </button>
 
-          <div v-if="items.length === 0" class="px-2.5 py-2 text-xs text-zinc-400 dark:text-zinc-500">
+          <div v-if="items.length === 0" class="px-2.5 py-2 text-[13px] text-[var(--ink-muted)]">
             暂无可选项
           </div>
         </UiScrollArea>
@@ -118,23 +119,21 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change']);
 
-// 尺寸变体：sm 用于紧凑筛选条，lg 与页面原生输入框等高（高 50px）
+// 尺寸变体：sm 用于紧凑筛选条，lg 与页面输入框等高
 const SIZE_CLASS = {
-  sm: { trigger: 'text-xs py-2 pl-3 pr-2.5 rounded-lg', option: 'text-xs' },
-  md: { trigger: 'text-sm py-2.5 pl-3.5 pr-3 rounded-lg', option: 'text-sm' },
-  lg: { trigger: 'text-base py-3 pl-3.5 pr-3 rounded-xl', option: 'text-sm' }
+  sm: { trigger: 'text-[13px] py-1.5 pl-3.5 pr-3 min-h-[36px] rounded-[var(--radius-control)]', option: 'text-[13px]' },
+  md: { trigger: 'text-sm py-2.5 pl-3.5 pr-3 min-h-[42px] rounded-[var(--radius-control)]', option: 'text-sm' },
+  lg: { trigger: 'text-sm py-2.5 pl-3.5 pr-3 min-h-[44px] rounded-[var(--radius-control)]', option: 'text-sm' }
 };
 
 const sizeClass = computed(() => SIZE_CLASS[props.size] || SIZE_CLASS.md);
 const idleClass = computed(() =>
   props.plain
-    ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-    : 'bg-zinc-50/60 dark:bg-[#1f2127] border-zinc-200 dark:border-zinc-700/60 hover:border-zinc-300 dark:hover:border-zinc-600'
+    ? 'bg-[var(--bg-surface)] border-[var(--border-hairline)] hover:border-[var(--border-strong)]'
+    : 'bg-[var(--bg-subtle)] border-[var(--border-hairline)] hover:border-[var(--border-strong)]'
 );
 const openClass = computed(() =>
-  props.plain
-    ? 'bg-white dark:bg-zinc-900 border-zinc-400 dark:border-zinc-600 ring-2 ring-zinc-400/10 dark:ring-zinc-600/20'
-    : 'bg-white dark:bg-[#1f2127] border-zinc-400 dark:border-zinc-600 ring-2 ring-zinc-400/10 dark:ring-zinc-600/20'
+  'bg-[var(--bg-surface)] border-[var(--accent)] ring-2 ring-[var(--accent-soft)]'
 );
 
 const rootRef = ref(null);

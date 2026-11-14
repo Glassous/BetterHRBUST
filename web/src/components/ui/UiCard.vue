@@ -1,30 +1,36 @@
 <template>
   <div
     :class="[
-      'rounded-xl border transition-all duration-150',
-      'bg-white/95 dark:bg-[#1c1e24] border-zinc-200/80 dark:border-zinc-800/70 shadow-[0_1px_3px_rgba(0,0,0,0.03)]',
-      hoverable ? 'hover:border-zinc-300 dark:hover:border-zinc-700/80 hover:shadow-md' : '',
+      'rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)]',
+      hoverable
+        ? 'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--border-strong)]'
+        : 'transition-colors duration-200',
       customClass
     ]"
   >
     <div
-      v-if="$slots.header || title"
-      class="px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800/70 flex items-center justify-between"
+      v-if="$slots.header || title || $slots['header-action']"
+      class="px-5 sm:px-6 py-4 border-b border-[var(--border-hairline)] flex items-center justify-between gap-3"
     >
       <slot name="header">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
           <slot name="title-prefix" />
-          <h3 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">{{ title }}</h3>
+          <div v-if="title" class="min-w-0">
+            <h3 class="text-base font-semibold text-[var(--ink-primary)] tracking-tight truncate">{{ title }}</h3>
+            <p v-if="subtitle" class="text-[13px] text-[var(--ink-muted)] mt-0.5 truncate">{{ subtitle }}</p>
+          </div>
         </div>
-        <slot name="header-action" />
+        <div class="shrink-0 flex items-center gap-2">
+          <slot name="header-action" />
+        </div>
       </slot>
     </div>
-    <div :class="['p-5', bodyClass]">
+    <div :class="['p-5 sm:p-6', bodyClass]">
       <slot />
     </div>
     <div
       v-if="$slots.footer"
-      class="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/50 dark:bg-zinc-800/30 rounded-b-xl"
+      class="px-5 sm:px-6 py-3.5 border-t border-[var(--border-hairline)] bg-[var(--bg-subtle)]/55 rounded-b-[var(--radius-card)]"
     >
       <slot name="footer" />
     </div>
@@ -34,6 +40,10 @@
 <script setup>
 defineProps({
   title: {
+    type: String,
+    default: ''
+  },
+  subtitle: {
     type: String,
     default: ''
   },

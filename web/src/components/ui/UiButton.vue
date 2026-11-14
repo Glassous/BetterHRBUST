@@ -3,7 +3,8 @@
     :type="type"
     :disabled="disabled || loading"
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 cursor-pointer select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
+      'inline-flex items-center justify-center font-medium rounded-[var(--radius-control)] transition-all duration-150 ease-out cursor-pointer select-none active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 whitespace-nowrap',
+      block ? 'w-full flex' : '',
       sizeClasses,
       variantClasses,
       customClass
@@ -12,7 +13,7 @@
   >
     <svg
       v-if="loading"
-      class="animate-spin -ml-0.5 mr-2 h-4 w-4 text-current"
+      class="animate-spin -ml-0.5 h-4 w-4 text-current shrink-0"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -42,6 +43,10 @@ const props = defineProps({
     type: String,
     default: 'button'
   },
+  block: {
+    type: Boolean,
+    default: false
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -60,24 +65,24 @@ defineEmits(['click']);
 
 const sizeClasses = computed(() => {
   switch (props.size) {
-    case 'sm': return 'text-xs px-2.5 py-1.5 gap-1.5';
-    case 'lg': return 'text-base px-5 py-2.5 gap-2.5';
-    default: return 'text-sm px-3.5 py-2 gap-2';
+    case 'sm': return 'text-[13px] px-3 py-1.5 gap-1.5 min-h-[34px]';
+    case 'lg': return 'text-[15px] font-semibold px-6 py-2.5 gap-2 min-h-[46px]';
+    default: return 'text-sm px-4 py-2 gap-2 min-h-[40px]';
   }
 });
 
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'secondary':
-      return 'bg-zinc-200/80 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 dark:text-zinc-200';
+      return 'bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--border-hairline)]';
     case 'outline':
-      return 'border border-zinc-300 dark:border-zinc-700/80 bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300';
+      return 'border border-[var(--border-strong)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)] text-[var(--ink-primary)]';
     case 'ghost':
-      return 'bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-zinc-700 dark:text-zinc-300';
+      return 'bg-transparent hover:bg-[var(--bg-hover)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]';
     case 'danger':
-      return 'bg-rose-600 hover:bg-rose-700 text-white dark:bg-rose-700 dark:hover:bg-rose-800 shadow-sm';
+      return 'bg-[var(--sem-danger)] hover:opacity-90 text-white';
     default: // primary
-      return 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-900 shadow-xs';
+      return 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-ink)]';
   }
 });
 </script>

@@ -2,7 +2,7 @@
   <!-- 仅在桌面端（Tauri shim 注入 window.desktopWindow）渲染；浏览器环境不出现 -->
   <div
     v-if="available"
-    class="tb-drag sticky top-0 z-[60] h-10 flex items-stretch justify-end pl-3 select-none bg-[#f6f7f9]/95 dark:bg-[#14161a]/95 backdrop-blur-md"
+    class="tb-drag sticky top-0 z-[60] h-10 flex items-stretch justify-end pl-3 select-none bg-[var(--bg-canvas)]/95 backdrop-blur-md border-b border-[var(--border-hairline)]"
     @mousedown="onBarMouseDown"
   >
     <!-- 左侧留空：仅作为可拖拽区域（双击可切换最大化） -->
@@ -16,11 +16,11 @@
     <div class="tb-nodrag flex items-stretch">
       <button type="button" title="最小化" aria-label="最小化" :class="btnClass" @click="win.minimize()">
         <svg
-          class="w-5 h-5"
+          class="w-[18px] h-[18px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.2"
+          stroke-width="1.95"
           stroke-linecap="round"
         >
           <line x1="5" y1="12" x2="19" y2="12" />
@@ -35,23 +35,23 @@
       >
         <svg
           v-if="!isMaximized"
-          class="w-5 h-5"
+          class="w-[18px] h-[18px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.2"
+          stroke-width="1.95"
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <rect x="6" y="6" width="12" height="12" rx="2.5" />
+          <rect x="6" y="6" width="12" height="12" rx="3" />
         </svg>
         <svg
           v-else
-          class="w-5 h-5"
+          class="w-[18px] h-[18px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.2"
+          stroke-width="1.95"
           stroke-linecap="round"
           stroke-linejoin="round"
         >
@@ -67,11 +67,11 @@
         @click="win.close()"
       >
         <svg
-          class="w-5 h-5"
+          class="w-[18px] h-[18px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          stroke-width="2.2"
+          stroke-width="1.95"
           stroke-linecap="round"
         >
           <line x1="6" y1="6" x2="18" y2="18" />
@@ -104,9 +104,9 @@ function onBarMouseDown(e) {
 // 悬停/按下只改底色 —— 不用 scale 缩放：收缩动画会让紧贴的边缘露出缝隙，
 // 也会让指针在按下瞬间落到按钮之外。
 const btnBase =
-  'shrink-0 w-10 h-full flex items-center justify-center cursor-pointer select-none transition-colors duration-150 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400';
-const btnClass = `${btnBase} hover:bg-zinc-900/6 active:bg-zinc-900/10 dark:hover:bg-[#23262d] dark:active:bg-[#2a2e36]`;
-const closeClass = `${btnBase} hover:bg-red-500/10 hover:text-red-600 active:bg-red-500/15 dark:hover:bg-red-500/15 dark:hover:text-red-400`;
+  'shrink-0 w-10 h-full flex items-center justify-center cursor-pointer select-none transition-colors duration-150 text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--border-strong)]';
+const btnClass = `${btnBase} hover:bg-[var(--bg-hover)] active:bg-[var(--bg-subtle)]`;
+const closeClass = `${btnBase} hover:bg-[var(--sem-danger-soft)] hover:text-[var(--sem-danger)] active:bg-[var(--sem-danger)]/20`;
 
 onMounted(async () => {
   if (!win) return;

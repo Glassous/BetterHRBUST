@@ -3,12 +3,12 @@
     :activeTab="activeTab"
     @update:activeTab="navigateTo($event)"
   >
-    <Transition name="fade" mode="out-in">
+    <div :key="activeTab" class="view-enter">
       <component
         :is="currentViewComponent"
         @navigate="navigateTo($event)"
       />
-    </Transition>
+    </div>
   </AppLayout>
 </template>
 
@@ -90,18 +90,3 @@ const views = {
 
 const currentViewComponent = computed(() => views[activeTab.value] || DashboardView);
 </script>
-
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(4px);
-}
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-</style>

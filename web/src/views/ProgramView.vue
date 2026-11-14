@@ -1,69 +1,62 @@
 <template>
   <div class="space-y-6">
-    <!-- Unauthenticated State -->
+    <!-- 未登录提示 -->
     <UiCard v-if="showLoginPrompt" class="py-12 text-center max-w-lg mx-auto">
-      <div class="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-3 text-zinc-600 dark:text-zinc-300">
+      <div class="w-13 h-13 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center mx-auto mb-3.5">
         <Icon name="program" customClass="w-6 h-6" />
       </div>
-      <h3 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">未登录教务系统</h3>
-      <p class="text-xs text-zinc-500 mb-4">请登录哈理工教务在线以核查您的培养方案与毕业学分完成度</p>
+      <h3 class="text-base font-semibold text-[var(--ink-primary)] mb-1.5">未登录教务系统</h3>
+      <p class="text-[13px] text-[var(--ink-secondary)] mb-5">请登录哈理工教务在线以核查您的培养方案与毕业学分完成度</p>
       <UiButton variant="primary" size="sm" @click="openLoginModal">立即登录</UiButton>
     </UiCard>
 
     <template v-else>
-      <!-- Top Action Bar（数据刷新统一由顶栏按钮完成） -->
-      <div class="text-xs text-zinc-500">
-        基于教务培养方案 与已修成绩单动态核对
-        <span class="ml-2 text-zinc-400">上次同步：{{ lastSyncText }}</span>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[13px] text-[var(--ink-secondary)]">
+        <span>基于教务培养方案与已修成绩单动态核对 · {{ earnedCreditsNote }}</span>
+        <span class="text-[var(--ink-muted)] num-tabular shrink-0">上次同步：{{ lastSyncText }}</span>
       </div>
 
-      <div class="text-[11px] text-zinc-400 dark:text-zinc-500 leading-relaxed">
-        {{ earnedCreditsNote }}
-      </div>
-
-      <!-- Overall Graduation Progress Card -->
+      <!-- 总学分完成度概览 -->
       <UiCard>
         <div class="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div class="text-xs text-zinc-500 dark:text-zinc-400 font-medium">毕业方案总学分达成进度</div>
-            <div class="text-3xl font-extrabold text-zinc-900 dark:text-zinc-100 mt-1">
-              {{ creditsProgress.earnedTotal }} <span class="text-base font-normal text-zinc-400">/ {{ creditsProgress.requiredTotal || "待同步" }} 学分</span>
+          <div class="min-w-0">
+            <div class="text-[13px] text-[var(--ink-muted)] font-medium">毕业方案总学分达成进度</div>
+            <div class="text-[32px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
+              {{ creditsProgress.earnedTotal }} <span class="text-sm font-normal text-[var(--ink-muted)]">/ {{ creditsProgress.requiredTotal || '待同步' }} 学分</span>
             </div>
-            <div class="text-xs text-zinc-500 mt-1">
-              学生专业：<span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ userProfile.college }} · {{ userProfile.major }} ({{ userProfile.grade ? String(userProfile.grade).trim().replace(/(?:\s*级)+$/, '') + '级' : '—' }})</span>
+            <div class="text-[13px] text-[var(--ink-secondary)] mt-2 break-words">
+              学生专业：<strong class="font-medium text-[var(--ink-primary)]">{{ userProfile.college || '—' }} · {{ userProfile.major || '—' }} ({{ gradeLabel }})</strong>
             </div>
-            <div class="text-[11px] text-zinc-400 mt-1">{{ earnedCreditsNote }}</div>
           </div>
 
-          <div class="flex items-center gap-3">
-            <div class="text-right">
-              <div class="text-2xl font-black text-zinc-900 dark:text-zinc-100">{{ creditsProgress.completionPercent }}%</div>
-              <div class="text-[11px] text-zinc-400">总学分达成率</div>
-            </div>
+          <div class="text-left sm:text-right shrink-0">
+            <div class="text-[28px] leading-tight font-bold text-[var(--accent)] num-tabular">{{ creditsProgress.completionPercent }}%</div>
+            <div class="text-[13px] text-[var(--ink-muted)] mt-1">总学分达成率</div>
           </div>
         </div>
 
-        <!-- Main Progress Bar -->
-        <div class="w-full h-3 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden mt-5">
+        <!-- 总进度条 -->
+        <div class="w-full h-3 rounded-full bg-[var(--bg-subtle)] overflow-hidden mt-5">
           <div
-            class="h-full rounded-full bg-zinc-900 dark:bg-zinc-100 transition-all duration-500"
+            class="h-full rounded-full transition-[width] duration-500 ease-out"
+            :class="creditsProgress.completionPercent >= 100 ? 'bg-[var(--sem-success)]' : 'bg-[var(--accent)]'"
             :style="{ width: `${creditsProgress.completionPercent}%` }"
           />
         </div>
       </UiCard>
 
-      <!-- Loading skeleton -->
-      <div v-if="syncing && categories.length === 0" class="p-16 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#111316] text-center text-xs text-zinc-400">
-        <Icon name="refresh" customClass="w-6 h-6 animate-spin mx-auto mb-2.5 text-zinc-500" />
+      <!-- 加载或空态 -->
+      <div v-if="syncing && categories.length === 0" class="p-14 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-center text-[13px] text-[var(--ink-muted)]">
+        <Icon name="refresh" customClass="w-6 h-6 animate-spin mx-auto mb-2.5 text-[var(--accent)]" />
         正在拉取全套教学计划并计算课组完成度...
       </div>
 
-      <div v-else-if="categories.length === 0" class="p-16 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-[#111316] text-center text-xs text-zinc-400">
-        暂未获取到培养方案数据，请点击顶栏的刷新按钮手动同步。
+      <div v-else-if="categories.length === 0" class="p-14 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-center text-[13px] text-[var(--ink-muted)]">
+        暂未获取到培养方案数据，请点击顶栏「同步数据」手动拉取。
       </div>
 
-      <!-- Categories Breakdown Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- 课组达标明细 + 可展开组内课程列表 -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
         <UiCard
           v-for="cat in categories"
           :key="cat.name"
@@ -79,33 +72,75 @@
             </UiBadge>
           </template>
 
-          <div class="space-y-3">
-            <div class="flex justify-between items-baseline">
-              <span class="text-xs text-zinc-500">学分进度：</span>
-              <span class="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                {{ cat.earned }} / {{ cat.required }}
+          <div class="space-y-3.5">
+            <div class="flex justify-between items-baseline text-[13px]">
+              <span class="text-[var(--ink-muted)]">学分进度</span>
+              <span class="text-sm font-semibold text-[var(--ink-primary)] num-tabular">
+                {{ cat.earned }} / {{ cat.required }} 学分
               </span>
             </div>
 
-            <div class="w-full h-2 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+            <div class="w-full h-2.5 rounded-full bg-[var(--bg-subtle)] overflow-hidden">
               <div
                 :class="[
-                  'h-full rounded-full transition-all duration-300',
-                  cat.required > 0 && cat.earned >= cat.required ? 'bg-emerald-500' : 'bg-zinc-800 dark:bg-zinc-200'
+                  'h-full rounded-full transition-[width] duration-500 ease-out',
+                  cat.required > 0 && cat.earned >= cat.required ? 'bg-[var(--sem-success)]' : 'bg-[var(--accent)]'
                 ]"
                 :style="{ width: `${cat.required ? Math.min(100, Math.round((cat.earned / cat.required) * 100)) : (cat.earned > 0 ? 100 : 0)}%` }"
               />
             </div>
 
-            <div class="flex justify-between text-xs text-zinc-500 pt-1">
-              <span>要求修读：{{ cat.required }} 学分<span v-if="cat.electiveCandidates !== null"> · {{ cat.electiveCandidates > 0 ? cat.electiveCandidates + " 选 4" : "需选 4 门" }}</span></span>
-              <span :class="cat.earned >= cat.required ? 'text-emerald-600 font-semibold' : ''">
+            <div class="flex flex-wrap justify-between gap-2 text-[13px] text-[var(--ink-secondary)] pt-0.5 num-tabular">
+              <span>
+                要求修读：{{ cat.required }} 学分<span v-if="cat.electiveCandidates !== null"> · {{ cat.electiveCandidates > 0 ? cat.electiveCandidates + ' 选 4' : '需选 4 门' }}</span>
+              </span>
+              <span :class="cat.required > 0 && cat.earned >= cat.required ? 'text-[var(--sem-success)] font-medium' : ''">
                 已获通过：{{ cat.earned }} 学分
               </span>
             </div>
 
-            <div v-if="creditsProgress.requiredOnly && isElectiveCategory(cat.property)" class="text-[11px] text-zinc-400 leading-relaxed">
-              选修类课程学分不计入"已获得学分"，此处仅展示课组要求
+            <div v-if="creditsProgress.requiredOnly && isElectiveCategory(cat.property)" class="text-xs text-[var(--ink-muted)] leading-relaxed">
+              选修类课程学分不计入“已获得学分”，此处仅展示课组要求
+            </div>
+
+            <!-- 利用已解析的组内课程数据提供展开核查 -->
+            <div v-if="coursesForCategory(cat.name).length > 0" class="pt-2.5 border-t border-[var(--border-hairline)]">
+              <button
+                type="button"
+                class="w-full flex items-center justify-between py-1 text-[13px] font-medium text-[var(--accent)] hover:underline cursor-pointer select-none"
+                @click="toggleExpand(cat.name)"
+              >
+                <span>{{ expandedCategories.has(cat.name) ? '收起课组课程明细' : `查看课组内课程（${coursesForCategory(cat.name).length} 门）` }}</span>
+                <Icon
+                  name="chevron-down"
+                  customClass="w-4 h-4 transition-transform duration-200"
+                  :class="expandedCategories.has(cat.name) ? 'rotate-180' : ''"
+                />
+              </button>
+
+              <div v-if="expandedCategories.has(cat.name)" class="panel-expand mt-2.5 divide-y divide-[var(--border-hairline)] border-t border-[var(--border-hairline)] max-h-64 overflow-y-auto">
+                <div
+                  v-for="course in coursesForCategory(cat.name)"
+                  :key="(course.code || '') + course.name"
+                  class="py-2.5 flex items-center justify-between gap-2 text-[13px]"
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-medium text-[var(--ink-primary)] truncate">{{ course.name }}</div>
+                    <div class="text-xs text-[var(--ink-muted)] font-mono num-tabular truncate mt-0.5">
+                      {{ course.code || '无代码' }}<span v-if="course.property"> · {{ course.property }}</span>
+                    </div>
+                  </div>
+                  <div class="shrink-0 flex items-center gap-2.5 num-tabular">
+                    <span class="text-[var(--ink-secondary)]">{{ course.credit }} 学分</span>
+                    <UiBadge
+                      size="sm"
+                      :variant="isCoursePassed(course) ? 'success' : 'default'"
+                    >
+                      {{ isCoursePassed(course) ? '已通过' : '未修/未过' }}
+                    </UiBadge>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </UiCard>
@@ -115,7 +150,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiBadge from '@/components/ui/UiBadge.vue';
@@ -124,6 +159,7 @@ import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import {
   computeCreditsProgress,
+  dedupeScores,
   resolveProperty,
   EARNED_CREDITS_NOTE
 } from '@/services/academic/stats.js';
@@ -134,15 +170,57 @@ const { scores, plan, syncing, lastSyncText } = useAcademicData();
 const showLoginPrompt = computed(() => !isLoggedIn.value && !isSessionExpired.value);
 const earnedCreditsNote = EARNED_CREDITS_NOTE;
 
+const gradeLabel = computed(() => {
+  const g = userProfile.grade;
+  return g ? String(g).trim().replace(/(?:\s*级)+$/, '') + '级' : '—';
+});
+
 const creditsProgress = computed(() =>
   computeCreditsProgress(scores.value, plan.value?.groups || [], { planTotalCredits: plan.value?.totalRequiredCredits })
 );
 const categories = computed(() => creditsProgress.value.categories);
 
+const groupCoursesMap = computed(() => {
+  const map = new Map();
+  for (const g of plan.value?.groups || []) {
+    if (g?.name && Array.isArray(g.courses) && g.courses.length > 0) {
+      map.set(g.name, g.courses);
+    }
+  }
+  return map;
+});
+
+const passedKeys = computed(() => {
+  const codes = new Set();
+  const names = new Set();
+  for (const s of dedupeScores(scores.value || [])) {
+    if (!s.passed) continue;
+    if (s.courseId) codes.add(String(s.courseId).trim());
+    if (s.courseName) names.add(String(s.courseName).trim());
+  }
+  return { codes, names };
+});
+
+function coursesForCategory(name) {
+  return groupCoursesMap.value.get(name) || [];
+}
+
+function isCoursePassed(course) {
+  if (course.code && passedKeys.value.codes.has(String(course.code).trim())) return true;
+  if (course.name && passedKeys.value.names.has(String(course.name).trim())) return true;
+  return false;
+}
+
+const expandedCategories = ref(new Set());
+function toggleExpand(name) {
+  const next = new Set(expandedCategories.value);
+  if (next.has(name)) next.delete(name);
+  else next.add(name);
+  expandedCategories.value = next;
+}
+
 function isElectiveCategory(property) {
   const p = resolveProperty(property);
   return p === 'limited' || p === 'elective';
 }
-
-
 </script>
