@@ -287,23 +287,28 @@ async fn unreachable_upstream_aborts_connection() {
 #[tokio::test]
 async fn port_falls_back_when_occupied() {
     // 不直接用 PORT_BASE：开发者本机可能正运行桌面端（固定占用 1950），
-    // 那会让这条与"端口顺延逻辑"无关的用例误报。这里自己找一对连续空闲端口：
-    // 先占住 base，要求服务顺延到 base+1。
+    // 那会让这条与"端口顺延逻辑"无关的用例误报。
+    //
+    // 也不用 bind(0) 取系统临时端口：同一测试二进制里的用例并行执行，
+    // 其他用例的临时端口（Windows 49152+ / Linux 32768+）可能刚好抢走 base+1，
+    // 让"顺延到下一个端口"的断言偶发失败。这里在一段固定低端口区间内找一对
+    // 相邻空闲端口：先占住 base，要求服务顺延到 base+1。
     let (occupant, base) = {
-        let mut attempt = 0;
-        loop {
-            attempt += 1;
-            assert!(attempt < 100, "找不到可用的连续端口对");
-            let candidate = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
-            let port = candidate.local_addr().unwrap().port();
-            if port == u16::MAX {
+        let mut picked = None;
+        for base in 18_000u16..18_100 {
+            // Hyper-V / 保留端口区间会导致 bind 失败，跳过即可
+            let Ok(occupant) = std::net::TcpListener::bind(("127.0.0.1", base)) else {
                 continue;
-            }
-            // 探测下一个端口是否空闲（探测用的监听器立刻释放）
-            if std::net::TcpListener::bind(("127.0.0.1", port + 1)).is_ok() {
-                break (candidate, port);
-            }
+            };
+            // 探测用的监听器立刻释放，确保 base+1 空闲
+            let Ok(probe) = std::net::TcpListener::bind(("127.0.0.1", base + 1)) else {
+                continue;
+            };
+            drop(probe);
+            picked = Some((occupant, base));
+            break;
         }
+        picked.expect("找不到可用的连续端口对")
     };
     let config = ServerConfig {
         upstream: Upstream::parse("http://127.0.0.1:1"),
