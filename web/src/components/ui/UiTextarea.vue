@@ -1,6 +1,7 @@
 <template>
   <div class="relative w-full">
     <textarea
+      v-bind="$attrs"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
@@ -8,12 +9,12 @@
       :rows="rows"
       :maxlength="maxlength > 0 ? maxlength : undefined"
       :class="[
-        'w-full rounded-lg transition-all duration-150 outline-none resize-y leading-relaxed',
-        'bg-zinc-50/60 dark:bg-[#1f2127] border border-zinc-200 dark:border-zinc-700/60',
-        'text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500',
-        'focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-2 focus:ring-zinc-400/10 dark:focus:ring-zinc-600/20',
+        'w-full rounded-[var(--radius-control)] transition-all duration-150 outline-none resize-y leading-relaxed',
+        'bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] border border-[var(--border-hairline)]',
+        'text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]',
+        'focus:bg-[var(--bg-surface)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-3.5 py-2.5 text-sm',
+        size === 'sm' ? 'px-3.5 py-2 text-[13px]' : 'px-4 py-3 text-sm',
         customClass
       ]"
       @blur="$emit('blur', $event)"
@@ -21,7 +22,7 @@
     />
     <div
       v-if="$slots.hint"
-      class="mt-1.5 flex items-center justify-between gap-3 text-[11px] text-zinc-400 dark:text-zinc-500"
+      class="mt-2 flex items-center justify-between gap-3 text-[13px] text-[var(--ink-muted)]"
     >
       <slot name="hint" />
     </div>
@@ -29,6 +30,8 @@
 </template>
 
 <script setup>
+defineOptions({ inheritAttrs: false });
+
 defineProps({
   modelValue: {
     type: String,

@@ -1,35 +1,39 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition duration-250 ease-out"
+      enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
-      leave-active-class="transition duration-200 ease-in"
+      leave-active-class="transition duration-150 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end"
+        class="fixed inset-0 z-50 bg-[var(--bg-backdrop)] backdrop-blur-[2px] flex justify-end"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title || '详情抽屉'"
         @click.self="$emit('update:modelValue', false)"
       >
         <div
-          class="w-full max-w-md h-full bg-white dark:bg-[#1c1e24] border-l border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col"
+          class="drawer-panel-enter w-full max-w-md h-full bg-[var(--bg-surface)] border-l border-[var(--border-strong)] shadow-[var(--shadow-float)] flex flex-col"
         >
-          <div class="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-            <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">{{ title }}</h3>
+          <div class="px-5 py-4 border-b border-[var(--border-hairline)] flex items-center justify-between gap-3">
+            <h3 class="text-base font-semibold text-[var(--ink-primary)] tracking-tight truncate">{{ title }}</h3>
             <button
               type="button"
-              class="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+              aria-label="关闭抽屉"
+              class="w-8 h-8 rounded-[var(--radius-control)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors flex items-center justify-center shrink-0"
               @click="$emit('update:modelValue', false)"
             >
-              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              <Icon name="x" customClass="w-4 h-4" />
             </button>
           </div>
-          <div class="flex-1 p-5 overflow-y-auto">
+          <div class="flex-1 p-5 overflow-y-auto text-[var(--ink-primary)]">
             <slot />
           </div>
-          <div v-if="$slots.footer" class="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
+          <div v-if="$slots.footer" class="p-4 border-t border-[var(--border-hairline)] bg-[var(--bg-subtle)]/55">
             <slot name="footer" />
           </div>
         </div>
@@ -39,7 +43,10 @@
 </template>
 
 <script setup>
-defineProps({
+import { onBeforeUnmount, watch } from 'vue';
+import Icon from '@/components/icons/Icon.vue';
+
+const props = defineProps({
   modelValue: {
     type: Boolean,
     default: false
@@ -50,5 +57,33 @@ defineProps({
   }
 });
 
-defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue']);
+
+let lastFocused = null;
+function onKeydown(event) {
+  if (event.key === 'Escape' && props.modelValue) {
+    emit('update:modelValue', false);
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (visible) => {
+    if (typeof document === 'undefined') return;
+    if (visible) {
+      lastFocused = document.activeElement;
+      document.addEventListener('keydown', onKeydown);
+    } else {
+      document.removeEventListener('keydown', onKeydown);
+      if (lastFocused && typeof lastFocused.focus === 'function') {
+        lastFocused.focus();
+      }
+      lastFocused = null;
+    }
+  }
+);
+
+onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') document.removeEventListener('keydown', onKeydown);
+});
 </script>

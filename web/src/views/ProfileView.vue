@@ -2,21 +2,21 @@
   <div class="space-y-6">
     <!-- Unauthenticated State -->
     <UiCard v-if="!isLoggedIn" class="py-12 text-center max-w-lg mx-auto">
-      <div class="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mx-auto mb-3 text-zinc-600 dark:text-zinc-300">
+      <div class="w-13 h-13 rounded-2xl bg-[var(--bg-subtle)] border border-[var(--border-hairline)] flex items-center justify-center mx-auto mb-3.5 text-[var(--ink-secondary)]">
         <Icon name="profile" customClass="w-6 h-6" />
       </div>
-      <h3 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">未登录教务系统</h3>
-      <p class="text-xs text-zinc-500 mb-4">请登录哈理工教务在线以查询您的真实学籍档案与异动记录</p>
+      <h3 class="text-base font-semibold text-[var(--ink-primary)] mb-1">未登录教务系统</h3>
+      <p class="text-[13px] text-[var(--ink-muted)] mb-5">请登录哈理工教务在线以查询您的真实学籍档案与异动记录</p>
       <UiButton variant="primary" size="sm" @click="openLoginModal">立即登录</UiButton>
     </UiCard>
 
     <template v-else>
       <!-- Student Campus Card Style Profile -->
       <UiCard>
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div class="flex items-center gap-5">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+          <div class="flex items-center gap-4 sm:gap-5 min-w-0">
             <!-- Avatar / Photo -->
-            <div class="w-20 h-20 rounded-2xl bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-bold text-2xl shadow-md shrink-0 overflow-hidden">
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)] flex items-center justify-center font-semibold text-2xl shrink-0 overflow-hidden">
               <img
                 v-if="userProfile.photoUrl"
                 :src="userProfile.photoUrl"
@@ -25,22 +25,22 @@
               />
               <span v-else>{{ userProfile.realName ? userProfile.realName.slice(0, 1) : '学' }}</span>
             </div>
-            <div>
-              <div class="flex items-center gap-2.5">
-                <h2 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">{{ userProfile.realName || '哈理工同学' }}</h2>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="text-2xl font-semibold text-[var(--ink-primary)] tracking-tight">{{ userProfile.realName || '哈理工同学' }}</h2>
                 <UiBadge variant="success" dot size="sm">{{ userProfile.status || '在籍' }}</UiBadge>
               </div>
-              <div class="text-xs text-zinc-500 mt-1 space-x-3">
-                <span>学号: <span class="font-mono text-zinc-800 dark:text-zinc-200">{{ userProfile.studentNumber || studentNumber }}</span></span>
-                <span v-if="userProfile.internalId">教务内部 ID: <span class="font-mono text-zinc-800 dark:text-zinc-200">{{ userProfile.internalId }}</span></span>
+              <div class="text-[13px] text-[var(--ink-muted)] mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                <span>学号 <span class="font-mono num-tabular text-[var(--ink-primary)] font-medium">{{ userProfile.studentNumber || studentNumber }}</span></span>
+                <span v-if="userProfile.internalId">教务 ID <span class="font-mono num-tabular text-[var(--ink-primary)] font-medium">{{ userProfile.internalId }}</span></span>
               </div>
-              <div class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+              <div class="text-[13px] text-[var(--ink-secondary)] mt-1 truncate">
                 {{ userProfile.college || '未知学院' }} · {{ userProfile.major || '未知专业' }} <span v-if="userProfile.className">({{ userProfile.className }})</span>
               </div>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
             <!-- Sync Profile Button -->
             <UiButton
               variant="outline"
@@ -70,78 +70,78 @@
       </UiCard>
 
       <!-- Details Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
         <!-- Academic Status Info -->
         <UiCard title="学籍详细档案">
-          <div class="space-y-3 text-xs">
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">培养层次 / 学生类别</span>
-              <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ userProfile.studentType || '普通本科' }}</span>
+          <dl class="divide-y divide-[var(--border-hairline)] text-[13px] -my-1">
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)]">培养层次 / 学生类别</dt>
+              <dd class="font-medium text-[var(--ink-primary)] text-right">{{ userProfile.studentType || '普通本科' }}</dd>
             </div>
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">入学年级</span>
-              <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ userProfile.grade ? String(userProfile.grade).trim().replace(/(?:\s*级)+$/, '') + '级' : '—' }}</span>
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)]">入学年级</dt>
+              <dd class="font-medium num-tabular text-[var(--ink-primary)] text-right">{{ userProfile.grade ? String(userProfile.grade).trim().replace(/(?:\s*级)+$/, '') + '级' : '—' }}</dd>
             </div>
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">专业方向</span>
-              <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ userProfile.direction || '默认方向' }}</span>
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)]">专业方向</dt>
+              <dd class="font-medium text-[var(--ink-primary)] text-right">{{ userProfile.direction || '默认方向' }}</dd>
             </div>
-            <div class="flex justify-between py-1.5">
-              <span class="text-zinc-500">学籍状态</span>
-              <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ userProfile.status || '正常' }}</span>
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)]">学籍状态</dt>
+              <dd class="font-semibold text-[var(--sem-success)] text-right">{{ userProfile.status || '正常' }}</dd>
             </div>
-          </div>
+          </dl>
         </UiCard>
 
         <!-- Sensitive Privacy Fields -->
         <UiCard title="联系方式与敏感凭证 (隐私脱敏保护)">
-          <div class="space-y-3 text-xs">
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">证件号码</span>
-              <span class="font-mono text-zinc-900 dark:text-zinc-100">
+          <dl class="divide-y divide-[var(--border-hairline)] text-[13px] -my-1">
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)] shrink-0">证件号码</dt>
+              <dd class="font-mono num-tabular text-[var(--ink-primary)] text-right">
                 {{ formatIdCard(userProfile.idCard) }}
-              </span>
+              </dd>
             </div>
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">电子邮箱</span>
-              <span class="text-zinc-900 dark:text-zinc-100">
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)] shrink-0">电子邮箱</dt>
+              <dd class="text-[var(--ink-primary)] text-right truncate">
                 {{ formatEmail(userProfile.email) }}
-              </span>
+              </dd>
             </div>
-            <div class="flex justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <span class="text-zinc-500">联系电话</span>
-              <span class="font-mono text-zinc-900 dark:text-zinc-100">
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)] shrink-0">联系电话</dt>
+              <dd class="font-mono num-tabular text-[var(--ink-primary)] text-right">
                 {{ formatPhone(userProfile.phone) }}
-              </span>
+              </dd>
             </div>
-            <div class="flex justify-between py-1.5">
-              <span class="text-zinc-500">通讯地址</span>
-              <span class="text-zinc-900 dark:text-zinc-100 text-right max-w-xs truncate">
+            <div class="flex items-center justify-between gap-4 py-3">
+              <dt class="text-[var(--ink-muted)] shrink-0">通讯地址</dt>
+              <dd class="text-[var(--ink-primary)] text-right max-w-xs truncate">
                 {{ formatAddress(userProfile.address) }}
-              </span>
+              </dd>
             </div>
-          </div>
+          </dl>
         </UiCard>
       </div>
 
       <!-- Status Changes History (学籍异动记录) -->
       <UiCard title="学籍异动记录 (休学/复学/专业分流/降级)">
-        <div v-if="!userProfile.changes || userProfile.changes.length === 0" class="text-center py-6 text-xs text-zinc-400">
+        <div v-if="!userProfile.changes || userProfile.changes.length === 0" class="text-center py-8 text-[13px] text-[var(--ink-muted)]">
           教务系统未记载异动记录，学籍正常
         </div>
         <div v-else class="space-y-4">
           <div
             v-for="(ch, idx) in userProfile.changes"
             :key="idx"
-            class="flex items-start gap-4 text-xs"
+            class="flex items-start gap-3.5 text-[13px]"
           >
-            <div class="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 mt-1 shrink-0" />
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-zinc-900 dark:text-zinc-100">{{ ch.type }}</span>
-                <span class="text-zinc-400 font-mono text-[11px]">{{ ch.date }}</span>
+            <div class="w-2 h-2 rounded-full bg-[var(--accent)] mt-1.5 shrink-0" />
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="font-semibold text-[var(--ink-primary)] text-[14px]">{{ ch.type }}</span>
+                <span class="text-[var(--ink-muted)] font-mono num-tabular text-[13px]">{{ ch.date }}</span>
               </div>
-              <div class="text-zinc-600 dark:text-zinc-400 mt-0.5">
+              <div class="text-[var(--ink-secondary)] mt-0.5 leading-relaxed">
                 {{ ch.reason }} <span v-if="ch.remark">({{ ch.remark }})</span>
               </div>
             </div>

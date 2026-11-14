@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'inline-flex p-1 rounded-lg bg-zinc-100/90 dark:bg-[#1a1c22] border border-zinc-200/60 dark:border-zinc-800/60',
+      'inline-flex p-1 rounded-[var(--radius-control)] bg-[var(--bg-subtle)] border border-[var(--border-hairline)] overflow-x-auto max-w-full gap-0.5',
       customClass
     ]"
   >
@@ -10,14 +10,14 @@
       :key="tab.value"
       type="button"
       :class="[
-        'px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 cursor-pointer select-none flex items-center gap-1.5',
+        'px-3.5 py-1.5 text-[13px] font-medium rounded-[var(--radius-badge)] transition-all duration-150 ease-out cursor-pointer select-none active:scale-[0.97] flex items-center gap-1.5 whitespace-nowrap',
         modelValue === tab.value
-          ? 'bg-white dark:bg-zinc-700/80 text-zinc-900 dark:text-zinc-100 shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
-          : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+          ? 'bg-[var(--bg-surface)] text-[var(--ink-primary)] border border-[var(--border-hairline)] font-semibold'
+          : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] border border-transparent'
       ]"
       @click="$emit('update:modelValue', tab.value)"
     >
-      <span v-if="tab.badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-zinc-200 dark:bg-zinc-700">
+      <span v-if="tab.badge" class="px-1.5 py-0.5 rounded-[var(--radius-badge)] text-xs leading-none bg-[var(--bg-subtle)] text-[var(--ink-secondary)]">
         {{ tab.badge }}
       </span>
       {{ tab.label }}

@@ -54,7 +54,7 @@ const props = defineProps({
   },
   thumbClass: {
     type: String,
-    default: 'bg-zinc-400/70 hover:bg-zinc-500/90 dark:bg-zinc-500/60 dark:hover:bg-zinc-400/80'
+    default: 'bg-[var(--border-strong)]/80 hover:bg-[var(--ink-muted)]/85 transition-colors'
   }
 });
 

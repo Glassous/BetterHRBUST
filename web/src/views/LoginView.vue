@@ -1,17 +1,17 @@
 <template>
-  <div class="max-w-xl mx-auto py-4 sm:py-8">
-    <UiCard customClass="p-4 sm:p-8 shadow-sm">
+  <div class="max-w-lg mx-auto py-5 sm:py-10">
+    <UiCard customClass="p-6 sm:p-9">
       <div class="space-y-6">
         <!-- Brand Header -->
-        <div class="text-center space-y-3">
-          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full overflow-hidden shadow-md bg-zinc-100 dark:bg-zinc-800 ring-4 ring-zinc-200/60 dark:ring-zinc-700/60 mx-auto">
+        <div class="text-center space-y-3.5">
+          <div class="inline-flex items-center justify-center w-18 h-18 rounded-2xl overflow-hidden border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-1.5 mx-auto">
             <img
               :src="logoUrl"
               alt="HRBUST"
-              class="w-full h-full object-cover rounded-full"
+              class="w-full h-full object-cover rounded-xl"
             />
           </div>
-          <h1 class="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
+          <h1 class="text-2xl font-semibold text-[var(--ink-primary)] tracking-tight">
             哈尔滨理工大学 · 教务在线登录
           </h1>
         </div>
@@ -19,15 +19,15 @@
         <!-- Current Logged In Notice (Direct enter button removed, area preserved) -->
         <div
           v-if="isLoggedIn"
-          class="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-3"
+          class="p-4 rounded-[var(--radius-panel)] border border-[var(--sem-success-border)] bg-[var(--sem-success-soft)] text-[var(--ink-primary)] text-[13px] flex items-center gap-3"
         >
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+          <span class="w-2.5 h-2.5 rounded-full bg-[var(--sem-success)] shrink-0" />
           <div class="min-w-0">
-            <div class="font-bold text-sm">
+            <div class="font-semibold text-sm">
               {{ userProfile.realName || studentNumber }}
-              <span class="opacity-80 text-xs font-normal ml-1">({{ studentNumber }})</span>
+              <span class="text-[var(--ink-secondary)] text-[13px] font-normal font-mono num-tabular ml-1">({{ studentNumber }})</span>
             </div>
-            <div class="text-[12px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+            <div class="text-xs text-[var(--sem-success)] mt-0.5">
               当前已处于登录状态，在此可重新认证或切换学号
             </div>
           </div>
@@ -36,12 +36,12 @@
         <!-- Session Expired Notice -->
         <div
           v-if="showLoginPageExpiredHint && !isLoggedIn"
-          class="p-4 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-3"
+          class="p-4 rounded-[var(--radius-panel)] border border-[var(--sem-warning-border)] bg-[var(--sem-warning-soft)] text-[var(--ink-primary)] text-[13px] flex items-start gap-3"
         >
-          <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1" />
+          <span class="w-2.5 h-2.5 rounded-full bg-[var(--sem-warning)] shrink-0 mt-1" />
           <div class="min-w-0">
-            <div class="font-bold text-sm">登录状态已失效</div>
-            <div class="text-[12px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+            <div class="font-semibold text-sm">登录状态已失效</div>
+            <div class="text-xs text-[var(--sem-warning)] mt-0.5 leading-relaxed">
               教务会话已过期，本地缓存的课表 / 成绩 / 考试数据仍可离线查看；重新登录后即可手动刷新最新数据。
             </div>
           </div>
@@ -50,17 +50,17 @@
         <!-- Error Alert -->
         <div
           v-if="errorMessage"
-          class="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2.5 animate-shake"
+          class="p-3.5 rounded-[var(--radius-panel)] border border-[var(--sem-danger-border)] bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] text-[13px] flex items-center gap-2.5 animate-shake"
         >
           <Icon name="warning" customClass="w-4 h-4 shrink-0" />
           <span class="flex-1">{{ errorMessage }}</span>
         </div>
 
         <!-- Login Form -->
-        <form @submit.prevent="handleLoginSubmit" class="space-y-4">
+        <form @submit.prevent="handleLoginSubmit" class="space-y-4.5">
           <!-- Student Number -->
           <div>
-            <label class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label class="block text-[13px] font-semibold text-[var(--ink-secondary)] mb-1.5">
               教务学号
             </label>
             <UiInput
@@ -79,7 +79,7 @@
 
           <!-- Password -->
           <div>
-            <label class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label class="block text-[13px] font-semibold text-[var(--ink-secondary)] mb-1.5">
               教务密码
             </label>
             <div class="relative">
@@ -91,18 +91,16 @@
                 :disabled="isLoggingIn"
               >
                 <template #prefix>
-                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
+                  <Icon name="lock" customClass="w-4 h-4" />
                 </template>
                 <template #suffix>
                   <button
                     type="button"
-                    class="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    class="p-1 text-[var(--ink-muted)] hover:text-[var(--ink-primary)] cursor-pointer transition-colors"
+                    :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                     @click="showPassword = !showPassword"
                   >
-                    <Icon :name="showPassword ? 'eye-off' : 'eye'" customClass="w-3.5 h-3.5" />
+                    <Icon :name="showPassword ? 'eye-off' : 'eye'" customClass="w-4 h-4" />
                   </button>
                 </template>
               </UiInput>
@@ -111,7 +109,7 @@
 
           <!-- Captcha -->
           <div>
-            <label class="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+            <label class="block text-[13px] font-semibold text-[var(--ink-secondary)] mb-1.5">
               安全验证码
             </label>
             <div class="flex items-center gap-3">
@@ -123,16 +121,14 @@
                   :disabled="isLoggingIn"
                 >
                   <template #prefix>
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
+                    <Icon name="shield" customClass="w-4 h-4" />
                   </template>
                 </UiInput>
               </div>
 
               <!-- Captcha Image Button -->
               <div
-                class="relative h-[38px] w-28 bg-zinc-100 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center cursor-pointer select-none group"
+                class="relative h-[42px] w-30 bg-[var(--bg-subtle)] rounded-[var(--radius-control)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] overflow-hidden flex items-center justify-center cursor-pointer select-none transition-colors"
                 title="点击更换验证码"
                 @click="refreshCaptcha"
               >
@@ -147,13 +143,13 @@
                 />
                 <div
                   v-if="captchaLoading"
-                  class="absolute inset-0 flex items-center justify-center bg-zinc-900/10 dark:bg-zinc-100/10"
+                  class="absolute inset-0 flex items-center justify-center bg-[var(--bg-backdrop)]"
                 >
-                  <Icon name="refresh" customClass="w-4 h-4 animate-spin text-zinc-600 dark:text-zinc-300" />
+                  <Icon name="refresh" customClass="w-4 h-4 animate-spin text-[var(--ink-primary)]" />
                 </div>
                 <div
                   v-if="captchaError"
-                  class="text-[11px] text-rose-500 font-medium px-1 text-center"
+                  class="text-xs text-[var(--sem-danger)] font-medium px-1 text-center"
                 >
                   点击重试
                 </div>
@@ -162,15 +158,15 @@
           </div>
 
           <!-- Remember Password -->
-          <div class="flex items-center text-xs pt-1">
+          <div class="flex items-center text-[13px] pt-1">
             <label
-              class="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 cursor-pointer select-none"
+              class="flex items-center gap-2 text-[var(--ink-secondary)] cursor-pointer select-none"
               title="密码混淆后仅保存在本机，下次登录自动填入"
             >
               <input
                 type="checkbox"
                 v-model="rememberMe"
-                class="rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 focus:ring-0 cursor-pointer"
+                class="w-4 h-4 rounded border-[var(--border-strong)] accent-[var(--accent)] cursor-pointer"
               />
               <span>记住密码</span>
             </label>
