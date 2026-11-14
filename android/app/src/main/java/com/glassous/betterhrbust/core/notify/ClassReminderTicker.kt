@@ -27,12 +27,14 @@ import kotlinx.serialization.json.Json
 import java.time.LocalDateTime
 
 /**
- * 上课提醒的进程内调度器。
+ * 「上课提示」的进程内调度器：所有设备都启动，不再按机型短路。
  *
  * 只在应用进程存活时工作（前台或后台），进程被回收后自然停止——这是与产品确认过的范围，
- * 因此不引入 AlarmManager / 前台服务。非支持设备在 [start] 阶段直接短路，零开销。
+ * 因此不引入 AlarmManager / 前台服务。
  *
  * 数据全部来自本地：DataStore 偏好 + Room 课表缓存，不触发任何联网。
+ * 每轮只判断「有没有即将开始的课」，通知形态（超级岛 / 实况通知 / 普通通知）
+ * 由 [HyperIslandSupport.presentationTier] 给出，仅供日志使用，不影响是否下发。
  */
 object ClassReminderTicker {
     private const val TICK_MS = 30_000L
@@ -60,11 +62,6 @@ object ClassReminderTicker {
 
     fun start(context: Context) {
         if (job?.isActive == true) return
-        // 非超级岛设备：不建通道、不轮询；debug 构建例外，便于用模拟数据验证通知样式
-        if (!HyperIslandSupport.supportsIsland(context) && !isDebuggable(context)) {
-            islandLog(context, "非超级岛设备，上课提醒调度不启动")
-            return
-        }
         val app = context.applicationContext as? BetterHrbustApp ?: return
         // 进程重启后先清掉上一轮遗留的通知（可能已过期）；若仍在窗口内，首个 tick 会重新下发
         lastPosted = null
@@ -102,7 +99,7 @@ object ClassReminderTicker {
     private fun buildMockCourse(): UpcomingClass {
         val start = LocalDateTime.now().plusMinutes(MOCK_MINUTES)
         return UpcomingClass(
-            courseName = "模拟课程（超级岛）",
+            courseName = "模拟课程（上课提示）",
             location = "教1-302",
             teacher = "测试教师",
             sectionLabel = "模拟节次",
@@ -190,17 +187,18 @@ object ClassReminderTicker {
         val minutes = upcoming.minutesUntil(now)
         // 同一节课的同一分钟数已经下发过：倒计时由系统 chronometer 自走，无需重复 notify
         if (lastPosted == (upcoming to minutes)) return
-        // 两条上岛通道任一可用即可：焦点通知（厂商白名单）或 Android 实况通知（系统放行）
-        val focusAllowed = HyperIslandSupport.canShowFocus(app)
-        val promotedAllowed = HyperIslandSupport.canPostPromoted(app)
-        if (!focusAllowed && !promotedAllowed) {
-            hide(app, "焦点通知与实况通知均不可用，保持静默")
-            return
+        // 呈现档位只用于日志，不参与发送判断：能力未放行时同样下发，系统会退化为普通通知。
+        // 查询涉及跨进程 IPC，只在「首次出现」且为调试构建时取一次。
+        val tier = if (lastPosted == null && isDebuggable(app)) {
+            HyperIslandSupport.presentationTier(app)
+        } else {
+            null
         }
-        // 下发失败（如权限刚被撤销）时保留 lastPosted 为空，下一 tick 会重试
+        // 下发失败（如通知权限刚被撤销）时保留 lastPosted 为空，下一 tick 会重试
         if (ClassIslandNotifier.post(app, upcoming, now)) {
             lastPosted = upcoming to minutes
             hideLogged = false
+            if (tier != null) islandLog(app, "上课提示已下发，呈现方式：${tier.label}")
         }
     }
 
@@ -219,8 +217,8 @@ object ClassReminderTicker {
     }
 
     /**
-     * 模拟课走简化路径：跳过设备能力与焦点通知权限校验，让任意测试设备至少能看到普通通知，
-     * 便于验证文案与倒计时；真实提醒仍严格按「支持 + 权限」判定，互不影响。
+     * 模拟课走简化路径：不依赖真实课表与教学周，到点前一直下发，便于在任意测试设备上
+     * 验证文案、倒计时与呈现形态；真实提醒的数据判定逻辑不受影响。
      */
     private fun evaluateMock(app: BetterHrbustApp, mock: UpcomingClass) {
         val now = LocalDateTime.now()

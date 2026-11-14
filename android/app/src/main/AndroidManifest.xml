@@ -7,11 +7,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 小部件在开机后刷新一次，避免显示开机前的旧课表 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- 上课提醒（小米超级岛）以常驻通知承载，Android 13+ 需运行时授权 -->
+    <!-- 上课提示以常驻通知承载（全设备），Android 13+ 需运行时授权 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
       Android 16+ 的「实况通知 / Live Updates」：申请把常驻通知提升为实时通知。
-      非运行时权限，小米澎湃 OS 的超级岛在这条通道上无需额外申请即可呈现（能否提升由系统决定）。
+      非运行时权限，原生 Android 16 与澎湃 OS 3 均适用；能否提升由系统决定，
+      未放行时通知按普通通知下发。
     -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 

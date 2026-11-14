@@ -44,7 +44,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.glassous.betterhrbust.core.model.AuthState
-import com.glassous.betterhrbust.core.notify.HyperIslandSupport
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.clearFocusOnTapOutside
@@ -104,8 +103,8 @@ class MainActivity : ComponentActivity() {
             val shouldPromptReLogin by app.authRepository.shouldPromptReLogin.collectAsState()
             val sessionPromptDismissed by app.authRepository.sessionPromptDismissed.collectAsState()
 
-            // 上课提醒（小米超级岛）依赖通知权限：只在「超级岛设备 + 已登录 + 开关开启 + 未授权」
-            // 时申请一次，非支持设备不会弹出与本功能无关的权限请求。
+            // 上课提示依赖通知权限：只在「已登录 + 开关开启 + 未授权」时申请一次，
+            // 全设备通用（小米呈现为超级岛，Android 16 为实况通知，其余为普通通知）。
             val context = LocalContext.current
             var notificationPermissionAsked by remember { mutableStateOf(false) }
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -117,7 +116,6 @@ class MainActivity : ComponentActivity() {
                 if (!snapshot.classIslandReminder) return@LaunchedEffect
                 if (authState !is AuthState.Authenticated) return@LaunchedEffect
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
-                if (!HyperIslandSupport.supportsIsland(context)) return@LaunchedEffect
                 val granted = ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.POST_NOTIFICATIONS

@@ -8,12 +8,11 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
-import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 小米澎湃 OS「超级岛 / 焦点通知」能力检测。
+ * 「上课提示」的呈现能力检测：通知始终是标准通知，系统按设备能力决定呈现形态。
  *
  * 三个维度互相独立：
  * 1. [isIslandDevice]：设备与系统是否声明支持超级岛能力；
@@ -21,8 +20,8 @@ import kotlinx.coroutines.withContext
  * 3. [canShowFocus]：当前应用是否被允许展示焦点通知（权限 / 白名单态，会随用户在系统设置中
  *    开关或平台审核结果变化，因此只做短时缓存）。
  *
- * 前两者合成 [supportsIsland]，用于设置项可见性与通知发送前置判断（设备级能力，进程内缓存）；
- * 后者只决定「此刻是否真的发通知」，不参与界面可见性。
+ * 前两者合成 [supportsIsland]，只描述「这台设备能否上岛」，不再是功能开关：
+ * 无论判定结果如何，通知都会真实下发，由 [presentationTier] 决定最终形态。
  *
  * 所有系统查询一律按「异常即不支持」处理，绝不影响应用启动与课表主流程。
  */
@@ -88,8 +87,8 @@ object HyperIslandSupport {
     /**
      * Android 16+ 实况通知（Live Updates）：系统是否允许本应用提升为实时通知。
      *
-     * 澎湃 OS 3 起超级岛会呈现这类标准通知，且不走「焦点通知」白名单，
-     * 因此它是焦点通知参数之外的第二条上岛通道。
+     * 这是 AOSP 标准能力，原生 Android 16 与澎湃 OS 3 均适用；它不走「焦点通知」白名单，
+     * 因此是超级岛之外的第二档呈现通道。
      */
     fun canPostPromoted(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < 36) return false
@@ -98,43 +97,17 @@ object HyperIslandSupport {
         }.getOrDefault(false)
     }
 
-    /** 一次性输出当前适配状态，供设置页「适配自检」与问题反馈使用。 */
-    suspend fun diagnostics(context: Context): String = buildString {
-        appendLine("机型：${Build.MANUFACTURER} ${Build.MODEL}")
-        appendLine("系统：Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）")
-        appendLine("系统声明支持超级岛：${isIslandDevice()}")
-        appendLine("焦点通知协议版本：${protocolVersion(context)}")
-        appendLine("焦点通知权限（开关 / 白名单）：${canShowFocus(context)}")
-        appendLine("系统允许实况通知：${canPostPromoted(context)}")
-        appendLine("通知总开关：${NotificationManagerCompat.from(context).areNotificationsEnabled()}")
-        appendLine("提醒通道重要性：${channelImportance(context)}")
-        appendLine()
-        appendLine(
-            if (canShowFocus(context) || canPostPromoted(context)) {
-                "结论：系统已放行，通知会按实况 / 焦点方式下发"
-            } else {
-                "结论：系统未放行。请到「设置 → 通知与控制中心 → 焦点通知」\n" +
-                    "为本应用开启；若列表中找不到本应用，说明系统尚未\n" +
-                    "对第三方应用开放该能力。"
-            }
-        )
-        appendLine()
-        appendLine("最近一次下发的岛参数：")
-        append(ClassIslandNotifier.lastParamJson ?: "（尚未下发）")
-    }
-
-    private fun channelImportance(context: Context): String {
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return "未知"
-        val channel = runCatching { manager.getNotificationChannel(ClassIslandNotifier.CHANNEL_ID) }
-            .getOrNull() ?: return "未创建"
-        return when (channel.importance) {
-            NotificationManager.IMPORTANCE_NONE -> "已关闭"
-            NotificationManager.IMPORTANCE_MIN -> "最低"
-            NotificationManager.IMPORTANCE_LOW -> "低"
-            NotificationManager.IMPORTANCE_DEFAULT -> "默认"
-            NotificationManager.IMPORTANCE_HIGH -> "高"
-            else -> channel.importance.toString()
-        }
+    /**
+     * 当前设备最终会把这条提醒呈现成什么：超级岛 → 实况通知 → 普通通知，逐级降级。
+     *
+     * 无论返回哪一档，调用方都应照常下发通知；档位只用于调试日志。
+     * 先判 [supportsIsland] 再查焦点通知权限：非小米设备上该 provider 必然查不到，
+     * 提前短路可省下每轮一次的跨进程调用与异常构造开销。
+     */
+    suspend fun presentationTier(context: Context): PresentationTier = when {
+        supportsIsland(context) && canShowFocus(context) -> PresentationTier.SUPER_ISLAND
+        canPostPromoted(context) -> PresentationTier.LIVE_UPDATE
+        else -> PresentationTier.PLAIN
     }
 
     /** 清空缓存（用户刚在系统设置里改动过权限 / 切换账号时调用）。 */
@@ -152,4 +125,21 @@ internal fun isDebuggable(context: Context): Boolean =
 /** 调试日志：仅 debuggable 构建输出，release 保持安静，也不打印账号等信息。 */
 internal fun islandLog(context: Context, message: String) {
     if (isDebuggable(context)) Log.d("HyperIsland", message)
+}
+
+/**
+ * 上课提示的呈现档位，由高到低逐级降级。
+ *
+ * 同一条通知始终真实下发，系统按设备与系统能力选择能用的最高档；
+ * 档位只用于调试日志，不参与是否发送的判断。
+ */
+enum class PresentationTier(val label: String) {
+    /** 小米澎湃 OS 3 + 焦点通知已放行：系统升级为超级岛 */
+    SUPER_ISLAND("超级岛"),
+
+    /** Android 16 起系统允许提升为实况通知（Live Updates） */
+    LIVE_UPDATE("实况通知"),
+
+    /** 其余设备：普通通知栏通知，行为与常规提醒一致 */
+    PLAIN("普通通知")
 }

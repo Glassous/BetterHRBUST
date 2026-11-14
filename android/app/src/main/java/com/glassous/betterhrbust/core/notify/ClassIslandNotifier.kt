@@ -15,27 +15,34 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * 上课提醒通知（常驻 + 倒计时），在支持的小米澎湃 OS 3 设备上由系统升级为超级岛。
+ * 上课提示通知（常驻 + 倒计时），形态由系统按设备能力逐级增强：
+ * 小米澎湃 OS 3 升级为超级岛，Android 16 呈现为实况通知，其余设备即普通通知。
  *
- * 通知本身始终是标准通知：没有岛能力的设备不会走到这里（见 [HyperIslandSupport.supportsIsland]），
- * 因此不存在「降级后变成普通通知打扰用户」的路径。
+ * 通知本身始终是标准通知：中小米私有参数（`miui.focus.*`）对非小米系统是无效 extras，
+ * 会被直接忽略，不会被当作「不支持」而拦下，因此这里不需要任何「能不能发」的判断。
  */
 object ClassIslandNotifier {
-    /** 最近一次下发的岛参数 JSON（供设置页「适配自检」原样展示，便于对照排查） */
-    @Volatile
-    var lastParamJson: String? = null
-        private set
-
     const val CHANNEL_ID = "course_reminder"
-    private const val CHANNEL_NAME = "上课提醒"
-    private const val CHANNEL_DESC = "课前 20 分钟在小米超级岛显示课程与教室"
+    private const val CHANNEL_NAME = "上课提示"
+    private const val CHANNEL_DESC = "课前 20 分钟提醒课程与教室"
     private const val NOTIFICATION_ID = 20261109
     private const val CONTENT_INTENT_REQUEST = 20261110
 
-    /** 通道幂等创建：重复调用无副作用，非小米设备不会走到这里。 */
+    /** 通道幂等创建：重复调用无副作用；已存在时仅在名称 / 描述变化时同步一次。 */
     fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+        val existing = manager.getNotificationChannel(CHANNEL_ID)
+        if (existing != null) {
+            // 只同步文案：用户自行调整过的重要性、声音、振动等设置保持不变
+            if (existing.name != CHANNEL_NAME || existing.description != CHANNEL_DESC) {
+                runCatching {
+                    existing.name = CHANNEL_NAME
+                    existing.description = CHANNEL_DESC
+                    manager.createNotificationChannel(existing)
+                }.onFailure { islandLog(context, "更新提醒通道文案失败：${it.message}") }
+            }
+            return
+        }
         val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = CHANNEL_DESC
             setShowBadge(false)
@@ -79,7 +86,6 @@ object ClassIslandNotifier {
 
         val contentIntent = contentIntent(context)
         val islandParam = HyperIslandParams.build(text)
-        lastParamJson = islandParam
         val startMillis = upcoming.start.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         // 进程被回收后的兜底：系统在超时后自动移除，保证「上课后收起」不会留下僵尸通知
         val timeoutAfter = (Duration.between(now, upcoming.start).toMillis() + 60_000L).coerceAtLeast(60_000L)
@@ -105,7 +111,8 @@ object ClassIslandNotifier {
             .addExtras(HyperIslandParams.extras(context, islandParam, contentIntent))
 
         // Android 16+ 实况通知（Live Updates）：显式申请提升为实时通知。
-        // 澎湃 OS 3 起超级岛会呈现这类标准通知，是不依赖「焦点通知」白名单的第二条上岛通道。
+        // 这是 AOSP 标准能力，原生 Android 16 与澎湃 OS 3 都会用它呈现；
+        // 系统不放行时该申请被忽略，通知按普通通知下发，无需额外分支。
         if (Build.VERSION.SDK_INT >= 36) {
             runCatching {
                 builder.setRequestPromotedOngoing(true)

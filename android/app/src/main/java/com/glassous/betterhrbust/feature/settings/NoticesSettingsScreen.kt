@@ -14,9 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
@@ -27,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -73,16 +70,11 @@ fun NoticesSettingsScreen(
     val isCheckingUpdate = updateState is UpdateState.Checking
 
     val prefs by prefsManager.preferencesFlow.collectAsState(initial = null)
-    // 仅在设备真正具备小米超级岛能力时展示本设置项：非小米设备、澎湃 OS 2 及更早系统整行不出现
-    val islandSupported = remember { HyperIslandSupport.supportsIsland(context) }
     val islandReminderEnabled = prefs?.classIslandReminder ?: true
-    // 调试包额外提供「模拟 15 分钟后上课」入口：没有真实课表或未进入提醒窗口时也能验证通知/岛样式
+    // 调试包额外提供「模拟 15 分钟后上课」入口：没有真实课表或未进入提醒窗口时也能验证通知样式
     val debugBuild = remember { isDebuggable(context) }
     var mockReminderEnabled by remember { mutableStateOf(ClassReminderTicker.isMockEnabled()) }
     var pendingNotificationAction by remember { mutableStateOf<NotificationAction?>(null) }
-    // 适配自检：把设备能力、系统放行状态一次性摊开，便于判断「为什么没上岛」
-    var showIslandDiagnostics by remember { mutableStateOf(false) }
-    var islandDiagnostics by remember { mutableStateOf("") }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -347,23 +339,23 @@ fun NoticesSettingsScreen(
                     }
                 }
 
-                // Section: 提醒（仅在设备具备小米超级岛能力时出现，不支持时整行不渲染）
-                if (islandSupported) {
-                    item {
-                        Text(
-                            text = "提醒",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
+                // Section: 提醒（全设备可见：小米上岛、Android 16 实况通知、其余为普通通知）
+                item {
+                    Text(
+                        text = "提醒",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
 
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                        ) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                    ) {
+                        Column {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -372,27 +364,16 @@ fun NoticesSettingsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "上课提醒（超级岛）",
+                                        text = "上课提示",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "课前 20 分钟在小米超级岛显示课程与教室，上课后自动收起；仅小米澎湃 OS 3 且已开启焦点通知权限时生效",
+                                        text = "课前 20 分钟提醒课程与教室，上课后自动收起",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.outline
                                     )
-                                    TextButton(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                islandDiagnostics = HyperIslandSupport.diagnostics(context)
-                                                showIslandDiagnostics = true
-                                            }
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
-                                    ) {
-                                        Text("看不到超级岛？运行适配自检", style = MaterialTheme.typography.labelSmall)
-                                    }
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Switch(
@@ -420,6 +401,39 @@ fun NoticesSettingsScreen(
                                         } else {
                                             coroutineScope.launch {
                                                 prefsManager.setClassIslandReminder(false)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            // 调试构建专用：模拟「15 分钟后上课」，不依赖真实课表与提醒窗口
+                            if (debugBuild) {
+                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                SettingsActionRow(
+                                    icon = Icons.Default.BugReport,
+                                    title = if (mockReminderEnabled) "关闭模拟上课提示" else "模拟上课提示（调试）",
+                                    subtitle = if (mockReminderEnabled) {
+                                        "已开启：按「15 分钟后上课」生成模拟通知，到点自动收起；点击关闭"
+                                    } else {
+                                        "生成一条「15 分钟后上课」的模拟通知，用于验证文案与呈现形态（仅调试包）"
+                                    },
+                                    onClick = {
+                                        if (mockReminderEnabled) {
+                                            mockReminderEnabled = ClassReminderTicker.toggleMock(context)
+                                        } else {
+                                            val needPermission =
+                                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                    ContextCompat.checkSelfPermission(
+                                                        context,
+                                                        Manifest.permission.POST_NOTIFICATIONS
+                                                    ) != PackageManager.PERMISSION_GRANTED
+                                            if (needPermission) {
+                                                pendingNotificationAction = NotificationAction.MockReminder
+                                                notificationPermissionLauncher.launch(
+                                                    Manifest.permission.POST_NOTIFICATIONS
+                                                )
+                                            } else {
+                                                mockReminderEnabled = ClassReminderTicker.toggleMock(context)
                                             }
                                         }
                                     }
@@ -469,39 +483,6 @@ fun NoticesSettingsScreen(
                                     }
                                 }
                             )
-                            // 调试构建专用：模拟 15 分钟后上课，不依赖真实课表与提醒窗口
-                            if (debugBuild) {
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                                SettingsActionRow(
-                                    icon = Icons.Default.BugReport,
-                                    title = if (mockReminderEnabled) "关闭模拟上课提醒" else "模拟上课提醒（调试）",
-                                    subtitle = if (mockReminderEnabled) {
-                                        "已开启：按「15 分钟后上课」生成模拟通知，到点自动收起；点击关闭"
-                                    } else {
-                                        "生成一条「15 分钟后上课」的模拟通知，用于验证通知与超级岛样式（仅调试包）"
-                                    },
-                                    onClick = {
-                                        if (mockReminderEnabled) {
-                                            mockReminderEnabled = ClassReminderTicker.toggleMock(context)
-                                        } else {
-                                            val needPermission =
-                                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                                    ContextCompat.checkSelfPermission(
-                                                        context,
-                                                        Manifest.permission.POST_NOTIFICATIONS
-                                                    ) != PackageManager.PERMISSION_GRANTED
-                                            if (needPermission) {
-                                                pendingNotificationAction = NotificationAction.MockReminder
-                                                notificationPermissionLauncher.launch(
-                                                    Manifest.permission.POST_NOTIFICATIONS
-                                                )
-                                            } else {
-                                                mockReminderEnabled = ClassReminderTicker.toggleMock(context)
-                                            }
-                                        }
-                                    }
-                                )
-                            }
                             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.Outlined.Feedback,
@@ -693,28 +674,6 @@ fun NoticesSettingsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
-        }
-
-        // 超级岛适配自检
-        if (showIslandDiagnostics) {
-            AlertDialog(
-                onDismissRequest = { showIslandDiagnostics = false },
-                containerColor = MaterialTheme.colorScheme.surface,
-                title = { Text("超级岛适配自检") },
-                text = {
-                    Text(
-                        text = islandDiagnostics,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier
-                            .heightIn(max = 400.dp)
-                            .verticalScroll(rememberScrollState())
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = { showIslandDiagnostics = false }) { Text("关闭") }
-                }
-            )
         }
 
         // Clear Cache Confirmation Dialog

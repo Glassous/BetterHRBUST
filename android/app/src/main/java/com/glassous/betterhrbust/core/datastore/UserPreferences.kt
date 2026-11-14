@@ -43,7 +43,7 @@ data class AppPreferences(
     val lastUpdateCheckAt: Long = 0L,
     /** 导航坞折叠态（用户手动在坞内展开 / 折叠后持久化，冷启动沿用） */
     val navigationDockCollapsed: Boolean = false,
-    /** 上课提醒（小米超级岛）：课前 20 分钟提示，默认开启；非超级岛设备上不展示该设置项 */
+    /** 上课提示：课前 20 分钟提醒课程与教室，默认开启；全设备生效，小米呈现为超级岛，其余为实况 / 普通通知 */
     val classIslandReminder: Boolean = true,
     /** 「记住密码」保存的凭证（`学号\n混淆后的密码`），为空表示未保存 */
     val savedCredential: String = "",
@@ -271,7 +271,7 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
         }
     }
 
-    /** 上课提醒（小米超级岛）开关；关闭后调度器会立即取消已下发通知 */
+    /** 上课提示开关；关闭后调度器会立即取消已下发通知 */
     suspend fun setClassIslandReminder(enabled: Boolean) {
         store.edit { prefs ->
             prefs[KEY_CLASS_ISLAND_REMINDER] = enabled

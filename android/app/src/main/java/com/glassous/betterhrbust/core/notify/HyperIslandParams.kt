@@ -122,7 +122,9 @@ object HyperIslandParams {
                         })
                     })
                 })
-                // 小岛只支持图标 / 图标+进度 / 图标+数字：引用 pics 中的应用图标
+                // 小岛（折叠态）只放图片：官方仅支持「图标 / 图标+环形进度 / 图文组件6」，
+                // 其中图文组件6 实测只渲染数字、不渲染文本，教室无法在胶囊里呈现。
+                // 课程与教室信息由展开态与焦点通知承载，这里不再尝试塞文字。
                 put("smallIslandArea", buildJsonObject {
                     put("picInfo", appIconPic())
                 })

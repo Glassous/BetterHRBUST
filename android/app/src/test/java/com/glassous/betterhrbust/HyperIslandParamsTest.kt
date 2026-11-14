@@ -58,6 +58,7 @@ class HyperIslandParamsTest {
 
     @Test
     fun `小岛引用 pics 中的应用图标`() {
+        // 小岛实测只渲染图片，图文组件里的文字会被系统丢弃，折叠态因此只保留应用图标
         val pic = island()["smallIslandArea"]!!.jsonObject["picInfo"]!!.jsonObject
         assertEquals(1, pic["type"]!!.jsonPrimitive.int)
         assertEquals(HyperIslandParams.PIC_KEY_LOGO, pic["pic"]!!.jsonPrimitive.content)
