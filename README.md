@@ -110,8 +110,6 @@ npm run build
 
 在「更多」页进入「教学评价助手」或「资料查找」。Android 网络层保留 HTTP，限制同源跳转，禁止自动重放表单 POST；教学评价采用 GBK 编码并刷新每门课程的隐藏令牌。
 
-`.github/workflows/android.yml` 在 PR 与代码推送时运行单元测试、Lint、Debug 与 Release 构建，校验产物命名后保存 APK 和报告。配置好签名密钥后，CI 会用与本地发布**同一份正式密钥**自动签名 Release 包并校验签名，保证后续版本在同一台设备上可直接覆盖安装。Debug APK 只用于测试，不能用调试签名替代正式升级签名。
-
 Kotlin + Jetpack Compose 编写的原生 Android 客户端，与 Web 端共用同一套业务口径（接口路径、HTML 解析规则、五分制绩点与特色算法、缓存与刷新策略）。
 
 **环境要求**：Android Studio（或 JDK 21）+ Android SDK；运行设备 **Android 11（API 30）及以上**。

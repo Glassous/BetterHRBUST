@@ -12,7 +12,7 @@ val appVersionCode = 6
 val appVersionName = "1.4.0"
 
 // ---------- 正式签名配置 ----------
-// CI 通过 GitHub Secrets 注入环境变量（见 .github/workflows/android.yml）；
+// 正式密钥经环境变量注入（本地构建同样生效）；
 // 本地可写入 ~/.gradle/gradle.properties（androidKeystorePath / androidKeystorePassword /
 // androidKeyAlias / androidKeyPassword），密钥文件不入库。
 // 四项缺任意一项即视为未配置，release 退回未签名包，保证无密钥的 PR 构建仍可通过。
