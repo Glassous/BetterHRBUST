@@ -171,6 +171,8 @@ struct AppState {
     client: Client<hyper_util::client::legacy::connect::HttpConnector, AppBody>,
     upstream: Upstream,
     storage: Option<Arc<crate::storage::Storage>>,
+    /// 教务会话桥（与终端界面共用一份 Cookie，见 session.rs）；None = dev 模式未启用
+    session: Option<Arc<crate::session::SessionBridge>>,
     /// 数据目录：`/__app/cli` 需要按同一目录解析命令行状态（与 storage 同源）
     data_dir: Option<PathBuf>,
     /// AI 配置（ai-config.json）与转发客户端；None = dev 模式未启用
@@ -198,11 +200,17 @@ pub async fn start(config: ServerConfig) -> io::Result<SocketAddr> {
         .storage_dir
         .as_deref()
         .map(|dir| Arc::new(crate::ai::AiStore::open(dir)));
+    // 会话桥与存储同目录：终端界面读写的就是这份文件
+    let session = config
+        .storage_dir
+        .as_deref()
+        .map(|dir| Arc::new(crate::session::SessionBridge::open(dir)));
     let state = AppState {
         port: addr.port(),
         client: Client::builder(TokioExecutor::new()).build_http::<AppBody>(),
         upstream: config.upstream,
         storage,
+        session,
         data_dir: config.storage_dir,
         ai,
         ai_client: crate::ai::build_client(),
@@ -269,7 +277,7 @@ async fn handle(state: AppState, req: Request<Incoming>) -> Result<Response<AppB
         if !browser_origin_allowed(req.headers(), state.port) {
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
         }
-        crate::proxy::forward(&state.client, &state.upstream, req).await
+        crate::proxy::forward(&state.client, &state.upstream, req, state.session.as_deref()).await
     } else if path == "/__app/storage" {
         if !browser_origin_allowed(req.headers(), state.port) {
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));

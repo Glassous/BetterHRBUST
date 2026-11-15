@@ -42,6 +42,8 @@ var commandAliases = map[string]string{
 	"notices": "notices", "notice": "notices", "公告": "notices",
 	"profile": "profile", "学籍": "profile", "档案": "profile",
 	"courses": "courses", "course": "courses", "课程": "courses",
+	"sync": "sync", "同步": "sync",
+	"login": "login", "登录": "login",
 	"doctor": "doctor", "诊断": "doctor",
 	"check": "check", "selfcheck": "check", "自检": "check", "检查": "check",
 	"help": "help", "帮助": "help",
@@ -301,6 +303,8 @@ func printHelp() {
 		"  notices                   教学公告",
 		"  profile                   学籍档案（证件号 / 手机号默认打码）",
 		"  courses                   本学期课程名录",
+		"  sync                      用已保存的教务会话立即同步一次（写回图形界面的缓存）",
+		"  login                     登录（需要图片验证码，只能在交互界面完成）",
 		"  doctor                    数据文件、路径与可用性诊断",
 		"  check [--strict]          错误检查：数据完整性、会话与同步失败项",
 		"  version                   显示版本",
@@ -333,7 +337,7 @@ func printHelp() {
 		"退出码：0 正常 · 1 参数或内部错误 · 2 未登录且无本地数据 · 3 存储不可用或缓存为空",
 		"",
 		"交互界面快捷键：1-9/0/, 切换页面 · tab 切换面板 · ctrl+p 命令面板",
-		"                  ctrl+j AI 对话 · ctrl+r 重读缓存 · ctrl+t 换主题 · ? 帮助 · q 退出",
+		"                  9 登录与同步 · ctrl+j AI 对话 · ctrl+r 重读缓存 · ctrl+t 换主题 · ? 帮助 · q 退出",
 	}
 	for _, line := range lines {
 		fmt.Println(line)

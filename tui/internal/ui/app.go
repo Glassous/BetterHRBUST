@@ -460,6 +460,15 @@ func (a *App) stepScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.chat, cmd = a.chat.Update(msg)
 		return a, cmd
 	}
+	// 带目标页的回执（同步任务等）即使当前页已经切走也要送回原页面：
+	// 否则用户切页再回来，会看到一个永远停在"进行中"的界面。
+	if targeted, ok := msg.(interface{ Target() ID }); ok {
+		if screen, exists := a.screens[targeted.Target()]; exists && screen != nil {
+			a.screens[targeted.Target()], cmd = screen.Update(msg)
+			return a, cmd
+		}
+	}
+
 	current := a.current()
 	if current == nil {
 		return a, nil
@@ -732,15 +741,15 @@ func (a *App) banner() components.Banner {
 	readiness := a.deps.Readiness
 	switch {
 	case readiness.Code() == "needLogin":
-		return components.Banner{Text: "未检测到登录状态：请打开 BetterHRBUST 图形界面登录一次", Level: "fail"}
+		return components.Banner{Text: "未检测到登录状态：按 9 打开「登录与同步」，在终端里登录即可", Level: "fail"}
 	case readiness.Code() == "noData":
-		return components.Banner{Text: readiness.Message, Level: "warn"}
+		return components.Banner{Text: "已登录但本地还没有缓存：按 9 打开「登录与同步」点一次同步", Level: "warn"}
 	case readiness.Offline:
 		return components.Banner{Text: "离线缓存：会话已失效，数据为上次登录时的快照", Level: "warn"}
 	}
 	if a.deps.StaleDays > 7 {
 		return components.Banner{
-			Text:  fmt.Sprintf("缓存已 %d 天未更新，建议到图形界面刷新", a.deps.StaleDays),
+			Text:  fmt.Sprintf("缓存已 %d 天未更新，按 9 打开「登录与同步」刷新即可", a.deps.StaleDays),
 			Level: "warn",
 		}
 	}

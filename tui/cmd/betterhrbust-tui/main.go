@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/Glassous/BetterHRBUST/tui/internal/academic"
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 	"github.com/Glassous/BetterHRBUST/tui/internal/config"
 	"github.com/Glassous/BetterHRBUST/tui/internal/model"
 	"github.com/Glassous/BetterHRBUST/tui/internal/query"
@@ -157,6 +158,7 @@ func buildDeps(
 		StaleDays:     staleDays(snapshot),
 		Emit:          emit,
 		NewChat:       screens.ChatFactory(),
+		Sync:          buildSync(dataDir),
 	}
 	deps.SaveConfig = func(updated config.Config) error {
 		return updated.Normalized().Save()
@@ -165,6 +167,25 @@ func buildDeps(
 		return buildDeps(previous.Config, dataDir, previous.Themes, flags, previous.Emit)
 	}
 	return deps
+}
+
+// buildSync 组装教务登录与同步能力。
+//
+// 写回走两处：`storage.json`（图形界面启动时水合的唯一来源）以及
+// 运行中图形界面的 `/__app/storage` 端点（避免它用内存镜像覆盖我们的写入）。
+func buildSync(dataDir string) *campus.Service {
+	syncService := campus.NewService(dataDir, time.Now)
+	writer := store.NewWriter(dataDir)
+	syncService.SetWriter(func(patch campus.Patch) (campus.WriteReport, error) {
+		report, err := writer.Apply(store.Patch{Set: patch.Set, Delete: patch.Delete})
+		return campus.WriteReport{
+			Written:     report.Written,
+			StoragePath: report.Path,
+			BridgePort:  report.BridgePort,
+			BridgeError: report.BridgeError,
+		}, err
+	})
+	return syncService
 }
 
 // staleDays 返回缓存距今的天数；无法判断时返回 0。

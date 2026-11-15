@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 	"github.com/Glassous/BetterHRBUST/tui/internal/config"
 	"github.com/Glassous/BetterHRBUST/tui/internal/query"
 	"github.com/Glassous/BetterHRBUST/tui/internal/store"
@@ -22,6 +23,7 @@ const (
 	ScreenNotices   ID = "notices"
 	ScreenProfile   ID = "profile"
 	ScreenCourses   ID = "courses"
+	ScreenSync      ID = "sync"
 	ScreenDoctor    ID = "doctor"
 	ScreenSettings  ID = "settings"
 	ScreenHelp      ID = "help"
@@ -66,6 +68,8 @@ type Deps struct {
 	Reload func(Deps) Deps
 	// NewChat 创建 AI 对话面板（未启用时为 nil）。
 	NewChat func(Deps) Screen
+	// Sync 是教务登录与同步能力；nil 表示当前构建不可用（测试环境）。
+	Sync *campus.Service
 }
 
 // Screen 是一个页面。

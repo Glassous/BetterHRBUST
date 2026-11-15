@@ -51,12 +51,17 @@ const UPSTREAM_TIMEOUT: Duration = Duration::from_secs(20);
 pub type ProxyResult = Result<Response<AppBody>, GatewayError>;
 
 /// 转发一个 /academic 请求到教务系统
+///
+/// `session` 是跨端共享的会话桥（见 session.rs）：
+/// 请求缺 Cookie 时从桥里补齐，响应带 Set-Cookie 时写回桥里，
+/// 于是"终端登录一次，图形界面直接可用"，反之亦然。
 pub async fn forward(
     client: &Client<hyper_util::client::legacy::connect::HttpConnector, AppBody>,
     upstream: &Upstream,
     req: Request<Incoming>,
+    session: Option<&crate::session::SessionBridge>,
 ) -> ProxyResult {
-    let fut = forward_inner(client, upstream, req);
+    let fut = forward_inner(client, upstream, req, session);
     match tokio::time::timeout(UPSTREAM_TIMEOUT, fut).await {
         Ok(result) => result,
         Err(_) => Err(GatewayError::Timeout),
@@ -67,6 +72,7 @@ async fn forward_inner(
     client: &Client<hyper_util::client::legacy::connect::HttpConnector, AppBody>,
     upstream: &Upstream,
     req: Request<Incoming>,
+    session: Option<&crate::session::SessionBridge>,
 ) -> ProxyResult {
     // 上游 URI = 教务系统 origin + 原样 path+query（hyper client 需要绝对形式）
     let path_and_query = req
@@ -94,6 +100,37 @@ async fn forward_inner(
         headers.append(name, value.clone());
     }
 
+    // 会话桥接（导入方向）：WebView2 的 Cookie 里缺哪个，就从共享会话文件补哪个。
+    // 终端登录过之后，图形界面第一次请求就已经是登录态，用户不需要再登一次。
+    if let Some(bridge) = session {
+        let existing = headers
+            .get(header::COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+        let extra: Vec<String> = bridge
+            .cookies()
+            .into_iter()
+            .filter(|cookie| {
+                !existing.split(';').any(|part| {
+                    part.trim_start()
+                        .starts_with(&format!("{}=", cookie.name))
+                })
+            })
+            .map(|cookie| format!("{}={}", cookie.name, cookie.value))
+            .collect();
+        if !extra.is_empty() {
+            let merged = if existing.trim().is_empty() {
+                extra.join("; ")
+            } else {
+                format!("{existing}; {}", extra.join("; "))
+            };
+            if let Ok(value) = HeaderValue::from_str(&merged) {
+                headers.insert(header::COOKIE, value);
+            }
+        }
+    }
+
     // HEAD 无 body，直接发空体；其余流式透传原 body
     let body = req.into_body();
     let upstream_req = if matches!(builder.method_ref(), Some(&Method::HEAD)) {
@@ -107,6 +144,19 @@ async fn forward_inner(
     };
 
     let response = client.request(upstream_req).await.map_err(GatewayError::Request)?;
+
+    // 会话桥接（导出方向）：上游下发的 Cookie 写回共享文件，终端随后即可复用。
+    if let Some(bridge) = session {
+        let cookies: Vec<String> = response
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok().map(str::to_string))
+            .collect();
+        if !cookies.is_empty() {
+            bridge.export(cookies.iter().map(String::as_str));
+        }
+    }
 
     Ok(rewrite_response(response))
 }

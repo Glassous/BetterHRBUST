@@ -38,6 +38,12 @@ WebView2 窗口 → http://127.0.0.1:1950（固定端口，占用向后顺延）
 会话 Cookie 由 WebView2 用户数据目录（按 bundle identifier 固定）持久保存，
 重启应用后仍有效，直至教务侧过期。固定端口 1950 保证页面源跨冷启动稳定。
 
+**与终端界面共用会话**（`session.rs`）：代理在转发时做两件事——请求缺少某个
+Cookie 就从 `%APPDATA%/edu.hrbust.betterhrbust/academic-session.json` 补齐，
+响应带 `Set-Cookie` 就写回该文件。于是"在终端按 `9` 登录一次"与"在图形界面
+登录一次"等价：任意一端建立的会话，另一端重启后直接可用，不会再要求重新登录。
+文件权限 0600，写盘失败只记日志、不阻断请求；dev 模式（Vite）不启用。
+
 教务数据缓存与会话元数据（成绩 / 考试 / 课表 / 登录时间戳等）经
 `/__app/storage` 端点落盘到 `%APPDATA%/edu.hrbust.betterhrbust/storage.json`
 （键值 JSON，临时文件 + 原子改名写回，损坏文件保留 `.corrupt` 现场），
@@ -120,12 +126,16 @@ SKILL 源码位于 [`skill/SKILL.md`](./skill/SKILL.md)，编译期内嵌进二�
 ## 终端界面（TUI）
 
 安装包与便携版还会附带 `BetterHRBUSTTUI.exe`（Go 编写，源码在 [`tui/`](../tui/README.md)）。
-它与 `BetterHRBUSTCLI.exe` 同目录，读取的是同一份本地缓存，同样不联网、不写数据：
+它与 `BetterHRBUSTCLI.exe` 同目录，读写的是同一份本地缓存与会话：
 
 ```powershell
-BetterHRBUSTTUI          # 交互界面（10 个页面 + AI 对话抽屉）
+BetterHRBUSTTUI          # 交互界面（11 个页面 + AI 对话抽屉）
 BetterHRBUSTTUI --json summary   # 非交互输出，与 CLI 的 --json 结构一致
 ```
+
+它**不依赖图形界面**：按 `9` 打开「登录与同步」即可在终端里完成登录（验证码
+直接画在终端里）与全量同步；同步结果写回 `storage.json`，之后打开图形界面
+看到的就是同一份数据与登录态。反之，图形界面登录过之后终端也不必再登一次。
 
 **为什么不需要额外的 PATH 配置**：安装器（`installer-hooks.nsh`）写入用户 PATH 的是
 **安装目录**本身，三个可执行文件都在这个目录里，因此重开终端后

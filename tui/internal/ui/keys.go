@@ -15,6 +15,7 @@ type KeyMap struct {
 	Notices   key.Binding
 	Profile   key.Binding
 	Courses   key.Binding
+	Sync      key.Binding
 	Doctor    key.Binding
 	Settings  key.Binding
 
@@ -38,6 +39,7 @@ func DefaultKeyMap() KeyMap {
 		Notices:   key.NewBinding(key.WithKeys("6"), key.WithHelp("6", "公告")),
 		Profile:   key.NewBinding(key.WithKeys("7"), key.WithHelp("7", "学籍")),
 		Courses:   key.NewBinding(key.WithKeys("8"), key.WithHelp("8", "课程")),
+		Sync:      key.NewBinding(key.WithKeys("9"), key.WithHelp("9", "登录/同步")),
 		Doctor:    key.NewBinding(key.WithKeys("0"), key.WithHelp("0", "诊断")),
 		Settings:  key.NewBinding(key.WithKeys(","), key.WithHelp(",", "设置")),
 
@@ -62,7 +64,7 @@ func (k KeyMap) GlobalBindings() []key.Binding {
 func (k KeyMap) NavBindings() []key.Binding {
 	return []key.Binding{
 		k.Dashboard, k.Timetable, k.Scores, k.Exams, k.Plan,
-		k.Notices, k.Profile, k.Courses, k.Doctor, k.Settings,
+		k.Notices, k.Profile, k.Courses, k.Sync, k.Doctor, k.Settings,
 	}
 }
 

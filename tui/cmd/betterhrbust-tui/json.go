@@ -38,6 +38,23 @@ func runJSON(flags Flags, dataDir string, _ config.Config) int {
 	readiness := service.Readiness()
 
 	command := flags.command
+	// sync / login 不依赖既有缓存：它们是"把缓存做出来"的那一步
+	switch command {
+	case "sync":
+		return runSyncCommand(service, dataDir)
+	case "login":
+		emitJSON(map[string]any{
+			"command": "login",
+			"ok":      false,
+			"error": map[string]string{
+				"code": "LOGIN_REQUIRES_TTY",
+				"message": "登录需要输入学号、密码与图片验证码，只能在交互界面完成：" +
+					"启动 BetterHRBUSTTUI 后按 9 打开「登录与同步」。已登录时可用 --json sync 直接同步。",
+			},
+		})
+		return store.ExitError
+	}
+
 	if dataCommands[command] && !readiness.OK() {
 		emitJSON(service.Failure(command, readiness.ErrorCode(), readiness.Message))
 		return readiness.ExitCode()

@@ -22,6 +22,8 @@ pub mod cli;
 pub mod ai;
 mod proxy;
 pub mod server;
+// 教务会话桥接：与终端界面（Go TUI）共用 academic-session.json，见 session.rs
+mod session;
 mod storage;
 
 use tauri::Manager;

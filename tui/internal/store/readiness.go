@@ -26,13 +26,21 @@ const (
 	KindNoData
 )
 
-// noDataMessage 是「已登录但缓存为空」的提示，与 Rust 命令行逐字一致。
-const noDataMessage = "已登录但本地还没有缓存数据：请打开 BetterHRBUST 图形界面，在顶栏点击「刷新」同步一次"
+// noDataMessage 是「已登录但缓存为空」的提示。
+//
+// 终端界面现在自己也能同步，因此文案同时给出两条路径：终端内按 9 同步，
+// 或打开图形界面点「刷新」。图形界面（与 Rust 命令行）读到的是同一份缓存，
+// 谁先同步都不影响对方。
+const noDataMessage = "已登录但本地还没有缓存数据：按 9 打开「登录与同步」点一次同步，" +
+	"或打开 BetterHRBUST 图形界面在顶栏点击「刷新」"
 
-// needLoginMessage 是「未登录且无数据」的提示，与 Rust 命令行逐字一致。
+// needLoginMessage 是「未登录且无数据」的提示。
+//
+// 保留「验证码」「图形界面」两个关键字：`shared/parity/store-readiness.json`
+// 用它们守住三端口径，终端现在两条路都走得通。
 const needLoginMessage = "未检测到登录状态，也没有任何本地教务数据。" +
-	"登录需要学号、密码与图片验证码，终端无法完成，请先打开" +
-	"BetterHRBUST 图形界面登录一次，再回到终端查询。"
+	"按 9 打开「登录与同步」，在终端输入学号、密码与图片验证码即可登录；" +
+	"也可以打开 BetterHRBUST 图形界面登录一次。"
 
 // Readiness 描述当前能否查询，以及不能查询时的原因与建议。
 type Readiness struct {

@@ -43,7 +43,7 @@ BetterHRBUST/
 ├── server/          # 意见反馈服务端（Go + Gin + MongoDB，Redis 限流）
 ├── admin/           # 意见反馈管理端（Vue 3 + Vite + Tailwind CSS，独立部署）
 ├── android/         # Android 原生客户端（Kotlin + Jetpack Compose + Room）
-├── tui/             # 终端界面（Go + Bubble Tea v2，内置 AI 对话）+ 只读 --json CLI
+├── tui/             # 终端界面（Go + Bubble Tea v2，可独立登录同步 + 内置 AI 对话）+ --json CLI
 ├── shared/          # 跨端共享数据（校历、资料索引、parity 一致性向量）
 └── desktop-tauri/   # Windows 桌面端（Tauri + Rust，内置本地反向代理）+ 命令行程序
 ```
@@ -73,8 +73,8 @@ BetterHRBUST/
 - **学籍档案与我的课程名录**：学籍关键信息一览，查看自己本学期修读的课程。
 - **原生 Android 客户端**：Kotlin + Jetpack Compose 原生实现，Material You 动态取色与深浅色主题、边到边全屏 + 悬浮胶囊导航坞、自适应双栏成绩页（列表 / 明细）、下拉刷新；Room 本地持久化 + DataStore 会话偏好，离线同样可用。
 - **版本更新检测**：桌面端（设置页底部）与 Android 端（「更多」页底部）内置基于 GitHub Release 的更新检测——启动时静默检查一次（按天节流），并提供手动「检查更新」；发现新版本时展示版本号与更新日志，一键跳转 Release 页面自行下载。网页与油猴版不显示该模块。
-- **桌面端命令行模式**：安装包附带独立控制台程序 `BetterHRBUSTCLI.exe`，在终端查询概览、课表、成绩与 GPA、考试、培养方案、公告、学籍与课程名录，支持 `--json` 供脚本与 AI 工具解析；安装时自动把安装目录写入用户 PATH。命令行只读本地缓存、不联网：终端无法输入图片验证码，未登录且无本地数据时以退出码 `2` 提示先到图形界面登录。设置页内置命令文档与可一键复制的 AI SKILL。
-- **终端界面（TUI）**：基于 Go + Charm（Bubble Tea v2 / Lip Gloss / Glamour）的全屏终端客户端，十个页面按**卡片栅格**排版——概览页六张卡片同屏呈现学籍、学期进度、学业指标、今日与本周课程、近期考试、缓存健康；课表页左侧周网格右侧当日时间轴；成绩页带学期绩点走势、分数分布与待关注清单。交互上 `tab` 在卡片间换焦点、方向键在卡片内移动、`enter` 下钻，配合命令面板、三套主题（深色 / 浅色 / 16 色兼容）与**三档字形**（Unicode / 纯 ASCII / Nerd Font 图标）。只读本地缓存、不联网，与桌面端共用同一份 `storage.json`；`--json` 非交互模式的结构与退出码与 `BetterHRBUSTCLI` 完全一致。
+- **桌面端命令行模式**：安装包附带独立控制台程序 `BetterHRBUSTCLI.exe`，在终端查询概览、课表、成绩与 GPA、考试、培养方案、公告、学籍与课程名录，支持 `--json` 供脚本与 AI 工具解析；安装时自动把安装目录写入用户 PATH。命令行只读本地缓存、不联网（登录交给交互式终端界面或图形界面完成），未登录且无本地数据时以退出码 `2` 给出提示。设置页内置命令文档与可一键复制的 AI SKILL。
+- **终端界面（TUI）**：基于 Go + Charm（Bubble Tea v2 / Lip Gloss / Glamour）的全屏终端客户端，十一个页面按**卡片栅格**排版——概览页六张卡片同屏呈现学籍、学期进度、学业指标、今日与本周课程、近期考试、缓存健康；课表页左侧周网格右侧当日时间轴；成绩页带学期绩点走势、分数分布与待关注清单。交互上 `tab` 在卡片间换焦点、方向键在卡片内移动、`enter` 下钻，配合命令面板、三套主题（深色 / 浅色 / 16 色兼容）与**三档字形**（Unicode / 纯 ASCII / Nerd Font 图标）。**终端可以完全独立使用**：按 `9` 打开「登录与同步」，学号 / 密码 / 图片验证码（验证码以半块真彩色直接画在终端里）一次输入，登录成功即全量同步，写回与图形界面共用的那份 `storage.json`；之后打开图形界面，登录态、会话 Cookie 与全部数据都已在，用户没有任何"先后顺序"要记。`--json` 非交互模式的结构与退出码与 `BetterHRBUSTCLI` 完全一致，并额外提供 `--json sync`。
 - **原生 LLM 接入（Web / 桌面端 / 终端界面）**：三端共用同一套 AI 配置（`base_url` / `model` / `api_key` / 温度 / 轮次 / 超时 / 发送学籍）与同一份系统提示词，对接任意 OpenAI 兼容服务（DeepSeek / OpenAI / Ollama / vLLM / 智谱 / Moonshot），通过 function calling 调用九个**只读**查询工具——工具与页面共用同一批缓存与统计函数，因此模型给出的数字与界面永远一致。需要「启用」与「同意数据出网」双开关，打开时弹确认框；学籍字段在离开进程前已打码（参数表与 TUI 完全一致），关闭「发送学籍」时模型连调用入口都没有；对话不落盘。桌面端由 Rust 内置服务以**同源代理**（`/__app/ai/chat`）转发，页面 CSP 不必为任意 base_url 放行，API Key 也不进入 JS 上下文；配置落在独立的 `ai-config.json`，与 `storage.json` 分开存放。终端界面只读同一份配置，在图形界面填过一次即可用。
 - **跨端口径一致性向量**：`shared/parity/` 存放 13 类语言中立的黄金用例（GPA、学位绩点、推免、风险预警、学分进度、教学周、周次、节次、考试时间、课表拆解、就绪状态、打码、命令输出），由 Web / 桌面端 / 终端界面共读；任何一端改了算法而没同步期望值，它自己的测试就会红。
 - **五端统一口径**：Web、油猴、桌面端、Android 与终端界面共用同一套业务口径（API 路径、解析规则、五分制绩点与特色算法、缓存与刷新策略），任一端的结果可互相印证；算法黄金用例固化在 `shared/parity/` 由多端共读。
@@ -269,9 +269,9 @@ make build
 ./bin/betterhrbust-tui
 ```
 
-前提：先用桌面端或网页端登录并同步过一次。终端界面只读 `storage.json`，不联网、不登录、不碰验证码。
+不需要任何前置步骤：按 `9` 打开「登录与同步」，输入学号、密码与终端里直接渲染出来的图片验证码，登录成功会自动全量同步。也可以在桌面端或网页端登录一次，终端随后直接复用同一份会话与缓存。
 
-常用按键：`1`–`9`/`0`/`,` 切换页面 · `ctrl+p` 命令面板 · `ctrl+j` AI 对话 · `ctrl+r` 重读缓存 · `ctrl+t` 换主题 · `?` 帮助。
+常用按键：`1`–`9`/`0`/`,` 切换页面 · `9` 登录与同步 · `ctrl+p` 命令面板 · `ctrl+j` AI 对话 · `ctrl+r` 重读缓存 · `ctrl+t` 换主题 · `?` 帮助。
 
 非交互模式与桌面端命令行完全兼容，输出结构与退出码一致：
 
@@ -279,6 +279,7 @@ make build
 ./bin/betterhrbust-tui --json summary --date 2026-11-13
 ./bin/betterhrbust-tui --json scores --failed --property 必修
 ./bin/betterhrbust-tui --json check --strict
+./bin/betterhrbust-tui --json sync          # 用已保存的会话立即同步一次
 ```
 
 AI 对话默认关闭，在设置页（`,`）填写接口地址、模型与 API Key 后开启。细节见 [`tui/README.md`](tui/README.md)。
@@ -461,7 +462,8 @@ node tools/probe/probe.mjs --user 你的学号
 - **TUI 框架**：Bubble Tea v2（`charm.land/bubbletea/v2`）+ Lip Gloss v2（样式与布局）+ Bubbles v2（按键绑定）
 - **Markdown 渲染**：Glamour v2（AI 回复最终渲染，流式期间走纯文本以避免每帧重排版）
 - **状态管理**：`Screen` 接口 + 注册表；外壳 `Update` 为固定五段链（尺寸 → 全局 → 浮层 → 数据 → 当前页）
-- **数据层**：只读 `storage.json`；宽松反序列化（数字/字符串/布尔互通，坏记录只丢自己）；Windows / macOS / Linux 三平台目录解析一次做对
+- **数据层**：读 `storage.json`，同步时合并写回（只改自己负责的键，其余原样保留；临时文件 + 原子改名；解析不了的文件绝不覆盖）；宽松反序列化（数字/字符串/布尔互通，坏记录只丢自己）；Windows / macOS / Linux 三平台目录解析一次做对
+- **教务同步**：`internal/campus` 独立实现 HTTP（Cookie Jar + GBK 自适应）、验证码、登录与七类数据解析（`x/net/html`，逐字段对齐 `parser.js`）；会话与图形界面共用 `academic-session.json`，写入时若图形界面在线则同时推给它的 `/__app/storage`，避免被内存镜像覆盖
 - **LLM**：手写 OpenAI 兼容客户端（`net/http` + 自实现 SSE 解析，无 SDK 依赖），支持工具调用多轮循环、看门狗超时与推理流分离
 - **测试**：13 类跨端黄金向量 + 每页视图快照（含「每行不超过终端宽度」的 CJK 对齐断言）+ 假 SSE 服务覆盖协议边界
 ### 桌面端 (`desktop-tauri/`)

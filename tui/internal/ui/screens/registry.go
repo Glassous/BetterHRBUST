@@ -6,7 +6,7 @@ import "github.com/Glassous/BetterHRBUST/tui/internal/ui"
 //
 // 顺序同时决定侧栏顺序与数字键的映射（顺序必须与 ui.KeyMap.NavBindings 一致）：
 // 1 概览 · 2 课表 · 3 成绩 · 4 考试 · 5 培养方案
-// 6 公告 · 7 学籍 · 8 课程 · 0 诊断 · , 设置
+// 6 公告 · 7 学籍 · 8 课程 · 9 登录与同步 · 0 诊断 · , 设置
 //
 // 新增页面只需在这里加一行——外壳的导航、命令面板、侧栏、页脚都会自动带上它。
 func Registry() []ui.Entry {
@@ -58,6 +58,12 @@ func Registry() []ui.Entry {
 			Aliases: []string{"courses", "course", "kecheng", "课程"},
 			Hint:    "本学期修读课程 · 搜索",
 			New:     NewCourses,
+		},
+		{
+			ID: ui.ScreenSync, Title: "登录与同步", Key: "9",
+			Aliases: []string{"sync", "login", "denglu", "tongbu", "登录", "同步"},
+			Hint:    "在终端登录教务并同步数据",
+			New:     NewSync,
 		},
 		{
 			ID: ui.ScreenDoctor, Title: "诊断", Key: "0",

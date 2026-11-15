@@ -1,6 +1,6 @@
 # BetterHRBUST 终端界面
 
-用 Go + [Charm](https://charm.land) 写的终端客户端：读桌面端已经同步好的本地缓存，不联网、不登录、不碰验证码。
+用 Go + [Charm](https://charm.land) 写的终端客户端。**它可以完全独立使用**：在终端里输入学号、密码与图片验证码（验证码用半块字符 + 真彩色直接画在屏幕上）登录教务，随即全量同步；也可以复用图形界面已经同步好的缓存与登录态。两端的会话与数据都落在同一批文件里，谁先登录都行，不需要记住"先开谁"。
 
 ```
 ┌ BetterHRBUST ──────────────────────────────────────────────────────────────┐
@@ -33,6 +33,7 @@
 | 教学公告 | 左侧标题列表 + 右侧正文常驻，按周浏览与关键字搜索 |
 | 学籍档案 | 概览带 + 学籍信息 + 联系与证件（**固定打码**）+ 异动记录 |
 | 课程名录 | 课程表 + 详情 |
+| 登录与同步 | 学号 / 密码 / 验证码（画面内渲染）+ 记住密码 + 会话状态 + 同步日志 |
 | 诊断 | 健康摘要 + 检查结果 + 路径与文件 + 缓存键（凭证键只显示长度） |
 | 设置 | 分组设置项 + 右侧说明与 AI 状态 |
 
@@ -63,13 +64,15 @@ cd tui
 go build -trimpath -ldflags "-s -w" -o bin\BetterHRBUSTTUI.exe ./cmd/betterhrbust-tui
 ```
 
-前提：先用桌面端（或 Web 端）登录并同步过一次，`storage.json` 才会存在。
+默认打开概览页。第一次用（本地还没有任何数据）时按 `9` 打开「登录与同步」：
+输入学号、密码与终端里画出来的验证码，`l` 登录并同步即可；此后每天首次打开
+都会沿用同一份会话，`s` 随时手动同步。
 
 ## 快捷键
 
 | 键 | 作用 |
 |---|---|
-| `1`–`9` `0` `,` | 切换页面 |
+| `1`–`9` `0` `,` | 切换页面（`9` = 登录与同步） |
 | `tab` / `shift+tab` | 在当前页的卡片之间切换焦点 |
 | `↑` `↓` `←` `→` | 在当前卡片内移动光标 |
 | `ctrl+p` | 命令面板（模糊搜索页面与动作） |
@@ -105,14 +108,18 @@ BetterHRBUSTTUI --json status
 BetterHRBUSTTUI --json summary --date 2026-11-13
 BetterHRBUSTTUI --json scores --failed --property 必修
 BetterHRBUSTTUI --json check --strict
+BetterHRBUSTTUI --json sync          # 用已保存的会话立即同步一次
 ```
 
 | 退出码 | 含义 |
 |---|---|
-| 0 | 正常 |
+| 0 | 正常（`sync` 部分条目失败时仍为 0，`ok:false` + `PARTIAL_SYNC`） |
 | 1 | 参数或内部错误（含 `check --strict` 发现注意项） |
-| 2 | 未登录且没有任何本地数据 → 先去图形界面登录 |
-| 3 | 存储不可用，或已登录但缓存为空 → 去图形界面刷新 |
+| 2 | 未登录且没有任何本地数据，或会话已失效 → 交互界面按 `9` 登录 |
+| 3 | 存储不可用，或已登录但缓存为空 → 按 `9` 同步一次 |
+
+`--json login` 会直接报 `LOGIN_REQUIRES_TTY`：登录要输入图片验证码，
+只能在交互界面完成；会话一旦建立，`--json sync` 就可以在脚本里反复调用。
 
 ## AI 对话
 
@@ -147,14 +154,31 @@ BetterHRBUSTTUI --json check --strict
 
 ## 数据与配置
 
-| 内容 | 位置 |
-|---|---|
-| 教务缓存（只读） | `%APPDATA%\edu.hrbust.betterhrbust` · `~/Library/Application Support/edu.hrbust.betterhrbust` · `$XDG_DATA_HOME/edu.hrbust.betterhrbust` |
-| 本程序配置 | `%APPDATA%\betterhrbust-tui\config.json` · `~/Library/Application Support/betterhrbust-tui/config.json` · `$XDG_CONFIG_HOME/betterhrbust-tui/config.json` |
+| 内容 | 位置 | 读写 |
+|---|---|---|
+| 教务缓存 `storage.json` | `%APPDATA%\edu.hrbust.betterhrbust` · `~/Library/Application Support/edu.hrbust.betterhrbust` · `$XDG_DATA_HOME/edu.hrbust.betterhrbust` | 读 + 同步时合并写 |
+| 教务会话 `academic-session.json` | 同上目录 | 读写（与图形界面共用） |
+| AI 配置 `ai-config.json` | 同上目录 | 只读（图形界面为准） |
+| 本程序配置 `config.json` | `%APPDATA%\betterhrbust-tui\config.json` · `~/Library/Application Support/betterhrbust-tui/config.json` · `$XDG_CONFIG_HOME/betterhrbust-tui/config.json` | 读写 |
 
 覆盖方式：`--data-dir <路径>` / `BETTERHRBUST_DATA_DIR`，`BETTERHRBUST_TUI_CONFIG`（完整文件路径）。
 
-配置文件权限 `0600`、目录 `0700`——里面可能存有 API Key。**它不会写进 `storage.json`**：那是图形界面拥有的缓存，终端界面只读。
+配置文件权限 `0600`、目录 `0700`——里面可能存有 API Key；它**不会**写进 `storage.json`。
+
+## 与图形界面打通
+
+两端的"无感"靠三份文件与一条本地通道，没有后台常驻进程、没有额外服务：
+
+| 环节 | 做法 |
+|---|---|
+| 登录态 | 会话 Cookie 写入 `academic-session.json`；图形界面的反代在请求缺 Cookie 时补齐、在收到 `Set-Cookie` 时写回 → 任意一端登录，另一端直接可用 |
+| 缓存数据 | 终端同步时**合并写** `storage.json`（只改 `better_hrbust_cache_*` 等自己负责的键，其余键原样保留），临时文件 + 原子改名，解析失败的文件绝不覆盖 |
+| 图形界面正在运行 | 若 `127.0.0.1:1950…` 上的本地服务数据目录与本进程一致，改动会同时推到它的 `/__app/storage` 端点，避免它用内存镜像覆盖刚写的数据 |
+| 账号一致 | 换账号登录时清空旧账号的数据缓存；档案学号与输入不一致时拒绝写入 |
+| 记住密码 | 与图形界面同一份 `better_hrbust_saved_credential`（XOR + Base64 混淆），在图形界面勾过一次，终端登录表单已预填 |
+
+同步完成后界面会重读缓存，页面上的数字立刻变成最新值；图形界面冷启动时
+从 `storage.json` 水合，看到的就是终端刚同步的那份数据。
 
 ## 开发
 
@@ -169,13 +193,18 @@ make snapshot   # 重新生成视图 golden
 tui/
 ├── cmd/betterhrbust-tui/     入口、参数解析、--json
 ├── internal/model/           缓存结构 + 宽松反序列化
-├── internal/store/           数据目录解析 + 只读快照 + 就绪状态
+├── internal/store/           数据目录解析 + 只读快照 + 就绪状态 + 合并写回
+├── internal/campus/          教务 HTTP / 会话桥接 / 验证码 / HTML 解析 / 同步
 ├── internal/academic/        学业统计、校历、格式化（纯函数）
 ├── internal/query/           命令载荷 + LLM 工具集
 ├── internal/llm/             OpenAI 兼容客户端 + SSE + 工具循环
 ├── internal/config/          本程序配置
 └── internal/ui/              外壳、组件、主题、页面
 ```
+
+`internal/campus` 是 `web/src/services/academic/` 的 Go 移植：解析函数与
+`parser.js` 逐字段对齐（同一份页面必须产出同一份 JSON，否则两端缓存会出现
+两种形态），HTTP 层处理 GBK / UTF-8 自适应、会话失效判定与登录失败原因文案。
 
 三条硬规则：
 

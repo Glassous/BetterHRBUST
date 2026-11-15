@@ -87,6 +87,19 @@ func (s *Snapshot) HasKey(key string) bool {
 	return ok
 }
 
+// SavedCredentialBlob 返回「记住密码」的混淆载荷。
+//
+// 这是唯一放行敏感键的入口：登录表单需要预填账号密码，而通用的
+// `Get` / `Keys` 必须继续拒绝它，避免诊断页与 LLM 工具把凭证带出去。
+// 返回的内容仍是混淆态（XOR + Base64），解码由调用方负责。
+func (s *Snapshot) SavedCredentialBlob() (string, bool) {
+	value, ok := s.raw[KeySavedCredential]
+	if !ok || value == "" {
+		return "", false
+	}
+	return value, true
+}
+
 // Keys 返回按键名排序的全部键。
 func (s *Snapshot) Keys() []string {
 	keys := make([]string, 0, len(s.raw))
