@@ -128,10 +128,9 @@ mod tests {
 
     #[test]
     fn save_target_resolves_directory_and_file() {
-        assert_eq!(
-            resolve_target(Path::new(r"D:\skills")),
-            PathBuf::from(r"D:\skills\betterhrbust\SKILL.md")
-        );
+        // 目录输入 → 追加 betterhrbust/SKILL.md；期望值用 join 构造，跟随平台分隔符
+        let dir = if cfg!(windows) { Path::new(r"D:\skills") } else { Path::new("/tmp/skills") };
+        assert_eq!(resolve_target(dir), dir.join("betterhrbust").join("SKILL.md"));
         assert_eq!(
             resolve_target(Path::new("skill.md")),
             PathBuf::from("skill.md")

@@ -15,6 +15,9 @@ use std::path::{Path, PathBuf};
 use serde::de::Deserializer;
 use serde::{Deserialize, Serialize};
 
+/// 数据目录标识（与 tauri.conf.json 的 identifier 一致）
+const DATA_DIR_ID: &str = "edu.hrbust.betterhrbust";
+
 // ---------------- 存储键（与前端保持一致） ----------------
 
 pub const KEY_SESSION_FLAG: &str = "better_hrbust_has_session";
@@ -371,9 +374,12 @@ pub struct YearOption {
 // ---------------- 路径解析 ----------------
 
 /// 数据目录解析优先级：
-/// `--data-dir` > 环境变量 `BETTERHRBUST_DATA_DIR` > `%APPDATA%\edu.hrbust.betterhrbust`
+/// `--data-dir` > 环境变量 `BETTERHRBUST_DATA_DIR` > 平台默认目录
+/// （Windows：`%APPDATA%\{identifier}`；Unix：`$XDG_DATA_HOME/{identifier}`，
+/// 仅认绝对路径，否则回退 `~/.local/share/{identifier}`）
 ///
-/// 后两者与 Tauri 的 `app_data_dir()`（`%APPDATA%\{identifier}`）一致；
+/// 平台默认与 Tauri 的 `app_data_dir()` 一致（Linux 实测落在 ~/.local/share，
+/// 不是 ~/.config——那是 app_config_dir）；
 /// 显式覆盖用于测试夹具与多数据目录隔离。
 pub fn resolve_data_dir(explicit: Option<PathBuf>) -> PathBuf {
     if let Some(dir) = explicit {
@@ -384,12 +390,37 @@ pub fn resolve_data_dir(explicit: Option<PathBuf>) -> PathBuf {
             return PathBuf::from(value);
         }
     }
-    if let Ok(appdata) = std::env::var("APPDATA") {
-        if !appdata.trim().is_empty() {
-            return Path::new(&appdata).join("edu.hrbust.betterhrbust");
-        }
+    data_dir_from_env(
+        std::env::var("APPDATA").ok().as_deref(),
+        std::env::var("XDG_DATA_HOME").ok().as_deref(),
+        std::env::var("HOME").ok().as_deref(),
+    )
+    .unwrap_or_else(|| PathBuf::from(".").join("betterhrbust-data"))
+}
+
+/// 环境变量 → 数据目录（纯函数，便于单测；参数对应三平台变量）
+fn data_dir_from_env(
+    appdata: Option<&str>,
+    xdg_data: Option<&str>,
+    home: Option<&str>,
+) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        let _ = (xdg_data, home);
+        let root = appdata.map(str::trim).filter(|v| !v.is_empty())?;
+        Some(Path::new(root).join(DATA_DIR_ID))
     }
-    PathBuf::from(".").join("betterhrbust-data")
+    #[cfg(not(windows))]
+    {
+        let _ = appdata;
+        if let Some(xdg) =
+            xdg_data.map(str::trim).filter(|v| !v.is_empty() && Path::new(v).is_absolute())
+        {
+            return Some(Path::new(xdg).join(DATA_DIR_ID));
+        }
+        let home = home.map(str::trim).filter(|v| !v.is_empty())?;
+        Some(Path::new(home).join(".local").join("share").join(DATA_DIR_ID))
+    }
 }
 
 /// 当前进程所在目录下的另一个可执行文件（CLI 与 GUI 同目录）
@@ -399,6 +430,11 @@ fn sibling_exe(name: &str) -> String {
         .and_then(|exe| exe.parent().map(|dir| dir.join(name)))
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_else(|| name.to_string())
+}
+
+/// 平台对应的可执行文件名（Windows 主程序带 .exe，与 mainBinaryName/Cargo bin 名一致）
+fn exe_file_name(base: &str) -> String {
+    if cfg!(windows) { format!("{base}.exe") } else { base.to_string() }
 }
 
 // ---------------- 数据量统计与可用性 ----------------
@@ -635,8 +671,8 @@ impl Store {
 
     /// 设置页 / doctor 展示的一致状态
     pub fn info(&self) -> CliInfo {
-        let cli_path = sibling_exe("BetterHRBUSTCLI.exe");
-        let app_path = sibling_exe("BetterHRBUST.exe");
+        let cli_path = sibling_exe(&exe_file_name("BetterHRBUSTCLI"));
+        let app_path = sibling_exe(&exe_file_name("BetterHRBUST"));
         let sync_meta = self.sync_meta();
         CliInfo {
             version: env!("CARGO_PKG_VERSION").to_string(),
@@ -676,6 +712,44 @@ mod tests {
 
     fn store(pairs: &[(&str, &str)]) -> Store {
         Store::from_pairs(Path::new("C:/test"), pairs)
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn data_dir_from_env_uses_appdata() {
+        assert_eq!(
+            data_dir_from_env(Some(r"C:\Users\u\AppData\Roaming"), None, None),
+            Some(Path::new(r"C:\Users\u\AppData\Roaming").join(DATA_DIR_ID))
+        );
+        // 空串 / 缺失都视为未设置
+        assert_eq!(data_dir_from_env(Some("  "), None, None), None);
+        assert_eq!(data_dir_from_env(None, None, None), None);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn data_dir_from_env_prefers_absolute_xdg() {
+        assert_eq!(
+            data_dir_from_env(None, Some("/custom/xdg"), Some("/home/u")),
+            Some(Path::new("/custom/xdg").join(DATA_DIR_ID))
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn data_dir_from_env_ignores_relative_xdg() {
+        assert_eq!(
+            data_dir_from_env(None, Some("relative/xdg"), Some("/home/u")),
+            Some(Path::new("/home/u").join(".local").join("share").join(DATA_DIR_ID))
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn data_dir_from_env_requires_home_without_xdg() {
+        assert_eq!(data_dir_from_env(None, None, None), None);
+        // HOME 为空白串同样视为未设置（APPDATA 在 Unix 分支被忽略）
+        assert_eq!(data_dir_from_env(Some("ignored"), None, Some("  ")), None);
     }
 
     #[test]
