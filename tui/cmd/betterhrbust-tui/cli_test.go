@@ -77,7 +77,7 @@ func TestVersionFlag(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("退出码应为 0，实际 %d", code)
 	}
-	if !strings.Contains(output, "betterhrbust-tui") {
+	if !strings.Contains(output, "BetterHRBUSTTUI") {
 		t.Fatalf("版本输出异常：%q", output)
 	}
 

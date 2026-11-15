@@ -285,11 +285,11 @@ func intOption(argv []string, index int, inline, name string, low, high int) (in
 // printHelp 输出帮助。
 func printHelp() {
 	lines := []string{
-		"betterhrbust-tui " + versionLine() + " · BetterHRBUST 终端界面",
+		"BetterHRBUSTTUI " + versionLine() + " · BetterHRBUST 终端界面",
 		"",
 		"用法：",
-		"  betterhrbust-tui                          启动交互界面（需要 TTY）",
-		"  betterhrbust-tui --json <命令> [选项]      机器可读输出，供脚本与 AI 使用",
+		"  BetterHRBUSTTUI                          启动交互界面（需要 TTY）",
+		"  BetterHRBUSTTUI --json <命令> [选项]      机器可读输出，供脚本与 AI 使用",
 		"",
 		"命令：",
 		"  status                    登录状态、本地数据与上次同步时间",

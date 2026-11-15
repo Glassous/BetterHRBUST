@@ -116,10 +116,32 @@ SKILL 源码位于 [`skill/SKILL.md`](./skill/SKILL.md)，编译期内嵌进二�
 `tests/cli.rs` 用真实进程校验退出码、`--json` 契约与隐私边界；
 `tests/local_server.rs` 覆盖 `/__app/cli` 与 `/__app/cli/skill` 端点）。
 
+## 终端界面（TUI）
+
+安装包与便携版还会附带 `BetterHRBUSTTUI.exe`（Go 编写，源码在 [`tui/`](../tui/README.md)）。
+它与 `BetterHRBUSTCLI.exe` 同目录，读取的是同一份本地缓存，同样不联网、不写数据：
+
+```powershell
+BetterHRBUSTTUI          # 交互界面（10 个页面 + AI 对话抽屉）
+BetterHRBUSTTUI --json summary   # 非交互输出，与 CLI 的 --json 结构一致
+```
+
+**为什么不需要额外的 PATH 配置**：安装器（`installer-hooks.nsh`）写入用户 PATH 的是
+**安装目录**本身，三个可执行文件都在这个目录里，因此重开终端后
+`BetterHRBUSTCLI` 与 `BetterHRBUSTTUI` 都能直接按名字调用。
+
+打包路径：`npm run build:tui` 把 Go 程序交叉编译为
+`binaries/BetterHRBUSTTUI.exe`（版本号取自 `package.json`，与安装包同号），
+再由 [`src-tauri/tauri.windows.conf.json`](./src-tauri/tauri.windows.conf.json) 的
+`bundle.resources` 复制到安装目录根；该配置仅在 Windows 目标下合并，
+Linux 的 deb/rpm 不受影响。
+
 ## 环境要求
 
 - Rust ≥ 1.90（rustup stable）
 - Node.js ≥ 18
+- Go ≥ 1.26（仅打 Windows 安装包/便携版时需要：把终端界面编进安装目录；
+  纯 `npm run dev` / `npm run pack` 不需要）
 - Windows 10/11 x64（WebView2 Evergreen 随系统分发）
 - 访问教务系统需校园网或学校 VPN
 
@@ -154,7 +176,7 @@ npm run test    # = cargo test --manifest-path src-tauri/Cargo.toml
 
 ```powershell
 cd desktop-tauri
-npm run dist    # 完整流程：构建 web + tauri build + 便携 zip
+npm run dist    # 完整流程：构建 web + 构建 TUI + tauri build + 便携 zip
 npm run pack    # 仅产出未打包的裸 exe（快速验证）
 ```
 
@@ -162,12 +184,14 @@ npm run pack    # 仅产出未打包的裸 exe（快速验证）
 
 | 文件 | 说明 |
 | --- | --- |
-| `src-tauri/target/release/bundle/nsis/BetterHRBUST_<版本>_x64-setup.exe` | NSIS 安装包（currentUser 免管理员；内含图形界面 + 命令行，安装时写入用户 PATH） |
-| `release/BetterHRBUST-<版本>-win.zip` | 免安装绿色版（`BetterHRBUST.exe` + `BetterHRBUSTCLI.exe`，资产已嵌入） |
+| `src-tauri/target/release/bundle/nsis/BetterHRBUST_<版本>_x64-setup.exe` | NSIS 安装包（currentUser 免管理员；内含图形界面 + 命令行 + 终端界面，安装时写入用户 PATH） |
+| `release/BetterHRBUST-<版本>-windows-portable.zip` | 免安装绿色版（`BetterHRBUST.exe` + `BetterHRBUSTCLI.exe` + `BetterHRBUSTTUI.exe`，资产已嵌入） |
 
 > `tauri build` 会构建 crate 里的全部 bin，因此安装包自动包含 `BetterHRBUSTCLI.exe`，
-> 无需额外的 sidecar 步骤；便携版由 `scripts/make-portable.mjs` 一并打包两个 exe，
-> 缺失命令行程序时脚本直接失败，避免打出"只有图形界面"的包。
+> 无需额外的 sidecar 步骤；`BetterHRBUSTTUI.exe` 由 Go 编译（`npm run build:tui`），
+> 经 `tauri.windows.conf.json` 的资源声明进入安装目录。
+> 便携版由 `scripts/make-portable.mjs` 一并打包三个 exe，缺失任一程序时脚本直接失败，
+> 避免打出"只有图形界面"的包。
 
 CI（`.github/workflows/build-desktop.yml`）：推送 main 自动构建并以 Rust 测试为门禁；
 打 `desktop-v*` 标签时自动发布 Release。

@@ -6,11 +6,12 @@
   "description": "BetterHRBUST - 哈理工教务在线 Windows 桌面客户端（Tauri 封装 + Rust 内置本地反向代理）",
   "scripts": {
     "build:web": "npm run build --prefix ../web",
+    "build:tui": "node scripts/build-tui.mjs",
     "icon": "tauri icon build/icon-source.png && node -e \"require('fs').utimesSync('src-tauri/build.rs', new Date(), new Date())\"",
     "dev": "tauri dev",
     "pack": "tauri build --no-bundle",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "dist": "npm run build:web && tauri build && node scripts/make-portable.mjs",
+    "dist": "npm run build:web && npm run build:tui && tauri build && node scripts/make-portable.mjs",
     "dist:linux": "npm run build:web && tauri build && node scripts/collect-linux.mjs"
   },
   "devDependencies": {

@@ -10,6 +10,8 @@ on:
       - 'desktop-tauri/**'
       - 'web/**'
       - 'shared/**'
+      # 终端界面（tui/）会被编进 Windows 安装包，改动它同样要重新打包
+      - 'tui/**'
       # shared/parity 是跨端算法一致性向量，只被测试读取，不参与桌面端构建；
       # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
       - '!shared/parity/**'
@@ -19,6 +21,8 @@ on:
       - 'desktop-tauri/**'
       - 'web/**'
       - 'shared/**'
+      # 终端界面（tui/）会被编进 Windows 安装包，改动它同样要重新打包
+      - 'tui/**'
       # shared/parity 是跨端算法一致性向量，只被测试读取，不参与桌面端构建；
       # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
       - '!shared/parity/**'
@@ -65,6 +69,18 @@ jobs:
       # 本地服务层门禁：静态托管/SPA/穿越防护/反代规则(mock 上游)/断连语义/端口顺延
       - name: Rust tests
         run: cargo test --manifest-path desktop-tauri/src-tauri/Cargo.toml
+
+      # 终端界面是独立的 Go 程序（tui/），由 scripts/build-tui.mjs 编译到
+      # desktop-tauri/binaries/，再由 src-tauri/tauri.windows.conf.json 的
+      # bundle.resources 复制进安装目录 —— 必须早于 tauri build，否则资源缺失会失败
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tui/go.mod
+          cache-dependency-path: tui/go.sum
+
+      - name: Build TUI
+        working-directory: desktop-tauri
+        run: node scripts/build-tui.mjs
 
       # 注意：tauri build 会构建 crate 里的全部 bin，因此安装包内自动包含
       # BetterHRBUSTCLI.exe（命令行），无需额外的 sidecar 步骤

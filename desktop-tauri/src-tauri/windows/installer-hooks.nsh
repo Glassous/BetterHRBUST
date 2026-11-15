@@ -1,7 +1,13 @@
 ; BetterHRBUST 安装钩子：把命令行程序接入用户 PATH
 ;
-; 安装包会同时安装 BetterHRBUST.exe（图形界面）与 BetterHRBUSTCLI.exe（命令行）。
-; 图形界面有开始菜单快捷方式；命令行需要安装目录在 PATH 里，用户才能直接输入命令名。
+; 安装包会同时安装三个可执行文件：
+;   BetterHRBUST.exe      图形界面（带开始菜单快捷方式）
+;   BetterHRBUSTCLI.exe   命令行（查询桌面端已同步的本地缓存）
+;   BetterHRBUSTTUI.exe  终端界面（Go 编写，同样只读本地缓存）
+;
+; 三者同在安装目录，因此 PATH 只需写入安装目录一次：追加后
+; `BetterHRBUSTCLI ...` 与 `BetterHRBUSTTUI` 都能直接按名字调用，
+; 不需要为终端界面单独维护第二段 PATH。
 ;
 ; 为什么不在 NSIS 脚本里直接读写注册表：
 ; NSIS 的字符串上限默认 1024 字符，而真实用户 PATH 常常更长（本机实测 1087）。
@@ -19,6 +25,10 @@
 !macro NSIS_HOOK_POSTINSTALL
   ${If} ${FileExists} "$INSTDIR\BetterHRBUSTCLI.exe"
     nsExec::ExecToLog '"$INSTDIR\BetterHRBUSTCLI.exe" path --install'
+  ${EndIf}
+  ; 打包回归防线：终端界面漏进包时提示一行，而不是让用户以为命令名不存在
+  ${IfNot} ${FileExists} "$INSTDIR\BetterHRBUSTTUI.exe"
+    DetailPrint "提示：本次安装包未包含终端界面 BetterHRBUSTTUI.exe"
   ${EndIf}
 !macroend
 

@@ -1,9 +1,9 @@
-// Command betterhrbust-tui 是 BetterHRBUST 的终端界面。
+// Command BetterHRBUSTTUI 是 BetterHRBUST 的终端界面。
 //
 // 两种运行方式：
 //
-//	betterhrbust-tui                          启动交互界面（需要 TTY）
-//	betterhrbust-tui --json <命令> [选项]      非交互输出，供脚本与 AI 工具使用
+//	BetterHRBUSTTUI                          启动交互界面（需要 TTY）
+//	BetterHRBUSTTUI --json <命令> [选项]      非交互输出，供脚本与 AI 工具使用
 //
 // `--json` 的结构与退出码与 `BetterHRBUSTCLI` 完全一致，
 // 因此在没有桌面端二进制的 Linux / macOS 上它可以直接顶替。
@@ -36,7 +36,7 @@ func run(argv []string) int {
 	flags, err := parseFlags(argv)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "参数错误："+err.Error())
-		fmt.Fprintln(os.Stderr, "执行 betterhrbust-tui --help 查看用法。")
+		fmt.Fprintln(os.Stderr, "执行 BetterHRBUSTTUI --help 查看用法。")
 		return store.ExitError
 	}
 	if flags.help {
@@ -48,7 +48,7 @@ func run(argv []string) int {
 			emitJSON(map[string]any{"command": "version", "ok": true, "version": version.String()})
 			return store.ExitOK
 		}
-		fmt.Printf("betterhrbust-tui %s\n", version.String())
+		fmt.Printf("BetterHRBUSTTUI %s\n", version.String())
 		return store.ExitOK
 	}
 
@@ -68,7 +68,7 @@ func runTUI(flags Flags, settings config.Config, dataDir string, source store.Di
 	if !isInteractive() {
 		fmt.Fprintln(os.Stderr, "当前不是交互式终端，无法启动界面。")
 		fmt.Fprintln(os.Stderr, "请用 --json <命令> 获取机器可读输出，例如：")
-		fmt.Fprintln(os.Stderr, "  betterhrbust-tui --json summary")
+		fmt.Fprintln(os.Stderr, "  BetterHRBUSTTUI --json summary")
 		return store.ExitError
 	}
 

@@ -39,6 +39,8 @@ web/.env
 desktop-tauri/src-tauri/target/
 desktop-tauri/src-tauri/gen/
 desktop-tauri/release/
+# 终端界面（Go）交叉编译产物，由 npm run build:tui 生成后打进安装目录
+desktop-tauri/binaries/
 
 # ---------- 编辑器与 IDE ----------
 .vscode/*

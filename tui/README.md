@@ -40,11 +40,27 @@
 
 ## 快速开始
 
+**Windows 已装桌面端时无需构建**：安装包会把 `BetterHRBUSTTUI.exe` 装进安装目录，
+而安装器已把该目录写入用户 PATH，重开终端后直接输入命令即可：
+
+```powershell
+BetterHRBUSTTUI
+```
+
+从源码构建（macOS / Linux，或想用最新代码时）：
+
 ```bash
 # 从仓库根目录
 cd tui
 make build
-./bin/betterhrbust-tui
+./bin/BetterHRBUSTTUI
+```
+
+Windows 的 PowerShell 没有 make，直接构建：
+
+```powershell
+cd tui
+go build -trimpath -ldflags "-s -w" -o bin\BetterHRBUSTTUI.exe ./cmd/betterhrbust-tui
 ```
 
 前提：先用桌面端（或 Web 端）登录并同步过一次，`storage.json` 才会存在。
@@ -85,10 +101,10 @@ make build
 `--json` 的输出结构与退出码与 `BetterHRBUSTCLI.exe` **完全一致**，因此在没有桌面端二进制的 Linux / macOS 上可以直接顶替：
 
 ```bash
-betterhrbust-tui --json status
-betterhrbust-tui --json summary --date 2026-11-13
-betterhrbust-tui --json scores --failed --property 必修
-betterhrbust-tui --json check --strict
+BetterHRBUSTTUI --json status
+BetterHRBUSTTUI --json summary --date 2026-11-13
+BetterHRBUSTTUI --json scores --failed --property 必修
+BetterHRBUSTTUI --json check --strict
 ```
 
 | 退出码 | 含义 |

@@ -2,7 +2,7 @@
 #
 # 全部目标在 tui/ 目录下执行。产物在 bin/，不会污染仓库其他部分。
 
-BINARY   := betterhrbust-tui
+BINARY   := BetterHRBUSTTUI
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X github.com/Glassous/BetterHRBUST/tui/internal/version.Version=$(VERSION)
 GOFLAGS  := -trimpath
