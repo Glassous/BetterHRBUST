@@ -334,6 +334,43 @@ func TestAppConfirmsBeforeEnablingAI(t *testing.T) {
 	}
 }
 
+// TestAppDigitsTypeIntoLoginForm 守住"输学号被当成切页"这个问题：
+// 在「登录与同步」页敲数字必须落进输入框，页面不能跳走。
+func TestAppDigitsTypeIntoLoginForm(t *testing.T) {
+	app := boot(t, 120, 40)
+	_, cmd := app.Update(keyPress("9"))
+	pump(t, app, cmd, 0)
+	if view := screenText(app); !strings.Contains(view, "登录教务系统") {
+		t.Fatalf("按 9 应停在登录与同步页：\n%s", view)
+	}
+
+	for _, digit := range []string{"2", "3", "0", "4"} {
+		_, cmd = app.Update(keyPress(digit))
+		pump(t, app, cmd, 0)
+	}
+	view := screenText(app)
+	if !strings.Contains(view, "登录教务系统") {
+		t.Fatalf("数字键不应把页面切走：\n%s", view)
+	}
+	if !strings.Contains(view, "2304") {
+		t.Fatalf("数字应写入输入框：\n%s", view)
+	}
+
+	// 表单里的 q 是字符，不是退出命令
+	if _, quit := app.Update(keyPress("q")); quit != nil {
+		if _, isQuit := quit().(tea.QuitMsg); isQuit {
+			t.Fatal("登录表单里按 q 不应退出程序")
+		}
+	}
+
+	// 出口仍然存在：数字跳页会入返回栈，esc 能回到上一页
+	app.Update(keyPress("esc"))
+	pump(t, app, nil, 0)
+	if view := screenText(app); !strings.Contains(view, "今日课程") {
+		t.Fatalf("esc 应返回概览页：\n%s", view)
+	}
+}
+
 func TestAppQOnlyQuitsOutsideInput(t *testing.T) {
 	app := boot(t, 120, 40)
 	// 概览页没有输入框，q 应退出。

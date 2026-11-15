@@ -1,6 +1,7 @@
 package campus
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -40,26 +41,40 @@ type LoginResult struct {
 	Warnings []string
 }
 
-// Captcha 拉取一次验证码图片（PNG/JPEG 原样字节）。
+// Captcha 拉取一次验证码图片（PNG / JPEG / GIF 原样字节）。
+//
+// 不依赖响应头：教务有时不写 Content-Type，有时写 octet-stream，
+// 浏览器靠嗅探就能显示，这里同样以文件头为准。
 func (s *Service) Captcha(ctx context.Context) ([]byte, error) {
 	response, err := s.client.Get(ctx, fmt.Sprintf("getCaptcha.do?_t=%d", time.Now().UnixMilli()))
 	if err != nil {
 		return nil, err
 	}
-	if strings.HasPrefix(strings.ToLower(response.ContentType), "image/") {
-		if len(response.Body) == 0 {
-			return nil, errors.New("验证码图片为空，请重试")
-		}
+	if len(response.Body) == 0 {
+		return nil, errors.New("验证码接口没有返回内容，请稍后重试")
+	}
+	if looksLikeImage(response.Body) {
 		return response.Body, nil
 	}
 	if isLoginPage(response.HTML) {
-		// 已在浏览器/图形界面登出后，验证码接口会跳登录页
+		// 会话被清掉时验证码接口会直接吐登录页
 		return nil, errors.New("教务返回了登录页，请稍后重试")
 	}
-	if len(response.Body) == 0 {
-		return nil, errors.New("验证码接口没有返回图片")
+	return nil, errors.New("验证码接口返回的不是图片，请稍后重试")
+}
+
+// looksLikeImage 按文件头判断图片格式（PNG / JPEG / GIF）。
+func looksLikeImage(body []byte) bool {
+	switch {
+	case len(body) >= 8 && bytes.HasPrefix(body, []byte("\x89PNG\r\n\x1a\n")):
+		return true
+	case len(body) >= 3 && body[0] == 0xFF && body[1] == 0xD8 && body[2] == 0xFF:
+		return true
+	case len(body) >= 6 && (bytes.HasPrefix(body, []byte("GIF87a")) || bytes.HasPrefix(body, []byte("GIF89a"))):
+		return true
+	default:
+		return false
 	}
-	return response.Body, nil
 }
 
 // CheckCaptcha 调用教务的前置校验接口；失败不作为阻断条件（与前端一致）。

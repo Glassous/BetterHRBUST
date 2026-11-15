@@ -21,6 +21,9 @@ const (
 	MinHeight = 20
 )
 
+// maxHistory 是返回栈上限。
+const maxHistory = 32
+
 // ToastTTL 是提示条停留时长。
 //
 // 是变量而不是常量：测试里调小它，避免每个用例都真的等 3 秒。
@@ -213,8 +216,13 @@ func (a *App) stepGlobal(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // handleGlobalKey 处理全局快捷键。
+//
+// 顺序很关键：带修饰键的动作与 esc 永远最先处理（用户必须始终能退出、
+// 能打开命令面板），可打印字符则先问当前页要不要——输入型页面认领后
+// 就不会被"按 3 跳到成绩页"截胡。
 func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	matches := func(binding key.Binding) bool { return key.Matches(msg, binding) }
+	name := msg.String()
 
 	switch {
 	case matches(a.keys.Quit):
@@ -222,13 +230,6 @@ func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 	case matches(a.keys.Palette):
 		a.overlay = overlayPalette
 		a.palette.Reset()
-		return true, nil
-	case matches(a.keys.Help):
-		if a.overlay == overlayHelp {
-			a.overlay = overlayNone
-			return true, nil
-		}
-		a.overlay = overlayHelp
 		return true, nil
 	case matches(a.keys.AI):
 		a.chatOpen = !a.chatOpen
@@ -242,7 +243,7 @@ func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		return true, a.reload()
 	case matches(a.keys.Theme):
 		return true, a.cycleTheme()
-	case msg.String() == "esc":
+	case name == "esc":
 		// 关闭优先级：抽屉 → 浮层 → 返回栈。
 		if a.chatOpen {
 			a.chatOpen = false
@@ -261,10 +262,10 @@ func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 
 	// tab / shift+tab 先给"多面板页面"处理；没实现 Focusable 的页面
 	// 自己消费（比如诊断页用 tab 切标签）。
-	if msg.String() == "tab" || msg.String() == "shift+tab" {
+	if name == "tab" || name == "shift+tab" {
 		if focusable, ok := a.current().(Focusable); ok && focusable.FocusCount() > 1 {
 			delta := 1
-			if msg.String() == "shift+tab" {
+			if name == "shift+tab" {
 				delta = -1
 			}
 			if focusable.CycleFocus(delta) {
@@ -272,6 +273,22 @@ func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 			}
 		}
 		return false, nil
+	}
+
+	// 输入型页面认领可打印字符：登录表单里敲 "2304060322"，每个数字
+	// 都是学号的一部分，不是"跳到第 N 页"。
+	if guard, ok := a.current().(KeyGuard); ok && isPlainKey(name) && guard.ConsumesKey(name) {
+		return false, nil
+	}
+
+	// 帮助是单键，必须排在页面认领之后：在密码框里按 ? 应该输入 ?。
+	if matches(a.keys.Help) {
+		if a.overlay == overlayHelp {
+			a.overlay = overlayNone
+			return true, nil
+		}
+		a.overlay = overlayHelp
+		return true, nil
 	}
 
 	// 页面需要输入时，数字与字母键都属于页面。
@@ -286,13 +303,29 @@ func (a *App) handleGlobalKey(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		if index >= len(a.order) {
 			return true, nil
 		}
-		return true, a.navigate(a.order[index], false)
+		// 跳页也入返回栈：esc 能原路退回，输入型页面才有明确的出口。
+		return true, a.navigate(a.order[index], true)
 	}
 
-	if msg.String() == "q" {
+	if name == "q" {
 		return true, tea.Quit
 	}
 	return false, nil
+}
+
+// isPlainKey 判断按键是否是"不带修饰键的可打印单字符"。
+//
+// 这类键才允许页面认领；`ctrl+c`、`alt+1`、`esc`、`tab` 一律不给，
+// 否则用户会被困在某个页面里连退出都做不到。
+func isPlainKey(name string) bool {
+	if name == "space" {
+		return true
+	}
+	runes := []rune(name)
+	if len(runes) != 1 {
+		return false
+	}
+	return runes[0] >= 0x20 && runes[0] != 0x7f
 }
 
 // stepOverlay 处理浮层输入。
@@ -530,6 +563,11 @@ func (a *App) navigate(to ID, push bool) tea.Cmd {
 	}
 	if push {
 		a.history = append(a.history, a.active)
+		// 返回栈只用于"回到刚才那一页"，留几十条足够；不设上限的话
+		// 用户连按几十次数字键就会攒出一条无意义的浏览记录。
+		if len(a.history) > maxHistory {
+			a.history = a.history[len(a.history)-maxHistory:]
+		}
 	}
 	a.active = to
 	return a.enter(to)

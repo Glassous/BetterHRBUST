@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -37,16 +36,19 @@ type Sync struct {
 	ui.Base
 	deps ui.Deps
 
-	fields  []syncField
-	focus   int
-	editing bool
+	fields []syncField
+	focus  int
 
 	remember bool
 	busy     string
 	status   campus.Status
 
-	captcha     image.Image
-	captchaHint string
+	captcha       image.Image
+	captchaRaw    []byte
+	captchaFormat string
+	captchaHint   string
+	// zoom 是验证码放大倍数（1 / 2 / 3），ctrl+g 循环。
+	zoom int
 
 	notice      string
 	noticeLevel string
@@ -55,7 +57,7 @@ type Sync struct {
 
 // NewSync 构造登录与同步页。
 func NewSync(deps ui.Deps) ui.Screen {
-	screen := &Sync{deps: deps, remember: true}
+	screen := &Sync{deps: deps, remember: true, zoom: 1}
 	screen.ScreenID = ui.ScreenSync
 	screen.ScreenTitle = "登录与同步"
 	screen.fields = []syncField{
@@ -205,6 +207,10 @@ func (s *Sync) logoutCmd() tea.Cmd {
 // ---------- 交互 ----------
 
 // Update 处理按键与任务回执。
+//
+// 本页是**常驻输入态**：任何时候敲字符都进当前字段，不需要先按 enter
+// 进入"编辑模式"。这样用户打开页面直接敲学号就行，第一个数字不会被
+// 外壳当成"跳到第 N 页"。页面级动作因此全部改用 ctrl 组合键。
 func (s *Sync) Update(msg tea.Msg) (ui.Screen, tea.Cmd) {
 	if event, ok := msg.(syncEventMsg); ok {
 		return s.handleEvent(event)
@@ -223,78 +229,124 @@ func (s *Sync) Update(msg tea.Msg) (ui.Screen, tea.Cmd) {
 	// 图形界面可能刚刚登录（会话文件被它更新）：按键时顺手刷一次状态，
 	// 用户不必退出重进就能看到"会话可用"。
 	s.refreshStatus()
-	if s.editing {
-		return s.handleEdit(keyMsg)
-	}
 
-	switch keyMsg.String() {
-	case "up", "k", "shift+tab":
-		s.focus = (s.focus + len(s.fields) - 1) % len(s.fields)
-	case "down", "j", "tab":
-		s.focus = (s.focus + 1) % len(s.fields)
-	case "enter":
-		s.editing = true
-	case "m":
-		s.remember = !s.remember
-		s.setNotice("记住密码："+onOff(s.remember), "info")
-	case "c":
+	switch name := keyMsg.String(); name {
+	case "ctrl+l":
+		return s.startLogin()
+	case "ctrl+s":
+		return s.startSync()
+	case "ctrl+n":
 		if s.deps.Sync == nil {
 			return s, nil
 		}
 		s.captchaHint = ""
 		return s, s.captchaCmd()
-	case "l":
-		if s.deps.Sync == nil {
-			s.setNotice("同步功能不可用", "fail")
+	case "ctrl+o":
+		// 终端画不出图（无色主题 / 不认识半块字符）时的兜底：
+		// 把原始验证码存成文件，用系统看图器打开。
+		path, err := s.openCaptcha()
+		if err != nil {
+			s.setNotice("打开验证码失败："+err.Error(), "fail")
 			return s, nil
 		}
-		if s.busy != "" {
-			return s, nil
-		}
-		s.busy = "登录中"
-		s.setNotice("正在登录并同步…", "info")
-		return s, s.loginCmd()
-	case "s":
-		if s.deps.Sync == nil {
-			s.setNotice("同步功能不可用", "fail")
-			return s, nil
-		}
-		if s.busy != "" {
-			return s, nil
-		}
-		s.busy = "同步中"
-		s.setNotice("正在同步…", "info")
-		return s, s.syncCmd()
-	case "x":
+		s.setNotice("验证码已用系统看图器打开："+path, "info")
+		return s, nil
+	case "ctrl+g":
+		s.zoom = s.zoom%3 + 1
+		s.setNotice(fmt.Sprintf("验证码缩放：%d×", s.zoom), "info")
+		return s, nil
+	case "ctrl+m":
+		s.remember = !s.remember
+		s.setNotice("记住密码："+onOff(s.remember), "info")
+		return s, nil
+	case "ctrl+x":
 		if s.deps.Sync == nil {
 			return s, nil
 		}
 		return s, s.confirmLogout()
-	}
-	return s, nil
-}
-
-// handleEdit 处理输入状态下的按键。
-func (s *Sync) handleEdit(msg tea.KeyPressMsg) (ui.Screen, tea.Cmd) {
-	switch msg.String() {
-	case "esc":
-		s.editing = false
+	case "up", "shift+tab", "backtab":
+		s.moveFocus(-1)
+		return s, nil
+	case "down", "tab":
+		s.moveFocus(1)
 		return s, nil
 	case "enter":
-		s.editing = false
-		s.focus = (s.focus + 1) % len(s.fields)
-		return s, nil
-	case "backspace":
+		// 最后一个字段回车等于提交，整个流程可以只靠回车走完。
+		if s.focus < len(s.fields)-1 {
+			s.moveFocus(1)
+			return s, nil
+		}
+		return s.startLogin()
+	case "backspace", "ctrl+h":
 		value := []rune(s.fields[s.focus].value)
 		if len(value) > 0 {
 			s.fields[s.focus].value = string(value[:len(value)-1])
 		}
 		return s, nil
 	}
-	if text := msg.String(); len([]rune(text)) == 1 {
+
+	if text := keyMsg.String(); isTypedText(text) {
+		if text == "space" {
+			text = " "
+		}
 		s.fields[s.focus].value += text
 	}
 	return s, nil
+}
+
+// ConsumesKey 实现 ui.KeyGuard：本页的可打印字符一律归输入框。
+func (s *Sync) ConsumesKey(name string) bool { return isTypedText(name) }
+
+// isTypedText 判断按键是否是"应当写进输入框的字符"。
+func isTypedText(name string) bool {
+	if name == "space" {
+		return true
+	}
+	runes := []rune(name)
+	if len(runes) != 1 {
+		return false
+	}
+	return runes[0] >= 0x20 && runes[0] != 0x7f
+}
+
+// moveFocus 移动字段焦点。
+func (s *Sync) moveFocus(delta int) {
+	s.focus = (s.focus + delta + len(s.fields)) % len(s.fields)
+}
+
+// startLogin 校验后登录并同步。
+func (s *Sync) startLogin() (ui.Screen, tea.Cmd) {
+	if s.deps.Sync == nil {
+		s.setNotice("同步功能不可用", "fail")
+		return s, nil
+	}
+	if s.busy != "" {
+		return s, nil
+	}
+	for index, field := range s.fields {
+		if strings.TrimSpace(field.value) == "" {
+			s.focus = index
+			s.setNotice("请先填写"+field.label, "warn")
+			return s, nil
+		}
+	}
+	s.busy = "登录中"
+	s.setNotice("正在登录并同步…", "info")
+	return s, s.loginCmd()
+}
+
+// startSync 用已有会话同步。
+func (s *Sync) startSync() (ui.Screen, tea.Cmd) {
+	if s.deps.Sync == nil {
+		s.setNotice("同步功能不可用", "fail")
+		return s, nil
+	}
+	if s.busy != "" {
+		return s, nil
+	}
+	s.busy = "同步中"
+	s.setNotice("正在同步…", "info")
+	return s, s.syncCmd()
 }
 
 // handleEvent 处理异步回执。
@@ -309,13 +361,16 @@ func (s *Sync) handleEvent(event syncEventMsg) (ui.Screen, tea.Cmd) {
 			s.captchaHint = event.err.Error()
 			return s, nil
 		}
-		img, _, decodeErr := image.Decode(bytes.NewReader(event.image))
+		img, format, decodeErr := decodeImage(event.image)
 		if decodeErr != nil {
 			s.captcha = nil
+			s.captchaRaw = nil
 			s.captchaHint = "验证码图片无法识别，按 c 重试"
 			return s, nil
 		}
 		s.captcha = img
+		s.captchaRaw = event.image
+		s.captchaFormat = format
 		s.captchaHint = ""
 		return s, nil
 	case "login":
@@ -414,21 +469,27 @@ func (s *Sync) appendLog(line string) {
 	}
 }
 
-// WantsInput 在编辑时接管字母与数字键。
-func (s *Sync) WantsInput() bool { return s.editing }
-
 // Keys 返回页面按键。
+//
+// 页面常驻输入态，所以动作键全部用 ctrl 组合：`l`/`s`/`c` 这些字母
+// 必须留给输入框（密码里完全可能出现）。
 func (s *Sync) Keys() []key.Binding {
 	return []key.Binding{
-		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "输入")),
-		key.NewBinding(key.WithKeys("l"), key.WithHelp("l", "登录并同步")),
-		key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "同步")),
-		key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "换验证码")),
-		key.NewBinding(key.WithKeys("x"), key.WithHelp("x", "退出登录")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "下一项/登录")),
+		key.NewBinding(key.WithKeys("ctrl+l"), key.WithHelp("ctrl+l", "登录并同步")),
+		key.NewBinding(key.WithKeys("ctrl+s"), key.WithHelp("ctrl+s", "同步")),
+		key.NewBinding(key.WithKeys("ctrl+n"), key.WithHelp("ctrl+n", "换验证码")),
+		key.NewBinding(key.WithKeys("ctrl+o"), key.WithHelp("ctrl+o", "原图")),
+		key.NewBinding(key.WithKeys("ctrl+g"), key.WithHelp("ctrl+g", "放大")),
+		key.NewBinding(key.WithKeys("ctrl+x"), key.WithHelp("ctrl+x", "退出登录")),
 	}
 }
 
 // View 渲染整页。
+//
+// 验证码单独占页面底部一整行宽度：它原本挤在左栏卡片里，宽度只有页面
+// 的 3/5，100px 宽的图会被缩小 2~3 倍——糊到认不出。挪到整宽后按
+// 1 像素 1 字符渲染，清晰度直接上一个档；还不够时 ctrl+g 放大。
 func (s *Sync) View() string {
 	th := s.deps.Themes.Get()
 	if s.Width < 68 || s.Height < 18 {
@@ -438,20 +499,39 @@ func (s *Sync) View() string {
 			Width: s.Width, Height: s.Height,
 		}.Render(th)
 	}
+
+	// 卡片按内容高度收敛，把剩下的垂直空间全部让给验证码：
+	// 40 行终端里，表单只需十来行，多出来的空白不如换成更大的图。
+	cardHeight := s.Height
+	var captcha []string
+	if s.captcha != nil && !th.Plain {
+		if natural := minInt(s.Height, 14); natural >= 12 {
+			cardHeight = natural
+		}
+		if room := s.Height - cardHeight - 1; room >= 6 {
+			captcha = s.captchaLines(th, s.Width, room)
+			if len(captcha) == 0 {
+				cardHeight = s.Height
+			}
+		}
+	}
+
 	widths := components.ColumnWidths(s.Width-1, []int{3, 2})
-	return components.SplitHGap(s.Height, 1,
-		components.Part{Width: widths[0], Content: s.renderForm(th, widths[0], s.Height)},
-		components.Part{Width: widths[1], Content: s.renderStatus(th, widths[1], s.Height)},
+	body := components.SplitHGap(cardHeight, 1,
+		components.Part{Width: widths[0], Content: s.renderForm(th, widths[0], cardHeight)},
+		components.Part{Width: widths[1], Content: s.renderStatus(th, widths[1], cardHeight)},
 	)
+	if len(captcha) == 0 {
+		return body
+	}
+	return body + "\n" + strings.Join(captcha, "\n")
 }
 
 // flatLines 是窄屏下的单列渲染。
 func (s *Sync) flatLines(th theme.Theme) []string {
 	lines := []string{}
 	lines = append(lines, s.formLines(th, s.Width-4)...)
-	if captcha := s.captchaLines(th, maxInt(16, s.Width-8)); len(captcha) > 0 {
-		lines = append(lines, captcha...)
-	} else if hint := s.captchaText(th); hint != "" {
+	if hint := s.captchaText(th); hint != "" {
 		lines = append(lines, "", th.MutedStyle().Render(hint))
 	}
 	lines = append(lines, "", th.SubtleStyle().Render(s.statusLine()))
@@ -461,19 +541,48 @@ func (s *Sync) flatLines(th theme.Theme) []string {
 	return lines
 }
 
-// captchaLines 渲染验证码图像；无色主题下返回 nil（真彩色转义会被当成噪声）。
-func (s *Sync) captchaLines(th theme.Theme, width int) []string {
-	if s.captcha == nil || th.Plain {
+// captchaLines 渲染验证码图像并居中；无色主题下返回 nil（真彩色转义会被当成噪声）。
+//
+// zoom 放大倍数超过可用空间时自动退回小倍率：宁可小一点，也不要让
+// 验证码把整页挤爆。
+func (s *Sync) captchaLines(th theme.Theme, width, maxHeight int) []string {
+	if s.captcha == nil || th.Plain || width <= 0 {
 		return nil
 	}
-	return renderImage(s.captcha, width)
+	for zoom := s.zoom; zoom >= 1; zoom-- {
+		source := s.captcha
+		if zoom > 1 {
+			source = upscale(s.captcha, zoom)
+		}
+		lines := renderImage(source, width)
+		if len(lines) == 0 {
+			continue
+		}
+		if maxHeight <= 0 || len(lines) <= maxHeight || zoom == 1 {
+			return centerLines(lines, width)
+		}
+	}
+	return nil
+}
+
+// centerLines 把等宽的图像行水平居中。
+func centerLines(lines []string, width int) []string {
+	centered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		padding := (width - components.Width(line)) / 2
+		if padding > 0 {
+			line = strings.Repeat(" ", padding) + line
+		}
+		centered = append(centered, line)
+	}
+	return centered
 }
 
 // captchaText 返回验证码区域不可用时的说明。
 func (s *Sync) captchaText(th theme.Theme) string {
 	switch {
 	case s.captcha != nil && th.Plain:
-		return "当前主题已去掉颜色，验证码无法在终端里显示：换一个彩色主题，或到图形界面登录一次"
+		return "当前主题已去掉颜色，验证码无法在终端里显示：按 o 用系统看图器打开，或换一个彩色主题"
 	case s.captchaHint != "":
 		return s.captchaHint
 	default:
@@ -485,15 +594,17 @@ func (s *Sync) captchaText(th theme.Theme) string {
 func (s *Sync) renderForm(th theme.Theme, width, height int) string {
 	body := strings.Join(s.formLines(th, width-4), "\n")
 
-	if captcha := s.captchaLines(th, maxInt(12, width-8)); len(captcha) > 0 {
-		body += "\n\n" + strings.Join(captcha, "\n")
-	} else if hint := s.captchaText(th); hint != "" {
-		body += "\n\n" + th.MutedStyle().Render(hint)
+	// 图像在页面底部整宽渲染；卡片里只放"为什么没图"的说明
+	if hint := s.captchaText(th); hint != "" {
+		body += "\n"
+		for _, line := range components.Wrap(hint, maxInt(10, width-8)) {
+			body += "\n" + th.MutedStyle().Render(line)
+		}
 	}
 
-	footer := "enter 输入 · tab 换行 · c 换一张图"
+	footer := "enter 下一项 · tab 换行 · ctrl+n 换图 · ctrl+g 放大"
 	if s.status.HasSession {
-		footer = "enter 输入 · l 重新登录 · s 同步 · x 退出"
+		footer = "enter 登录 · ctrl+s 同步 · ctrl+x 退出 · ctrl+g 放大"
 	}
 	return components.Card{
 		Icon:     th.Glyphs.Icons.Profile,
@@ -518,10 +629,11 @@ func (s *Sync) formLines(th theme.Theme, width int) []string {
 			style = th.SelectedRow()
 		}
 		value := field.value
-		if field.secret && value != "" && !(s.editing && index == s.focus) {
+		// 焦点所在字段显示明文（改错时才看得见），其余密码字段打码
+		if field.secret && value != "" && index != s.focus {
 			value = strings.Repeat("*", minInt(len([]rune(value)), 24))
 		}
-		if s.editing && index == s.focus {
+		if index == s.focus {
 			value += th.Glyphs.Cursor
 		}
 		if value == "" {
@@ -531,7 +643,7 @@ func (s *Sync) formLines(th theme.Theme, width int) []string {
 			style.Render(components.Truncate(value, maxInt(6, width-12))))
 	}
 	lines = append(lines, "  "+th.SubtleStyle().Render(components.PadRight("记住密码", 8))+
-		th.Title().Render(onOff(s.remember))+"  "+th.MutedStyle().Render("m 切换"))
+		th.Title().Render(onOff(s.remember))+"  "+th.MutedStyle().Render("ctrl+m 切换"))
 	return lines
 }
 
@@ -566,9 +678,9 @@ func (s *Sync) renderStatus(th theme.Theme, width, height int) string {
 		}
 	}
 
-	footer := "l 登录并同步 · s 同步"
+	footer := "ctrl+l 登录并同步"
 	if s.status.HasSession {
-		footer = "s 同步 · x 退出登录"
+		footer = "ctrl+s 同步 · ctrl+x 退出"
 	}
 	return components.Card{
 		Icon:     th.Glyphs.Icons.Info,

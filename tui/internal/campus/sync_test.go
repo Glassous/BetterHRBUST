@@ -249,6 +249,44 @@ func TestLoginAndSyncEndToEnd(t *testing.T) {
 	}
 }
 
+// TestCaptchaRejectsNonImageBody 保证"返回登录页 / 错误页"时给出可读原因，
+// 而不是把 HTML 当成图片丢给解码器（那会变成"验证码无法识别"）。
+func TestCaptchaRejectsNonImageBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(fakeLoginPage))
+	}))
+	defer server.Close()
+
+	service := NewService(t.TempDir(), time.Now)
+	service.client = NewClientAt(service.session, server.URL+"/academic/")
+
+	_, err := service.Captcha(context.Background())
+	if err == nil {
+		t.Fatal("返回 HTML 时应报错")
+	}
+	if strings.Contains(err.Error(), "不是图片") == false && strings.Contains(err.Error(), "登录页") == false {
+		t.Fatalf("错误信息应可读：%v", err)
+	}
+}
+
+func TestLooksLikeImage(t *testing.T) {
+	png := []byte("\x89PNG\r\n\x1a\n0000")
+	jpeg := []byte("\xff\xd8\xff\xe0rest")
+	gif := []byte("GIF89a....")
+	html := []byte("<html><body>hello</body></html>")
+	for name, tc := range map[string]struct {
+		body []byte
+		want bool
+	}{
+		"png": {png, true}, "jpeg": {jpeg, true}, "gif": {gif, true},
+		"html": {html, false}, "empty": {nil, false},
+	} {
+		if got := looksLikeImage(tc.body); got != tc.want {
+			t.Fatalf("%s: looksLikeImage = %v，期望 %v", name, got, tc.want)
+		}
+	}
+}
+
 func TestSyncMarksOfflineWhenSessionExpired(t *testing.T) {
 	server := fakeCampus(t)
 	defer server.Close()

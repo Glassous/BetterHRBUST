@@ -91,6 +91,18 @@ type Screen interface {
 	WantsInput() bool
 }
 
+// KeyGuard 是"这个按键归本页"的可选能力。
+//
+// 输入型页面必须实现它：用户点开登录表单后直接敲学号，第一个数字
+// 不能变成"跳到第 N 页"。外壳在把可打印字符写成全局快捷键之前先问一句，
+// 页面认领了就原样交下去。
+//
+// 只对不带修饰键的单字符（数字、字母、标点）生效，`ctrl+*` 与 `esc`
+// 始终由外壳处理——否则用户会被困在页面里出不去。
+type KeyGuard interface {
+	ConsumesKey(name string) bool
+}
+
 // Focusable 是"页面内有多个面板"的可选能力。
 //
 // 实现它的页面会收到 tab / shift+tab，自己决定焦点怎么走；
