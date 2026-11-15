@@ -10,7 +10,8 @@
     "dev": "tauri dev",
     "pack": "tauri build --no-bundle",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "dist": "npm run build:web && tauri build && node scripts/make-portable.mjs"
+    "dist": "npm run build:web && tauri build && node scripts/make-portable.mjs",
+    "dist:linux": "npm run build:web && tauri build && node scripts/collect-linux.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

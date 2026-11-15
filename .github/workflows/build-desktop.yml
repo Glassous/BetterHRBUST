@@ -80,3 +80,70 @@ jobs:
           name: betterhrbust-desktop-windows
           path: desktop-tauri/release/*
           if-no-files-found: error
+
+  # Linux 门禁与打包：与 Windows job 同序、同版本钉；deb/rpm 由 tauri 纯 Rust 打包器产出。
+  # glibc 基线 = ubuntu-22.04（2.35），覆盖 Debian 12+ / Ubuntu 22.04+ / RHEL 9+ / Fedora 37+ / Arch。
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop-tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: desktop-tauri/src-tauri
+
+      # Tauri v2 官方 Linux 依赖清单（WebKit 2.4.1 系 + AppIndicator）
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Build web
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Tauri CLI
+        working-directory: desktop-tauri
+        run: npm ci
+
+      # 本地服务层门禁：静态托管/SPA/穿越防护/反代规则(mock 上游)/断连语义/端口顺延
+      - name: Rust tests
+        run: cargo test --manifest-path desktop-tauri/src-tauri/Cargo.toml
+
+      # 与 Windows 相同：tauri build 构建全部 bin，deb/rpm 自动包含 BetterHRBUSTCLI
+      - name: Build bundles
+        working-directory: desktop-tauri
+        run: npx tauri build
+
+      - name: Collect packages
+        working-directory: desktop-tauri
+        run: node scripts/collect-linux.mjs
+
+      # 包体自检：命令行必须进包（回归防线，防止 bundler 行为变化悄悄丢掉 CLI）
+      - name: Verify packages
+        run: |
+          dpkg-deb -c desktop-tauri/release/BetterHRBUST-*-linux-amd64.deb | grep -E 'usr/bin/BetterHRBUSTCLI'
+          sudo apt-get install -y rpm
+          rpm -qlp desktop-tauri/release/BetterHRBUST-*-linux-x86_64.rpm | grep -E 'usr/bin/BetterHRBUSTCLI'
+
+      # 产物已统一命名(见 desktop-tauri/scripts/collect-linux.mjs)，发布 Release 时直接上传:
+      #   BetterHRBUST-<version>-linux-amd64.deb    Debian/Ubuntu 安装包
+      #   BetterHRBUST-<version>-linux-x86_64.rpm   RHEL/Fedora/openSUSE 安装包
+      - name: Upload artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: betterhrbust-desktop-linux
+          path: desktop-tauri/release/*
+          if-no-files-found: error

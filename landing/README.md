@@ -6,10 +6,6 @@ Vue 3 + Vite 静态发布页。提供功能介绍、Android/Windows/油猴下载
 
 在 landing 目录运行 npm ci、npm run dev。npm run build 生成 dist，npm run preview 可预览构建结果。图片和脚本使用相对路径，支持 GitHub Pages 的 /BetterHRBUST/ 子路径。
 
-## 原仓库 GitHub Pages
-
-.github/workflows/pages.yml 在 PR 中只构建发布页；合并到 Glassous/BetterHRBUST 的 main 后才能部署到原仓库 Pages。维护者需在 Settings → Pages 中将发布来源设为 GitHub Actions。默认地址为 https://glassous.github.io/BetterHRBUST/，是否已经上线以实际部署结果为准。fork 不执行部署。
-
 页面读取原仓库 GitHub Releases 的最新公开版本与附件地址。API 不可用或尚无匹配附件时，按钮仍能打开原仓库的正式发行页，不猜测版本化文件名。新版源码功能需对应版本发布后才在正式下载包中可用。
 
 展示顺序为概览、01 课表、02 GPA 分析、03 资料查找、04 手机端。前四块使用静态 CSS 组件，直接复用客户端的 UiCard、Icon、学业统计函数和课程配色，布局依据真实客户端页面精简；不提供演示切换或编辑交互。姓名、学号和成绩为明确标注的示例，资料条目来自公开目录。第 04 项保留原有设备示意。所有组件随页面主题自动切换，不使用用户个人截图。
