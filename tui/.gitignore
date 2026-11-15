@@ -1,0 +1,7 @@
+# 本地构建产物
+bin/
+dist/
+
+# 临时快照与覆盖率
+*.out
+coverage.txt

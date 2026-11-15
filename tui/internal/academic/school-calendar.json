@@ -1,0 +1,21 @@
+{
+  "academicYear": "2026-2027",
+  "verifiedOn": "2026-10-10",
+  "sourceUrl": "http://jwzx.hrbust.edu.cn/homepage/infoSingleArticle.do?articleId=416",
+  "semesters": [
+    {
+      "label": "2026 秋",
+      "startDate": "2026-08-31",
+      "teachingEndDate": "2027-01-10",
+      "periodEndDate": "2027-02-24",
+      "teachingWeeks": 19
+    },
+    {
+      "label": "2027 春",
+      "startDate": "2027-03-01",
+      "teachingEndDate": "2027-07-11",
+      "periodEndDate": "2027-08-25",
+      "teachingWeeks": 19
+    }
+  ]
+}

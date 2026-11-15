@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "calendar-course-weeks",
+  "kind": "courseWeeks",
+  "description": "课程周次表达式：单/双周为全局前置过滤，闭区间匹配，空表达式视为全学期",
+  "reference": [
+    "web/src/utils/courseWeeks.js",
+    "desktop-tauri/src-tauri/src/cli/calendar.rs"
+  ],
+  "cases": [
+    {
+      "name": "区间内为真",
+      "input": {"expression": "4-5周", "week": 5},
+      "expect": [{"path": "active", "equals": true}]
+    },
+    {
+      "name": "区间外为假",
+      "input": {"expression": "4-5周", "week": 11},
+      "expect": [{"path": "active", "equals": false}]
+    },
+    {
+      "name": "区间边界之后为假",
+      "input": {"expression": "4-5周", "week": 6},
+      "expect": [{"path": "active", "equals": false}]
+    },
+    {
+      "name": "单周表达式的奇数周为真",
+      "input": {"expression": "4-5周(单)", "week": 5},
+      "expect": [{"path": "active", "equals": true}]
+    },
+    {
+      "name": "单周表达式的偶数周为假",
+      "input": {"expression": "4-5周(单)", "week": 4},
+      "expect": [{"path": "active", "equals": false}]
+    },
+    {
+      "name": "双周表达式的偶数周为真",
+      "input": {"expression": "1-8周(双)", "week": 6},
+      "expect": [{"path": "active", "equals": true}]
+    },
+    {
+      "name": "双周表达式的奇数周为假",
+      "input": {"expression": "1-8周(双)", "week": 7},
+      "expect": [{"path": "active", "equals": false}]
+    },
+    {
+      "name": "无周次信息视为全学期有效",
+      "input": {"expression": "", "week": 11},
+      "expect": [{"path": "active", "equals": true}]
+    },
+    {
+      "name": "展开双周区间",
+      "input": {"expression": "1-8周(双)", "maxWeek": 8},
+      "expect": [{"path": "expanded", "equals": [2, 4, 6, 8]}]
+    },
+    {
+      "name": "展开多段双周区间",
+      "input": {"expression": "3-5,9-16周(双)", "maxWeek": 16},
+      "expect": [{"path": "expanded", "equals": [4, 10, 12, 14, 16]}]
+    },
+    {
+      "name": "空表达式展开为整学期",
+      "input": {"expression": "", "maxWeek": 3},
+      "expect": [{"path": "expanded", "equals": [1, 2, 3]}]
+    }
+  ]
+}

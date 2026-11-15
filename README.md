@@ -4,7 +4,7 @@
 
 <h1 align="center">BetterHRBUST ✨</h1>
 
-<p align="center">现代化哈理工教务在线 · 课程表 · 成绩 GPA · 考试日程 · Web / 油猴 / Windows 桌面端 / Android</p>
+<p align="center">现代化哈理工教务在线 · 课程表 · 成绩 GPA · 考试日程 · Web / 油猴 / Windows 桌面端 / Android / 终端</p>
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
@@ -25,7 +25,7 @@
   <a href="https://github.com/Glassous/BetterHRBUST/releases"><img src="https://img.shields.io/badge/全部版本-Releases-181717?logo=github&logoColor=white" alt="全部版本" /></a>
 </p>
 
-自制的现代化哈尔滨理工大学教务在线（URP）客户端：Web / 油猴 / Windows 桌面端 / Android 原生四端同源。
+自制的现代化哈尔滨理工大学教务在线（URP）客户端：Web / 油猴 / Windows 桌面端 / Android 原生 / 终端界面五端同源。
 
 Android 源码版本为 **1.4.0（versionCode 6）**，上课提醒升级为全设备可用的「上课提示」：小米澎湃 OS 3 呈现为超级岛、Android 16 设备走实况通知，其余设备回落为普通通知；设置页移除适配自检，调试包内置模拟提醒入口。资料索引来自教务处公开下载栏目，包含 **9 个分类、97 条资料及 126 个附件链接**；网页与 Android 使用同一份索引。正式安装包以 [Releases](https://github.com/Glassous/BetterHRBUST/releases) 中已经发布的文件为准。
 
@@ -43,6 +43,8 @@ BetterHRBUST/
 ├── server/          # 意见反馈服务端（Go + Gin + MongoDB，Redis 限流）
 ├── admin/           # 意见反馈管理端（Vue 3 + Vite + Tailwind CSS，独立部署）
 ├── android/         # Android 原生客户端（Kotlin + Jetpack Compose + Room）
+├── tui/             # 终端界面（Go + Bubble Tea v2，内置 AI 对话）+ 只读 --json CLI
+├── shared/          # 跨端共享数据（校历、资料索引、parity 一致性向量）
 └── desktop-tauri/   # Windows 桌面端（Tauri + Rust，内置本地反向代理）+ 命令行程序
 ```
 
@@ -72,7 +74,10 @@ BetterHRBUST/
 - **原生 Android 客户端**：Kotlin + Jetpack Compose 原生实现，Material You 动态取色与深浅色主题、边到边全屏 + 悬浮胶囊导航坞、自适应双栏成绩页（列表 / 明细）、下拉刷新；Room 本地持久化 + DataStore 会话偏好，离线同样可用。
 - **版本更新检测**：桌面端（设置页底部）与 Android 端（「更多」页底部）内置基于 GitHub Release 的更新检测——启动时静默检查一次（按天节流），并提供手动「检查更新」；发现新版本时展示版本号与更新日志，一键跳转 Release 页面自行下载。网页与油猴版不显示该模块。
 - **桌面端命令行模式**：安装包附带独立控制台程序 `BetterHRBUSTCLI.exe`，在终端查询概览、课表、成绩与 GPA、考试、培养方案、公告、学籍与课程名录，支持 `--json` 供脚本与 AI 工具解析；安装时自动把安装目录写入用户 PATH。命令行只读本地缓存、不联网：终端无法输入图片验证码，未登录且无本地数据时以退出码 `2` 提示先到图形界面登录。设置页内置命令文档与可一键复制的 AI SKILL。
-- **四端统一口径**：Web、油猴、桌面端与 Android 共用同一套业务口径（API 路径、解析规则、五分制绩点与特色算法、缓存与刷新策略），任一端的结果可互相印证。
+- **终端界面（TUI）**：基于 Go + Charm（Bubble Tea v2 / Lip Gloss / Glamour）的全屏终端客户端，十个页面按**卡片栅格**排版——概览页六张卡片同屏呈现学籍、学期进度、学业指标、今日与本周课程、近期考试、缓存健康；课表页左侧周网格右侧当日时间轴；成绩页带学期绩点走势、分数分布与待关注清单。交互上 `tab` 在卡片间换焦点、方向键在卡片内移动、`enter` 下钻，配合命令面板、三套主题（深色 / 浅色 / 16 色兼容）与**三档字形**（Unicode / 纯 ASCII / Nerd Font 图标）。只读本地缓存、不联网，与桌面端共用同一份 `storage.json`；`--json` 非交互模式的结构与退出码与 `BetterHRBUSTCLI` 完全一致。
+- **原生 LLM 接入**：TUI 内置 AI 对话抽屉，对接任意 OpenAI 兼容服务（DeepSeek / OpenAI / Ollama / vLLM / 智谱 / Moonshot），通过 function calling 调用九个**只读**查询工具——工具与页面共用同一批函数，因此模型给出的数字与界面永远一致。需要「启用」与「同意数据出网」双开关，打开时弹确认框；学籍字段在离开进程前已打码，关闭「发送学籍」时模型连调用入口都没有；对话不落盘。
+- **跨端口径一致性向量**：`shared/parity/` 存放 13 类语言中立的黄金用例（GPA、学位绩点、推免、风险预警、学分进度、教学周、周次、节次、考试时间、课表拆解、就绪状态、打码、命令输出），由 Web / 桌面端 / 终端界面共读；任何一端改了算法而没同步期望值，它自己的测试就会红。
+- **五端统一口径**：Web、油猴、桌面端、Android 与终端界面共用同一套业务口径（API 路径、解析规则、五分制绩点与特色算法、缓存与刷新策略），任一端的结果可互相印证；算法黄金用例固化在 `shared/parity/` 由多端共读。
 
 ---
 
@@ -254,7 +259,31 @@ BetterHRBUSTCLI skill --save .          # 导出给 AI 工具使用的 SKILL
 
 ---
 
-### 5. 服务端、意见反馈与管理端
+### 5. 终端界面 (`tui/`)
+
+在终端里浏览全部教务数据（需要 Go 1.26+）：
+
+```bash
+cd tui
+make build
+./bin/betterhrbust-tui
+```
+
+前提：先用桌面端或网页端登录并同步过一次。终端界面只读 `storage.json`，不联网、不登录、不碰验证码。
+
+常用按键：`1`–`9`/`0`/`,` 切换页面 · `ctrl+p` 命令面板 · `ctrl+j` AI 对话 · `ctrl+r` 重读缓存 · `ctrl+t` 换主题 · `?` 帮助。
+
+非交互模式与桌面端命令行完全兼容，输出结构与退出码一致：
+
+```bash
+./bin/betterhrbust-tui --json summary --date 2026-11-13
+./bin/betterhrbust-tui --json scores --failed --property 必修
+./bin/betterhrbust-tui --json check --strict
+```
+
+AI 对话默认关闭，在设置页（`,`）填写接口地址、模型与 API Key 后开启。细节见 [`tui/README.md`](tui/README.md)。
+
+### 6. 服务端、意见反馈与管理端
 
 意见反馈由独立服务端承载（Web 端同源反代 `/api`；桌面端与 Android 端直连服务端；油猴端不提供入口），管理端用于阅读反馈。
 服务端不代理教务请求、不保存任何学生信息，详见「隐私、安全与合规声明」。
@@ -305,7 +334,7 @@ cd admin && npm run build   # 产物：admin/dist
 
 ---
 
-### 6. 发布 Release 与更新检测
+### 7. 发布 Release 与更新检测
 
 桌面端与 Android 端的更新检测均读取 GitHub 的 **latest Release**
 （`https://api.github.com/repos/Glassous/BetterHRBUST/releases/latest`，请求按天节流）：
@@ -341,7 +370,7 @@ cd admin && npm run build   # 产物：admin/dist
 
 ---
 
-### 7. 接口探测工具 (`tools/probe/`)
+### 8. 接口探测工具 (`tools/probe/`)
 
 教务系统改版或需验证底层接口时，可直接运行逆向探测工具：
 
@@ -426,6 +455,15 @@ node tools/probe/probe.mjs --user 你的学号
 - **构建**：AGP 9.3 · `compileSdk 37` / `minSdk 30`（Android 11+）/ `targetSdk 36` · Release 启用 R8 代码与资源压缩
 - **测试**：JUnit4 + kotlinx-coroutines-test（JVM 用例：解析器对抗性用例、Cookie 会话、GBK/UTF-8 解码、五分制绩点、学位选修规则、课程时间与学分统计边界）
 
+### 终端界面 (`tui/`)
+
+- **语言与模块**：Go 1.26（独立模块 `github.com/Glassous/BetterHRBUST/tui`，不依赖 Rust 工具链）
+- **TUI 框架**：Bubble Tea v2（`charm.land/bubbletea/v2`）+ Lip Gloss v2（样式与布局）+ Bubbles v2（按键绑定）
+- **Markdown 渲染**：Glamour v2（AI 回复最终渲染，流式期间走纯文本以避免每帧重排版）
+- **状态管理**：`Screen` 接口 + 注册表；外壳 `Update` 为固定五段链（尺寸 → 全局 → 浮层 → 数据 → 当前页）
+- **数据层**：只读 `storage.json`；宽松反序列化（数字/字符串/布尔互通，坏记录只丢自己）；Windows / macOS / Linux 三平台目录解析一次做对
+- **LLM**：手写 OpenAI 兼容客户端（`net/http` + 自实现 SSE 解析，无 SDK 依赖），支持工具调用多轮循环、看门狗超时与推理流分离
+- **测试**：13 类跨端黄金向量 + 每页视图快照（含「每行不超过终端宽度」的 CJK 对齐断言）+ 假 SSE 服务覆盖协议边界
 ### 桌面端 (`desktop-tauri/`)
 
 - **容器**：Tauri 2（Rust 主进程 + 系统 WebView2）

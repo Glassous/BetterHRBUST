@@ -10,12 +10,18 @@ on:
       - 'desktop-tauri/**'
       - 'web/**'
       - 'shared/**'
+      # shared/parity 是跨端算法一致性向量，只被测试读取，不参与桌面端构建；
+      # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
+      - '!shared/parity/**'
       - '.github/workflows/build-desktop.yml'
   pull_request:
     paths:
       - 'desktop-tauri/**'
       - 'web/**'
       - 'shared/**'
+      # shared/parity 是跨端算法一致性向量，只被测试读取，不参与桌面端构建；
+      # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
+      - '!shared/parity/**'
       - '.github/workflows/build-desktop.yml'
   workflow_dispatch:
 

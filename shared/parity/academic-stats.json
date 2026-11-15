@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "id": "academic-stats",
+  "kind": "academicStats",
+  "description": "学业统计总览：必修课口径、pending 排除、等级制折算、学位绩点门槛",
+  "reference": [
+    "web/src/services/academic/stats.js",
+    "desktop-tauri/src-tauri/src/cli/stats.rs"
+  ],
+  "cases": [
+    {
+      "name": "学位绩点用「学业课 + E 类最高 + 其余最高」的课程集合",
+      "input": {
+        "scores": [
+          {"courseId": "REQ", "courseName": "REQ", "score": "65", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "ZERO", "courseName": "ZERO", "score": "0", "credit": 0, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "E1", "courseName": "E1", "score": "95", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "E2", "courseName": "E2", "score": "90", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "A1", "courseName": "A1", "score": "89", "credit": 2, "courseGroup": "A类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "D1", "courseName": "D1", "score": "60", "credit": 2, "courseGroup": "D类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "degree.courseCount", "equals": 3},
+        {"path": "degree.requiredCredits", "equals": 7.0},
+        {"path": "degree.gpa", "equals": 3.07},
+        {"path": "degree.threshold", "equals": 1.5},
+        {"path": "degree.qualified", "equals": true},
+        {"path": "gpa", "equals": 1.5},
+        {"path": "totalCredits", "equals": 3.0}
+      ]
+    },
+    {
+      "name": "pending（缓考 / 未出分）不计入已获学分、挂科与学位绩点分母",
+      "input": {
+        "scores": [
+          {"courseId": "OK", "courseName": "OK", "score": "70", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "DEFER", "courseName": "DEFER", "score": "缓考", "credit": 5, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false, "pending": true},
+          {"courseId": "UNGRADED", "courseName": "UNGRADED", "score": "", "credit": 2, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false, "pending": true}
+        ]
+      },
+      "expect": [
+        {"path": "earnedCredits", "equals": 3.0},
+        {"path": "failedCount", "equals": 0},
+        {"path": "failedCredits", "equals": 0.0},
+        {"path": "totalCredits", "equals": 10.0},
+        {"path": "courseCount", "equals": 3},
+        {"path": "degree.requiredCredits", "equals": 10.0},
+        {"path": "degree.gpa", "equals": 2.0},
+        {"path": "degree.qualified", "equals": true}
+      ]
+    },
+    {
+      "name": "等级制成绩折算：合格计学分，不通过计挂科，免修不臆造绩点",
+      "input": {
+        "scores": [
+          {"courseId": "GRADE_NUM", "courseName": "GRADE_NUM", "score": "70", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "GRADE_PASS", "courseName": "GRADE_PASS", "score": "合格", "credit": 4, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "GRADE_EXCL", "courseName": "GRADE_EXCL", "score": "优秀", "credit": 1.5, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "GRADE_EXEMPT", "courseName": "GRADE_EXEMPT", "score": "免修", "credit": 2, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "GRADE_FAIL", "courseName": "GRADE_FAIL", "score": "不通过", "credit": 2, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false}
+        ]
+      },
+      "expect": [
+        {"path": "earnedCredits", "equals": 10.5},
+        {"path": "failedCount", "equals": 1},
+        {"path": "failedCredits", "equals": 2.0},
+        {"path": "risk.level", "equals": "none"}
+      ]
+    },
+    {
+      "name": "风险阈值：15 学分正常，16 学分留降级，26 学分退学",
+      "input": {
+        "scores": [
+          {"courseId": "FAIL16", "courseName": "FAIL16", "score": "50", "credit": 16, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false}
+        ]
+      },
+      "expect": [
+        {"path": "failedCredits", "equals": 16.0},
+        {"path": "risk.level", "equals": "downgrade"},
+        {"path": "risk.label", "equals": "留降级风险"},
+        {"path": "risk.downgradeLine", "equals": 15.0},
+        {"path": "risk.expelLine", "equals": 25.0}
+      ]
+    },
+    {
+      "name": "风险阈值：15 学分不触发预警（严格大于）",
+      "input": {
+        "scores": [
+          {"courseId": "FAIL15", "courseName": "FAIL15", "score": "50", "credit": 15, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false}
+        ]
+      },
+      "expect": [
+        {"path": "risk.level", "equals": "none"},
+        {"path": "risk.label", "equals": "正常"}
+      ]
+    },
+    {
+      "name": "风险阈值：26 学分触发退学",
+      "input": {
+        "scores": [
+          {"courseId": "FAIL26", "courseName": "FAIL26", "score": "50", "credit": 26, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false}
+        ]
+      },
+      "expect": [
+        {"path": "risk.level", "equals": "expel"},
+        {"path": "risk.label", "equals": "退学风险"}
+      ]
+    },
+    {
+      "name": "推免：补考重修门数上限 2，存在必修挂科时一律不合格",
+      "input": {
+        "scores": [
+          {"courseId": "FAIL", "courseName": "FAIL", "score": "50", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "RET0", "courseName": "RET0", "score": "80", "credit": 3, "property": "必修", "examType": "重修", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "RET1", "courseName": "RET1", "score": "80", "credit": 3, "property": "必修", "examType": "重修", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "RET2", "courseName": "RET2", "score": "80", "credit": 3, "property": "必修", "examType": "重修", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "recommend.retakeCount", "equals": 3},
+        {"path": "recommend.retakeLimit", "equals": 2},
+        {"path": "recommend.retakeWithinLimit", "equals": false},
+        {"path": "recommend.allPassed", "equals": false},
+        {"path": "recommend.qualified", "equals": false}
+      ]
+    },
+    {
+      "name": "统计范围只含必修课：限选与任选不参与 GPA 与已获学分",
+      "input": {
+        "scores": [
+          {"courseId": "REQ1", "courseName": "高等数学", "score": "90", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2025", "term": "秋", "passed": true},
+          {"courseId": "REQ2", "courseName": "线性代数", "score": "50", "credit": 2, "property": "必修", "examType": "正常考试", "year": "2025", "term": "秋", "passed": false},
+          {"courseId": "E1", "courseName": "通识写作", "score": "95", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2025", "term": "春", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "gpa", "equals": 2.4},
+        {"path": "weightedAvg", "equals": 74.0},
+        {"path": "courseCount", "equals": 2},
+        {"path": "rawCourseCount", "equals": 3},
+        {"path": "dedupedCount", "equals": 3},
+        {"path": "totalCredits", "equals": 5.0},
+        {"path": "earnedCredits", "equals": 3.0},
+        {"path": "earnedRatio", "equals": 0.6},
+        {"path": "failedCount", "equals": 1},
+        {"path": "failedCredits", "equals": 2.0},
+        {"path": "excellentRate", "equals": 50},
+        {"path": "degree.requiredCredits", "equals": 7.0},
+        {"path": "degree.earnedCredits", "equals": 5.0},
+        {"path": "degree.gpa", "equals": 3.0},
+        {"path": "degree.allPassed", "equals": false},
+        {"path": "degree.qualified", "equals": true}
+      ]
+    }
+  ]
+}

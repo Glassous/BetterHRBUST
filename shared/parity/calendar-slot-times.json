@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "calendar-slot-times",
+  "kind": "slotTimes",
+  "description": "大节起止时间与「是否已下课」：下课时刻起即视为结束",
+  "reference": [
+    "web/src/utils/periodTimes.js",
+    "desktop-tauri/src-tauri/src/cli/calendar.rs"
+  ],
+  "cases": [
+    {
+      "name": "第 2 大节时间",
+      "input": {"period": 2},
+      "expect": [
+        {"path": "time", "equals": "10:10 - 11:50"},
+        {"path": "start", "equals": "10:10"},
+        {"path": "endMinutes", "equals": 710}
+      ]
+    },
+    {
+      "name": "第 1 大节 09:49 尚未下课",
+      "input": {"period": 1, "minutesOfDay": 589},
+      "expect": [{"path": "ended", "equals": false}]
+    },
+    {
+      "name": "第 1 大节 09:50 已下课",
+      "input": {"period": 1, "minutesOfDay": 590},
+      "expect": [{"path": "ended", "equals": true}]
+    },
+    {
+      "name": "越界节次没有时间",
+      "input": {"period": 9},
+      "expect": [
+        {"path": "time", "equals": ""},
+        {"path": "endMinutes", "null": true}
+      ]
+    },
+    {
+      "name": "第 6 大节 21:30 已下课",
+      "input": {"period": 6, "minutesOfDay": 1290},
+      "expect": [{"path": "ended", "equals": true}]
+    },
+    {
+      "name": "第 6 大节 21:29 尚未下课",
+      "input": {"period": 6, "minutesOfDay": 1289},
+      "expect": [{"path": "ended", "equals": false}]
+    }
+  ]
+}

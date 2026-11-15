@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "academic-dedupe",
+  "kind": "dedupe",
+  "description": "成绩去重合并：同一门课只留一条，补考 / 重修 / 跨学期均计入重修门数。结构为 {record, isRetake, recordCount}",
+  "reference": [
+    "web/src/services/academic/stats.js",
+    "desktop-tauri/src-tauri/src/cli/stats.rs"
+  ],
+  "cases": [
+    {
+      "name": "重复导入的同一条记录不算重修",
+      "input": {
+        "scores": [
+          {"courseId": "NORMAL", "courseName": "NORMAL", "score": "90", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "NORMAL", "courseName": "NORMAL", "score": "90", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "courses", "len": 1},
+        {"path": "courses[0].recordCount", "equals": 2},
+        {"path": "courses[0].isRetake", "equals": false}
+      ]
+    },
+    {
+      "name": "补考记录算重修，且保留已通过的一条",
+      "input": {
+        "scores": [
+          {"courseId": "MATH", "courseName": "高等数学", "score": "50", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "MATH", "courseName": "高等数学", "score": "70", "credit": 3, "property": "必修", "examType": "补考", "year": "2024", "term": "2", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "courses", "len": 1},
+        {"path": "courses[0].record.score", "equals": "70"},
+        {"path": "courses[0].isRetake", "equals": true},
+        {"path": "courses[0].recordCount", "equals": 2}
+      ]
+    },
+    {
+      "name": "跨学期修读同一门课算重修",
+      "input": {
+        "scores": [
+          {"courseId": "PHYS", "courseName": "大学物理", "score": "60", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "PHYS", "courseName": "大学物理", "score": "85", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2025", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "courses[0].isRetake", "equals": true},
+        {"path": "courses[0].record.score", "equals": "85"}
+      ]
+    },
+    {
+      "name": "从未通过时保留折算分最高的一条",
+      "input": {
+        "scores": [
+          {"courseId": "CHEM", "courseName": "大学化学", "score": "30", "credit": 2, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "CHEM", "courseName": "大学化学", "score": "55", "credit": 2, "property": "必修", "examType": "补考", "year": "2024", "term": "2", "passed": false}
+        ]
+      },
+      "expect": [
+        {"path": "courses[0].record.score", "equals": "55"},
+        {"path": "courses[0].isRetake", "equals": true}
+      ]
+    },
+    {
+      "name": "没有课程号时按课程名去重",
+      "input": {
+        "scores": [
+          {"courseId": "", "courseName": "军事理论", "score": "80", "credit": 1, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "", "courseName": "军事理论", "score": "90", "credit": 1, "property": "必修", "examType": "正常考试", "year": "2025", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "courses", "len": 1},
+        {"path": "courses[0].record.score", "equals": "90"}
+      ]
+    },
+    {
+      "name": "字段类型漂移仍能解析：数字写成字符串、布尔写成数字",
+      "input": {
+        "scores": [
+          {"courseId": "DRIFT", "courseName": "线性代数", "score": 92.5, "credit": "3.5", "hours": "56", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": "true", "pending": 0}
+        ]
+      },
+      "expect": [
+        {"path": "courses", "len": 1},
+        {"path": "courses[0].record.score", "equals": "92.5"},
+        {"path": "courses[0].record.credit", "equals": 3.5},
+        {"path": "courses[0].record.hours", "equals": 56.0},
+        {"path": "courses[0].record.passed", "equals": true},
+        {"path": "courses[0].record.pending", "equals": false}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "id": "query-summary",
+  "kind": "query",
+  "description": "query 层输出：以 CLI 集成测试的同一份 storage.json 夹具断言概览结果。注意 profile 一律打码（终端界面比 CLI 更严格）",
+  "reference": [
+    "desktop-tauri/src-tauri/tests/cli.rs",
+    "desktop-tauri/src-tauri/src/cli/commands.rs"
+  ],
+  "cases": [
+    {
+      "name": "概览：身份、学期、学业指标、今日课程、近期考试",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "summary",
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "expect": [
+        {
+          "path": "readiness",
+          "equals": "ready"
+        },
+        {
+          "path": "offline",
+          "equals": false
+        },
+        {
+          "path": "data.date",
+          "equals": "2026-11-13"
+        },
+        {
+          "path": "data.isToday",
+          "equals": true
+        },
+        {
+          "path": "data.semester.label",
+          "equals": "2026 秋"
+        },
+        {
+          "path": "data.semester.teachingWeek",
+          "equals": 11
+        },
+        {
+          "path": "data.semester.teachingWeeks",
+          "equals": 19
+        },
+        {
+          "path": "data.semester.holiday",
+          "equals": false
+        },
+        {
+          "path": "data.stats.gpa",
+          "equals": 2.4
+        },
+        {
+          "path": "data.stats.weightedAvg",
+          "equals": 74.0
+        },
+        {
+          "path": "data.stats.earnedCredits",
+          "equals": 3.0
+        },
+        {
+          "path": "data.stats.failedCount",
+          "equals": 1
+        },
+        {
+          "path": "data.stats.degree.gpa",
+          "equals": 3.0
+        },
+        {
+          "path": "data.todayCourses",
+          "len": 1
+        },
+        {
+          "path": "data.todayCourses[0].courseName",
+          "equals": "软件体系结构与设计模式"
+        },
+        {
+          "path": "data.todayCourses[0].teacher",
+          "equals": "张春祥"
+        },
+        {
+          "path": "data.upcomingExams",
+          "len": 1
+        },
+        {
+          "path": "data.upcomingExams[0].exam.courseName",
+          "equals": "高等数学"
+        },
+        {
+          "path": "data.upcomingExams[0].status",
+          "equals": "26351 天后"
+        },
+        {
+          "path": "data.profile.idCard",
+          "equals": "1101************34"
+        },
+        {
+          "path": "data.profile.phone",
+          "equals": "138******11"
+        },
+        {
+          "path": "data.profile.email",
+          "equals": "zh******************"
+        }
+      ],
+      "forbid": [
+        "110101199001011234",
+        "13800001111",
+        "zhangsan@example.com",
+        "b2JmdXNjYXRlZA=="
+      ]
+    },
+    {
+      "name": "课程表：当前周次、按天分组的课程、未安排课程",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "timetable",
+        "today": "2026-11-13",
+        "minuteOfDay": 600,
+        "options": {
+          "week": 11
+        }
+      },
+      "expect": [
+        {
+          "path": "data.week",
+          "equals": 11
+        },
+        {
+          "path": "data.teachingWeeks",
+          "equals": 19
+        },
+        {
+          "path": "data.days",
+          "len": 7
+        },
+        {
+          "path": "data.days[4].courses",
+          "len": 1
+        },
+        {
+          "path": "data.days[4].courses[0].courseName",
+          "equals": "软件体系结构与设计模式"
+        },
+        {
+          "path": "data.days[0].courses",
+          "len": 0
+        },
+        {
+          "path": "data.unarranged",
+          "len": 1
+        },
+        {
+          "path": "data.unarranged[0].courseName",
+          "equals": "课程设计"
+        }
+      ]
+    },
+    {
+      "name": "成绩：必修课口径统计、去重课程清单、筛选",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "scores",
+        "today": "2026-11-13",
+        "options": {
+          "failed": true
+        }
+      },
+      "expect": [
+        {
+          "path": "data.stats.gpa",
+          "equals": 2.4
+        },
+        {
+          "path": "data.stats.courseCount",
+          "equals": 2
+        },
+        {
+          "path": "data.scores",
+          "len": 1
+        },
+        {
+          "path": "data.scores[0].courseName",
+          "equals": "线性代数"
+        },
+        {
+          "path": "data.courses",
+          "len": 1
+        },
+        {
+          "path": "data.dedupedCount",
+          "equals": 1
+        }
+      ]
+    },
+    {
+      "name": "考试：默认只返回未来与过去 7 天",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "exams",
+        "today": "2026-11-13",
+        "options": {}
+      },
+      "expect": [
+        {
+          "path": "data.exams",
+          "len": 1
+        },
+        {
+          "path": "data.exams[0].exam.courseName",
+          "equals": "高等数学"
+        },
+        {
+          "path": "data.exams[0].status",
+          "equals": "26351 天后"
+        },
+        {
+          "path": "data.all",
+          "equals": false
+        }
+      ]
+    },
+    {
+      "name": "考试 --all 返回全部并按时间升序",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "exams",
+        "today": "2026-11-13",
+        "options": {
+          "all": true
+        }
+      },
+      "expect": [
+        {
+          "path": "data.exams",
+          "len": 2
+        },
+        {
+          "path": "data.exams[0].exam.courseName",
+          "equals": "线性代数"
+        },
+        {
+          "path": "data.exams[0].status",
+          "equals": "已结束"
+        },
+        {
+          "path": "data.all",
+          "equals": true
+        }
+      ]
+    },
+    {
+      "name": "培养方案：总学分读取方案真实值",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "plan",
+        "today": "2026-11-13",
+        "options": {}
+      },
+      "expect": [
+        {
+          "path": "data.progress.requiredTotal",
+          "equals": 158.5
+        },
+        {
+          "path": "data.progress.completionPercent",
+          "equals": 3
+        },
+        {
+          "path": "data.groups",
+          "len": 1
+        }
+      ]
+    },
+    {
+      "name": "公告：日期恒为空，不臆造",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "notices",
+        "today": "2026-11-13",
+        "options": {}
+      },
+      "expect": [
+        {
+          "path": "data.notices",
+          "len": 1
+        },
+        {
+          "path": "data.notices[0].title",
+          "equals": "关于开展期中教学检查的通知"
+        },
+        {
+          "path": "data.notices[0].date",
+          "equals": ""
+        }
+      ]
+    },
+    {
+      "name": "学籍：证件号、手机号、邮箱、地址全部打码",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "profile",
+        "today": "2026-11-13",
+        "options": {}
+      },
+      "expect": [
+        {
+          "path": "data.profile.idCard",
+          "equals": "1101************34"
+        },
+        {
+          "path": "data.profile.phone",
+          "equals": "138******11"
+        },
+        {
+          "path": "data.profile.email",
+          "equals": "zh******************"
+        },
+        {
+          "path": "data.profile.address",
+          "equals": "黑龙江省哈尔***********"
+        },
+        {
+          "path": "data.profile.internalId",
+          "equals": ""
+        },
+        {
+          "path": "data.masked",
+          "len": 4
+        }
+      ],
+      "forbid": [
+        "110101199001011234",
+        "13800001111",
+        "zhangsan@example.com",
+        "南岗区"
+      ]
+    },
+    {
+      "name": "课程名录：总数与关键字过滤",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "courses",
+        "today": "2026-11-13",
+        "options": {
+          "query": "高等"
+        }
+      },
+      "expect": [
+        {
+          "path": "data.total",
+          "equals": 1
+        },
+        {
+          "path": "data.courses",
+          "len": 1
+        },
+        {
+          "path": "data.courses[0].courseName",
+          "equals": "高等数学"
+        }
+      ]
+    },
+    {
+      "name": "状态：登录态、数据量、上次同步时间",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "status",
+        "today": "2026-11-13",
+        "options": {}
+      },
+      "expect": [
+        {
+          "path": "data.readiness",
+          "equals": "ready"
+        },
+        {
+          "path": "data.counts.scores",
+          "equals": 3
+        },
+        {
+          "path": "data.counts.exams",
+          "equals": 2
+        },
+        {
+          "path": "data.counts.planGroups",
+          "equals": 1
+        },
+        {
+          "path": "data.account",
+          "equals": "2304060322"
+        },
+        {
+          "path": "data.loggedIn",
+          "equals": true
+        }
+      ],
+      "forbid": [
+        "b2JmdXNjYXRlZA=="
+      ]
+    },
+    {
+      "name": "课程表 --day 只保留指定星期",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "timetable",
+        "today": "2026-11-13",
+        "options": {
+          "week": 11,
+          "day": 5
+        }
+      },
+      "expect": [
+        {
+          "path": "data.days",
+          "len": 1
+        },
+        {
+          "path": "data.days[0].day",
+          "equals": 5
+        },
+        {
+          "path": "data.days[0].weekday",
+          "equals": "周五"
+        },
+        {
+          "path": "data.days[0].courses",
+          "len": 1
+        }
+      ]
+    },
+    {
+      "name": "课程表 --today 只保留当天剩余课程",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 600
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "timetable",
+        "today": "2026-11-13",
+        "minuteOfDay": 600,
+        "options": {
+          "today": true
+        }
+      },
+      "expect": [
+        {
+          "path": "data.days",
+          "len": 1
+        },
+        {
+          "path": "data.days[0].day",
+          "equals": 5
+        },
+        {
+          "path": "data.days[0].courses[0].courseName",
+          "equals": "软件体系结构与设计模式"
+        },
+        {
+          "path": "data.unarranged",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "name": "课程表 --today 在课程下课后为空",
+      "clock": {
+        "today": "2026-11-13",
+        "minuteOfDay": 800
+      },
+      "input": {
+        "fixture": "fixtures/storage-full.json",
+        "command": "timetable",
+        "today": "2026-11-13",
+        "minuteOfDay": 800,
+        "options": {
+          "today": true
+        }
+      },
+      "expect": [
+        {
+          "path": "data.days",
+          "len": 1
+        },
+        {
+          "path": "data.days[0].courses",
+          "len": 0
+        }
+      ]
+    }
+  ]
+}

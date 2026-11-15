@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "id": "academic-degree-courses",
+  "kind": "degreeCourses",
+  "description": "学位课集合：学业课 + E 类最高一门 + 其余 A–E 类最高一门，0 学分不计",
+  "reference": [
+    "web/src/services/academic/stats.js",
+    "desktop-tauri/src-tauri/src/cli/stats.rs"
+  ],
+  "cases": [
+    {
+      "name": "E 类最高一门 + 其余 A–E 类最高一门",
+      "input": {
+        "scores": [
+          {"courseId": "REQ", "courseName": "REQ", "score": "65", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "ZERO", "courseName": "ZERO", "score": "0", "credit": 0, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "E1", "courseName": "E1", "score": "95", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "E2", "courseName": "E2", "score": "90", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "A1", "courseName": "A1", "score": "89", "credit": 2, "courseGroup": "A类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "D1", "courseName": "D1", "score": "60", "credit": 2, "courseGroup": "D类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "ids", "equals": ["REQ", "E1", "E2"]},
+        {"path": "ids", "len": 3}
+      ]
+    },
+    {
+      "name": "没有 E 类时只取学业课",
+      "input": {
+        "scores": [
+          {"courseId": "REQ", "courseName": "REQ", "score": "65", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "A1", "courseName": "A1", "score": "89", "credit": 2, "courseGroup": "A类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "D1", "courseName": "D1", "score": "60", "credit": 2, "courseGroup": "D类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "ids", "equals": ["REQ"]}
+      ]
+    },
+    {
+      "name": "专业类课组即便属性写作任选，也按学业课计入",
+      "input": {
+        "scores": [
+          {"courseId": "MATH", "courseName": "高等数学(A)", "score": "85", "credit": 3, "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "MAJOR", "courseName": "专业方向课", "score": "90", "credit": 2.5, "courseGroup": "专业选修", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "ids", "equals": ["MATH", "MAJOR"]}
+      ]
+    },
+    {
+      "name": "重复修读只算一次：学位集合按去重后的课程计",
+      "input": {
+        "scores": [
+          {"courseId": "E1", "courseName": "E1", "score": "50", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": false},
+          {"courseId": "E1", "courseName": "E1", "score": "95", "credit": 2, "courseGroup": "E类", "property": "任选", "examType": "补考", "year": "2024", "term": "2", "passed": true}
+        ]
+      },
+      "expect": [
+        {"path": "ids", "equals": ["E1"]},
+        {"path": "scores[0].score", "equals": "95"}
+      ]
+    }
+  ]
+}

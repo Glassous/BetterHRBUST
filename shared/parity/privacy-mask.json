@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "id": "privacy-mask",
+  "kind": "mask",
+  "description": "证件号 / 手机号 / 邮箱 / 地址打码：保留头尾、中间以星号填充，空值不打码",
+  "reference": [
+    "desktop-tauri/src-tauri/src/cli/commands.rs"
+  ],
+  "cases": [
+    {
+      "name": "身份证保留头 4 尾 2",
+      "input": {
+        "text": "110101199001011234",
+        "keepHead": 4,
+        "keepTail": 2
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": "1101************34"
+        }
+      ],
+      "forbid": [
+        "110101199001011234",
+        "199001011"
+      ]
+    },
+    {
+      "name": "手机号保留头 3 尾 2",
+      "input": {
+        "text": "13800001111",
+        "keepHead": 3,
+        "keepTail": 2
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": "138******11"
+        }
+      ],
+      "forbid": [
+        "13800001111",
+        "00001"
+      ]
+    },
+    {
+      "name": "邮箱保留本地部分前 2 字符",
+      "input": {
+        "text": "zhangsan@example.com",
+        "keepHead": 2,
+        "keepTail": 0
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": "zh******************"
+        }
+      ],
+      "forbid": [
+        "zhangsan",
+        "@example.com"
+      ]
+    },
+    {
+      "name": "地址保留前 6 个汉字",
+      "input": {
+        "text": "黑龙江省哈尔滨市南岗区学府路52号",
+        "keepHead": 6,
+        "keepTail": 0
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": "黑龙江省哈尔***********"
+        }
+      ],
+      "forbid": [
+        "南岗区",
+        "学府路"
+      ]
+    },
+    {
+      "name": "短于保留位数时全部遮蔽",
+      "input": {
+        "text": "abc",
+        "keepHead": 4,
+        "keepTail": 2
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": "***"
+        }
+      ]
+    },
+    {
+      "name": "空值返回空串而不是星号",
+      "input": {
+        "text": "",
+        "keepHead": 4,
+        "keepTail": 2
+      },
+      "expect": [
+        {
+          "path": "masked",
+          "equals": ""
+        }
+      ]
+    }
+  ]
+}
