@@ -90,11 +90,11 @@
       </div>
     </nav>
 
-    <!-- Bottom User Area -->
-    <div class="p-3 border-t border-[var(--border-hairline)] overflow-hidden shrink-0">
+    <!-- Bottom User Area：用户身份 + AI 入口 -->
+    <div class="p-3 border-t border-[var(--border-hairline)] overflow-hidden shrink-0 flex items-center gap-1.5">
       <button
         type="button"
-        class="w-full h-[52px] px-1 flex items-center text-left rounded-[var(--radius-panel)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-all duration-150 active:scale-[0.985] select-none overflow-hidden group"
+        class="flex-1 min-w-0 h-[52px] px-1 flex items-center text-left rounded-[var(--radius-panel)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-all duration-150 active:scale-[0.985] select-none overflow-hidden group"
         :title="isLoggedIn ? '已登录 · 点击可切换账号或重新认证' : '登录教务在线'"
         @click="openLoginModal()"
       >
@@ -117,6 +117,23 @@
           </div>
         </div>
       </button>
+
+      <!-- AI 对话入口：与用户身份同一行，位于名称右侧 -->
+      <button
+        v-if="!isCollapsedState"
+        type="button"
+        :aria-label="aiOpen ? '关闭 AI 对话' : '打开 AI 对话'"
+        :title="aiOpen ? '关闭 AI 对话 (Ctrl+J)' : '打开 AI 对话 (Ctrl+J)'"
+        class="shrink-0 w-9 h-9 rounded-[var(--radius-control)] flex items-center justify-center text-[11.5px] font-semibold cursor-pointer transition-colors duration-150"
+        :class="
+          aiOpen
+            ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
+            : 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border border-[var(--border-hairline)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink-primary)]'
+        "
+        @click="toggleAi"
+      >
+        AI
+      </button>
     </div>
   </aside>
 </template>
@@ -127,11 +144,13 @@ import Icon from '@/components/icons/Icon.vue';
 import logoUrl from '@/assets/BetterHRBUST.png';
 import { isUserscript } from '@/utils/platform.js';
 import { useSession } from '@/composables/useSession.js';
+import { useAiChat } from '@/composables/useAiChat.js';
 
 // 意见反馈走独立服务端接口：Web 同源反代、桌面端直连公共服务端（见 services/feedback.js），油猴端无服务链路不提供入口
 const feedbackAvailable = !isUserscript;
 
 const { isLoggedIn, userProfile, studentNumber, openLoginModal } = useSession();
+const { open: aiOpen, toggle: toggleAi } = useAiChat();
 
 const props = defineProps({
   activeTab: {

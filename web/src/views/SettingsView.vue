@@ -67,6 +67,9 @@
       </div>
     </UiCard>
 
+    <!-- AI 对话（三端通用：桌面端 key 落盘到 ai-config.json，浏览器落本机存储） -->
+    <AiSettingsCard />
+
     <!-- 命令行模式（桌面端 Tauri 专属：Web / 油猴环境内部自行隐藏） -->
     <CliCard />
 
@@ -80,6 +83,7 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import Icon from '@/components/icons/Icon.vue';
+import AiSettingsCard from '@/components/settings/AiSettingsCard.vue';
 import CliCard from '@/components/settings/CliCard.vue';
 import UpdateCard from '@/components/settings/UpdateCard.vue';
 import { useTheme } from '@/composables/useTheme.js';

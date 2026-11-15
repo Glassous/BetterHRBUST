@@ -56,6 +56,9 @@ func run(argv []string) int {
 	dataDir, source := store.ResolveDataDir(flags.dataDir, env)
 	configPath, _ := store.ResolveConfigPath(env)
 	settings := config.Load(configPath).Normalized()
+	// 三端共用同一份 AI 配置：桌面端（图形界面）已启用时以其为准，
+	// 在设置页填过一次的地址 / 模型 / API Key 在终端不必再填
+	settings, _ = config.OverlayDesktopAI(settings, dataDir)
 
 	if flags.json {
 		return runJSON(flags, dataDir, settings)

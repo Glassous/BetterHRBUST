@@ -116,6 +116,11 @@ BetterHRBUSTTUI --json check --strict
 
 ## AI 对话
 
+**配置与图形界面共享**：桌面端（或 Web 端）启用 AI 后，终端直接读取
+`%APPDATA%\edu.hrbust.betterhrbust\ai-config.json`（**只读**），在设置页填过一次
+接口地址 / 模型 / API Key 就不必在两边各写一遍。桌面端未配置时，本程序仍使用自己的
+`config.json`（见下文「数据与配置」）；两处都有配置时以**图形界面为准**。
+
 默认关闭。在设置页（`,`）完成三步：
 
 1. 填接口地址与模型名（OpenAI 兼容协议）
@@ -126,7 +131,7 @@ BetterHRBUSTTUI --json check --strict
 
 | 服务 | base_url | 模型 |
 |---|---|---|
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-flash` |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | Ollama（本地） | `http://127.0.0.1:11434/v1` | `qwen2.5:7b` |
 | 智谱 | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-flash` |

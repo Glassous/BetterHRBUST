@@ -484,6 +484,106 @@ async fn storage_disabled_returns_503() {
     assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
 }
 
+// ---------------------------------------------------------------- AI 端点
+
+async fn put_json(url: &str, payload: serde_json::Value) -> Response<Incoming> {
+    let request = Request::builder()
+        .method(http::Method::PUT)
+        .uri(url)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Full::new(Bytes::from(payload.to_string())))
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), client().request(request))
+        .await
+        .expect("请求超时")
+        .unwrap()
+}
+
+/// 配置端点：可以读状态、可以改，但**任何响应都不得包含明文 API Key**，
+/// 且 key 必须落在独立的 ai-config.json 而不是 storage.json
+#[tokio::test]
+async fn ai_config_never_returns_plaintext_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let origin = spawn_server_with_storage(dir.path().to_path_buf()).await;
+
+    let res = get(&format!("{origin}/__app/ai/config"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let view: serde_json::Value = serde_json::from_str(&body_text(res).await).unwrap();
+    assert_eq!(view["has_key"], false);
+    assert_eq!(view["base_url"], "https://api.deepseek.com/v1");
+
+    let res = put_json(
+        &format!("{origin}/__app/ai/config"),
+        serde_json::json!({
+            "base_url": "https://api.example.com/v1",
+            "api_key": "sk-secret",
+            "enabled": true,
+            "consent": true
+        }),
+    )
+    .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = body_text(res).await;
+    assert!(!text.contains("sk-secret"), "明文 key 不能出现在响应里：{text}");
+    let view: serde_json::Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(view["has_key"], true);
+    assert_eq!(view["base_url"], "https://api.example.com/v1");
+    assert_eq!(view["api_key_masked"], "已设置（已隐藏）");
+
+    // 独立文件落盘，且没有混进 storage.json
+    let config_text =
+        std::fs::read_to_string(dir.path().join("ai-config.json")).expect("ai-config.json 应存在");
+    assert!(config_text.contains("sk-secret"));
+    let storage_path = dir.path().join("storage.json");
+    if storage_path.exists() {
+        let storage_text = std::fs::read_to_string(&storage_path).unwrap();
+        assert!(!storage_text.contains("sk-secret"), "API Key 不能写进 storage.json");
+    }
+}
+
+/// 未启用持久化（dev 模式）时 503；跨源请求 403 —— 与 storage/cli 同一套防护
+#[tokio::test]
+async fn ai_endpoints_require_storage_and_same_origin() {
+    let origin = spawn_server("http://127.0.0.1:1").await;
+    let res = get(&format!("{origin}/__app/ai/config"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+    let dir = tempfile::tempdir().unwrap();
+    let origin = spawn_server_with_storage(dir.path().to_path_buf()).await;
+    let res = get(
+        &format!("{origin}/__app/ai/config"),
+        &[("Origin", "https://evil.example.com")],
+    )
+    .await
+    .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+/// 转发前先校验 base_url：非 http(s) 直接 400，不去碰本机文件或内网地址
+#[tokio::test]
+async fn ai_chat_rejects_non_http_base_url() {
+    let dir = tempfile::tempdir().unwrap();
+    let origin = spawn_server_with_storage(dir.path().to_path_buf()).await;
+    let request = Request::builder()
+        .method(http::Method::POST)
+        .uri(format!("{origin}/__app/ai/chat"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Full::new(Bytes::from(
+            serde_json::json!({
+                "base_url": "file:///etc/passwd",
+                "messages": [{ "role": "user", "content": "hi" }]
+            })
+            .to_string(),
+        )))
+        .unwrap();
+    let res = tokio::time::timeout(Duration::from_secs(10), client().request(request))
+        .await
+        .expect("请求超时")
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    assert!(body_text(res).await.contains("http"));
+}
+
 // ---------------------------------------------------------------- 命令行端点
 
 /// 设置页"命令行模式"卡片的数据源：状态 JSON 与 SKILL 文本

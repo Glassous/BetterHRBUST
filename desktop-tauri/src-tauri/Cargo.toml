@@ -45,6 +45,15 @@ serde_json = "1"
 # serde 本就是 serde_json 的直接依赖，不引入新编译产物
 serde = { version = "1", features = ["derive"] }
 
+# AI 对话（/__app/ai/chat）需要把 https://api.deepseek.com 这类用户自配端点
+# 转发出去：CSP 不允许前端直连任意域名，因此必须由本进程代理。
+# 只引 TLS 连接器（ring + webpki 根证书），不引 reqwest 全家桶。
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "ring", "webpki-roots"] }
+# 显式安装 rustls 的 crypto provider（ring）。hyper-rustls 在 default-features
+# 关闭时不 re-export rustls，而 0.23 要求进程启动时安装一次 provider，
+# 否则首个 https 握手会 panic。版本与 hyper-rustls 依赖的 rustls 一致。
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+
 # clock.rs 在 Unix 上用 localtime_r 取本地时间（Windows 直接调 kernel32，无此依赖）
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -53,7 +62,8 @@ libc = "0.2"
 tempfile = "3"
 
 # 体积优先：LTO + 单编译单元 + 体积优化 + 符号剥离
-# （体积与内存目标：安装包 <= 10MB、Rust 主进程 RSS <= 25MB）
+# （体积与内存目标：安装包 <= 12MB、Rust 主进程 RSS <= 25MB；
+#   AI 对话引入 TLS（hyper-rustls + ring）后安装包约 11.6MB，其余取舍不变）
 [profile.release]
 codegen-units = 1
 lto = "thin"

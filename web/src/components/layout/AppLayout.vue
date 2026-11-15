@@ -1,5 +1,10 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-[var(--bg-canvas)] text-[var(--ink-primary)] antialiased selection:bg-[var(--accent-soft)] selection:text-[var(--ink-primary)]">
+  <!-- 布局锁高：整页不滚动，滚动交给主区域自己承担。
+       否则主区域内容变高/变宽时会把整页撑开——AI 侧栏高度随之溢出，
+       横向滚动条也会占掉视口高度、把画面整体抬高。 -->
+  <div
+    class="h-screen max-h-screen flex flex-col overflow-hidden bg-[var(--bg-canvas)] text-[var(--ink-primary)] antialiased selection:bg-[var(--accent-soft)] selection:text-[var(--ink-primary)]"
+  >
     <!-- 桌面端自定义标题栏（浏览器环境不渲染，占位高度由 --tb 驱动） -->
     <DesktopTitleBar />
 
@@ -19,8 +24,9 @@
       />
     </Transition>
 
-    <!-- Main Content Flow -->
-    <div class="flex-1 flex">
+    <!-- Main Content Flow：min-h-0 让这一行可以被压缩到视口高度内，
+         overflow-hidden 裁掉 AI 面板入场位移，避免动画期间出现横向滚动条 -->
+    <div class="flex-1 flex min-h-0 overflow-hidden">
       <!-- Collapsible / Responsive Overlay Sidebar -->
       <AppSidebar
         :isCollapsed="isCollapsed"
@@ -30,17 +36,25 @@
         @close="mobileOpen = false"
       />
 
-      <div class="flex-1 flex flex-col min-w-0">
+      <div class="flex-1 flex flex-col min-w-0 min-h-0">
         <AppHeader
           :isCollapsed="isCollapsed"
           :activeTab="activeTab"
           @toggle-sidebar="handleToggleSidebar"
           @navigate="$emit('update:activeTab', $event)"
         />
-        <main class="academic-main flex-1 min-w-0 px-5 sm:px-8 lg:px-10 pt-6 sm:pt-8 pb-14 max-w-[1600px] w-full mx-auto">
+        <!-- 主区域自己滚动：宽内容（课表 / 成绩表）已在视图内自带 overflow-x-auto，
+             这里再兜一层，保证任何情况下都不会把整页宽度撑破 -->
+        <main
+          class="academic-main flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-6 sm:pt-8 pb-14 max-w-[1600px] w-full mx-auto"
+        >
           <slot />
         </main>
       </div>
+
+      <!-- AI 面板：与主区域同级，打开时压缩主区域（推挤而非覆盖），
+           不随页面切换 / 窗口尺寸变化关闭 -->
+      <AiChatDrawer />
     </div>
 
     <!-- Global Toast Container -->
@@ -57,6 +71,18 @@ import AppSidebar from './AppSidebar.vue';
 import AppHeader from './AppHeader.vue';
 import DesktopTitleBar from './DesktopTitleBar.vue';
 import UiToast from '@/components/ui/UiToast.vue';
+import AiChatDrawer from '@/components/ai/AiChatDrawer.vue';
+import { useAiChat } from '@/composables/useAiChat.js';
+
+const { toggle: toggleAiDrawer } = useAiChat();
+
+/** Ctrl/Cmd + J 打开对话（与 TUI 的 ctrl+j 一致） */
+function onGlobalKeydown(event) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'j') {
+    event.preventDefault();
+    toggleAiDrawer();
+  }
+}
 
 defineProps({
   activeTab: {
@@ -91,12 +117,14 @@ function handleResize() {
 
 onMounted(() => {
   window.addEventListener('resize', handleResize);
+  window.addEventListener('keydown', onGlobalKeydown);
   refreshSchoolCalendar();
   calendarTimer = window.setInterval(refreshSchoolCalendar, 60000);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
+  window.removeEventListener('keydown', onGlobalKeydown);
   window.clearInterval(calendarTimer);
 });
 </script>

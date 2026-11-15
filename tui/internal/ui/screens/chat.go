@@ -496,7 +496,7 @@ func (s *Chat) renderSetup(th theme.Theme, reason string) string {
 		" " + th.MutedStyle().Render("  3. 打开「AI 对话」并同意数据出网"),
 		"",
 		" " + th.SubtleStyle().Render("支持的示例："),
-		" " + th.SubtleStyle().Render("  DeepSeek   https://api.deepseek.com/v1   deepseek-chat"),
+		" " + th.SubtleStyle().Render("  DeepSeek   https://api.deepseek.com/v1   deepseek-flash"),
 		" " + th.SubtleStyle().Render("  Ollama     http://127.0.0.1:11434/v1     qwen2.5:7b"),
 		"",
 		" " + th.SubtleStyle().Render("隐私：只有提问与工具返回的查询结果会发送；"),

@@ -17,6 +17,9 @@
 // 命令行模式（BetterHRBUSTCLI.exe）：只读本地缓存，供终端与 AI 工具查询。
 // 逻辑放在库里，本地服务 `/__app/cli` 复用同一套路径与登录态判定。
 pub mod cli;
+// AI 对话：配置（ai-config.json）与 OpenAI 兼容端点的同源流式转发。
+// 前端不能直连任意 base_url（CSP + CORS），必须经本进程。
+pub mod ai;
 mod proxy;
 pub mod server;
 mod storage;

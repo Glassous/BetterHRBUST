@@ -84,7 +84,7 @@ func Default() Config {
 			Enabled:       false,
 			Consent:       false,
 			BaseURL:       "https://api.deepseek.com/v1",
-			Model:         "deepseek-chat",
+			Model:         "deepseek-flash",
 			APIKey:        "",
 			APIKeyEnv:     "BETTERHRBUST_LLM_KEY",
 			Temperature:   0.3,

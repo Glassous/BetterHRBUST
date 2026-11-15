@@ -20,6 +20,7 @@ Windows 桌面客户端：Tauri（Rust）封装 `web/` 前端，主进程内置�
 WebView2 窗口 → http://127.0.0.1:1950（固定端口，占用向后顺延）
   ├─ 静态文件     web/dist（rust-embed 嵌入二进制，debug 模式读磁盘）
   ├─ /__app/storage → 键值持久化（storage.rs，JSON 文件原子落盘）
+  ├─ /__app/ai/*   → AI 配置（ai-config.json）与 OpenAI 兼容端点流式转发（ai.rs）
   └─ /academic/* → http://jwzx.hrbust.edu.cn（hyper 流式转发）
        ├─ Host/Referer 注入（教务系统校验这两个请求头）
        ├─ Set-Cookie 剥离 Domain 属性（会话 Cookie 落在 127.0.0.1）
@@ -135,6 +136,35 @@ BetterHRBUSTTUI --json summary   # 非交互输出，与 CLI 的 --json 结构�
 再由 [`src-tauri/tauri.windows.conf.json`](./src-tauri/tauri.windows.conf.json) 的
 `bundle.resources` 复制到安装目录根；该配置仅在 Windows 目标下合并，
 Linux 的 deb/rpm 不受影响。
+
+## AI 对话
+
+设置页「AI 对话」卡片可以配置任意 OpenAI 兼容服务（DeepSeek / OpenAI / Ollama /
+智谱 …），右下角悬浮按钮或 `Ctrl+J` 打开对话抽屉。默认关闭，需要「AI 对话」与
+「允许数据出网」两个开关同时打开，打开时弹一次确认框并显示服务商域名。
+
+**为什么由 Rust 代理而不是 WebView 直连**：
+
+- 页面 CSP 的 `connect-src` 是静态白名单，而 `base_url` 由用户任意填写；
+  把任意域名写进白名单等于废掉 CSP（`server.rs` 的两个守护测试盯着这份清单）；
+- 多数服务商不给浏览器放 CORS 头，WebView 直连会被预检拦下；
+- API Key 因此不必进入 JS 上下文：前端只 `POST /__app/ai/chat`（同源），
+  Rust 侧补 `Authorization` 转发，TLS 由 `hyper-rustls` 提供（体积 +0.5MB 左右）。
+
+| 端点 | 说明 |
+| --- | --- |
+| `GET /__app/ai/config` | 读取配置，**永不回传明文 key**，只给 `has_key` / 打码文案 |
+| `PUT /__app/ai/config` | 局部更新；`api_key` 空串表示不改，`clear_key` 显式清除 |
+| `POST /__app/ai/chat` | 转发一次 `/chat/completions`，SSE 原样流式回传 |
+
+配置落在 `%APPDATA%\edu.hrbust.betterhrbust\ai-config.json`，**与 `storage.json`
+分开**：后者会被 `/__app/storage` 全量返回给页面，key 混进去等于让同源脚本一键读走。
+字段名与 TUI 的 `config.LLMSettings` 一致，终端界面只读同一份文件，
+因此在图形界面填过一次即可在终端使用（`BetterHRBUSTTUI` 的 AI 抽屉）。
+
+工具集、系统提示词、打码参数与 TUI 保持一致（见 `web/src/services/ai/`）：
+九个只读工具读的是页面渲染用的同一批缓存，`send_profile` 关闭时直接从工具定义里
+摘掉 `query_profile`，模型连调用入口都没有。
 
 ## 环境要求
 

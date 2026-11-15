@@ -119,7 +119,7 @@ func (s *Settings) buildRows() []settingRow {
 			label: "模型", kind: settingText,
 			value: func(c config.Config) string { return orDefault(c.LLM.Model, "未配置") },
 			apply: func(c config.Config) config.Config { return c },
-			hint:  "例如 deepseek-chat、gpt-4o-mini、qwen2.5:7b",
+			hint:  "例如 deepseek-flash、gpt-4o-mini、qwen2.5:7b",
 		},
 		{
 			label: "API Key", kind: settingSecret,

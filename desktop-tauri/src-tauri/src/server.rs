@@ -6,8 +6,9 @@
 //!  - /academic/* → 反向代理 → http://jwzx.hrbust.edu.cn（见 proxy.rs）
 //!  - /__app/storage → 键值持久化（见 storage.rs，教务数据缓存落盘）
 //!  - /__app/cli、/__app/cli/skill → 命令行状态与内嵌 SKILL（见 cli_response）
+//!  - /__app/ai/config、/__app/ai/chat → AI 配置与流式转发（见 ai.rs）
 //!  - 来源校验：全部请求校验 Host 指向本服务自身（阻断 DNS rebinding），
-//!    /academic 与 /__app/storage 追加 Origin / Sec-Fetch-Site 白名单
+//!    /academic 与 /__app/* 追加 Origin / Sec-Fetch-Site 白名单
 //!  - 端口策略：固定 1950 起（建校年份），被占用向后顺延至多 10 次。
 //!    固定端口保证页面源（http://127.0.0.1:1950）跨冷启动稳定，
 //!    教务会话 Cookie 因此持久；数据缓存自 v1.1 起归 Rust 存储文件所有，
@@ -172,6 +173,9 @@ struct AppState {
     storage: Option<Arc<crate::storage::Storage>>,
     /// 数据目录：`/__app/cli` 需要按同一目录解析命令行状态（与 storage 同源）
     data_dir: Option<PathBuf>,
+    /// AI 配置（ai-config.json）与转发客户端；None = dev 模式未启用
+    ai: Option<Arc<crate::ai::AiStore>>,
+    ai_client: crate::ai::AiClient,
 }
 
 /// 启动本地服务：绑定端口（含顺延逻辑）并进入 accept 循环。
@@ -189,12 +193,19 @@ pub async fn start(config: ServerConfig) -> io::Result<SocketAddr> {
             }
         }
     });
+    // AI 配置与存储同目录：配置损坏/缺失都不阻断启动（回退默认值）
+    let ai = config
+        .storage_dir
+        .as_deref()
+        .map(|dir| Arc::new(crate::ai::AiStore::open(dir)));
     let state = AppState {
         port: addr.port(),
         client: Client::builder(TokioExecutor::new()).build_http::<AppBody>(),
         upstream: config.upstream,
         storage,
         data_dir: config.storage_dir,
+        ai,
+        ai_client: crate::ai::build_client(),
     };
 
     tokio::spawn(async move {
@@ -269,6 +280,20 @@ async fn handle(state: AppState, req: Request<Incoming>) -> Result<Response<AppB
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
         }
         Ok(cli_response(&state, path, req.method()))
+    } else if path == "/__app/ai/config" || path == "/__app/ai/chat" {
+        // 与 storage 同级防护：这两个端点能读到配置、能让本机向外发请求，
+        // 任意网页不该有入口（Host 已校验，这里再挡跨源页面）
+        if !browser_origin_allowed(req.headers(), state.port) {
+            return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
+        }
+        let Some(store) = state.ai.as_deref() else {
+            return Ok(plain_response(StatusCode::SERVICE_UNAVAILABLE, "ai not enabled"));
+        };
+        if path == "/__app/ai/config" {
+            Ok(crate::ai::handle_config(store, req).await)
+        } else {
+            Ok(crate::ai::handle_chat(&state.ai_client, store, req).await)
+        }
     } else {
         Ok(static_response(&req))
     }
