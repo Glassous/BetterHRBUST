@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "timetable-cell-fields",
+  "kind": "cellFields",
+  "description": "课表单元格字段拆解：以「周次行」为锚点，缺教师或有多余说明行时不整体错位",
+  "reference": ["web/src/utils/courseCell.js"],
+  "cases": [
+    {
+      "name": "常规五行",
+      "input": {"lines": ["高等数学", "西-新D502", "张春祥", "1-18周", "讲课学时"]},
+      "expect": [
+        {"path": "location", "equals": "西-新D502"},
+        {"path": "teacher", "equals": "张春祥"},
+        {"path": "weeks", "equals": "1-18周"},
+        {"path": "hoursType", "equals": "讲课学时"}
+      ]
+    },
+    {
+      "name": "缺教师时后续字段整体前移，周次仍能识别",
+      "input": {"lines": ["军训", "西-区田径场", "4-5周", "实践学时"]},
+      "expect": [
+        {"path": "location", "equals": "西-区田径场"},
+        {"path": "teacher", "equals": ""},
+        {"path": "weeks", "equals": "4-5周"},
+        {"path": "hoursType", "equals": "实践学时"}
+      ]
+    },
+    {
+      "name": "周次后多一行说明时优先取带「学时」的行",
+      "input": {"lines": ["软件体系结构", "D502", "张春祥", "1-16周", "一上午", "讲课学时"]},
+      "expect": [
+        {"path": "location", "equals": "D502"},
+        {"path": "teacher", "equals": "张春祥"},
+        {"path": "weeks", "equals": "1-16周"},
+        {"path": "hoursType", "equals": "讲课学时"}
+      ]
+    },
+    {
+      "name": "多位教师按空格合并",
+      "input": {"lines": ["大学体育", "体育馆", "王五", "赵六", "1-16周", "实践学时"]},
+      "expect": [
+        {"path": "teacher", "equals": "王五 赵六"},
+        {"path": "weeks", "equals": "1-16周"}
+      ]
+    },
+    {
+      "name": "无法识别周次行时退回固定位置",
+      "input": {"lines": ["无周次", "A", "B"]},
+      "expect": [
+        {"path": "location", "equals": "A"},
+        {"path": "teacher", "equals": "B"},
+        {"path": "weeks", "equals": ""},
+        {"path": "hoursType", "equals": ""}
+      ]
+    },
+    {
+      "name": "单周表达式同样被识别为周次行",
+      "input": {"lines": ["形势与政策", "线上", "李七", "3-15周(单)", "讲课学时"]},
+      "expect": [
+        {"path": "weeks", "equals": "3-15周(单)"}
+      ]
+    }
+  ]
+}

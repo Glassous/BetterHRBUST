@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "calendar-exam-time",
+  "kind": "examTime",
+  "description": "考试时间文本解析：横线 / 中文 / 斜杠三种写法，只有日期时不编造开考时间",
+  "reference": [
+    "web/src/utils/examTime.js",
+    "desktop-tauri/src-tauri/src/cli/calendar.rs"
+  ],
+  "cases": [
+    {
+      "name": "横线写法",
+      "input": {"text": "2026-01-05 14:00-16:00"},
+      "expect": [
+        {"path": "ok", "equals": true},
+        {"path": "date", "equals": "2026-01-05"},
+        {"path": "start", "equals": "14:00"},
+        {"path": "end", "equals": "16:00"}
+      ]
+    },
+    {
+      "name": "中文写法",
+      "input": {"text": "2026年1月5日 14:00~16:00"},
+      "expect": [
+        {"path": "ok", "equals": true},
+        {"path": "date", "equals": "2026-01-05"},
+        {"path": "start", "equals": "14:00"},
+        {"path": "end", "equals": "16:00"}
+      ]
+    },
+    {
+      "name": "斜杠写法且只有日期",
+      "input": {"text": "2026/1/5"},
+      "expect": [
+        {"path": "ok", "equals": true},
+        {"path": "date", "equals": "2026-01-05"},
+        {"path": "start", "null": true},
+        {"path": "end", "null": true}
+      ]
+    },
+    {
+      "name": "「至」作为时间分隔符",
+      "input": {"text": "2026-06-20 09:00 至 11:00"},
+      "expect": [
+        {"path": "start", "equals": "09:00"},
+        {"path": "end", "equals": "11:00"}
+      ]
+    },
+    {
+      "name": "无法识别的文本不臆造时间",
+      "input": {"text": "待定"},
+      "expect": [
+        {"path": "ok", "equals": false},
+        {"path": "date", "null": true}
+      ]
+    },
+    {
+      "name": "空文本",
+      "input": {"text": ""},
+      "expect": [{"path": "ok", "equals": false}]
+    }
+  ]
+}

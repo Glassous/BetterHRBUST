@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "id": "academic-credits-progress",
+  "kind": "creditsProgress",
+  "description": "培养方案学分完成度：课组去重、方案总学分优先、专业限选按 4 门、方案外课程单列",
+  "reference": [
+    "web/src/services/academic/stats.js",
+    "desktop-tauri/src-tauri/src/cli/stats.rs"
+  ],
+  "cases": [
+    {
+      "name": "重复课组只算一次",
+      "input": {
+        "scores": [],
+        "groups": [
+          {"id": "1", "name": "基础课", "requiredCredits": 20},
+          {"id": "1", "name": "基础课", "requiredCredits": 20}
+        ]
+      },
+      "expect": [
+        {"path": "categories", "len": 1},
+        {"path": "requiredTotal", "equals": 20.0}
+      ]
+    },
+    {
+      "name": "方案总学分优先于课组之和",
+      "input": {
+        "scores": [],
+        "groups": [{"id": "1", "name": "基础课", "requiredCredits": 20}],
+        "totalRequiredCredits": 158.5
+      },
+      "expect": [
+        {"path": "requiredTotal", "equals": 158.5}
+      ]
+    },
+    {
+      "name": "没有课组也没有总学分时要求为 0",
+      "input": {"scores": [], "groups": []},
+      "expect": [
+        {"path": "requiredTotal", "equals": 0.0},
+        {"path": "completionPercent", "equals": 0}
+      ]
+    },
+    {
+      "name": "专业限选固定按 4 门，候选课程数单独给出",
+      "input": {
+        "scores": [],
+        "groups": [
+          {
+            "id": "direction",
+            "name": "专业限选",
+            "property": "限选",
+            "requiredCredits": 10,
+            "courses": [
+              {"code": "DIR0", "name": "方向课程0", "credit": 2.5},
+              {"code": "DIR1", "name": "方向课程1", "credit": 2.5},
+              {"code": "DIR2", "name": "方向课程2", "credit": 2.5},
+              {"code": "DIR3", "name": "方向课程3", "credit": 2.5},
+              {"code": "DIR4", "name": "方向课程4", "credit": 2.5},
+              {"code": "DIR5", "name": "方向课程5", "credit": 2.5},
+              {"code": "DIR6", "name": "方向课程6", "credit": 2.5},
+              {"code": "DIR7", "name": "方向课程7", "credit": 2.5},
+              {"code": "DIR8", "name": "方向课程8", "credit": 2.5},
+              {"code": "DIR9", "name": "方向课程9", "credit": 2.5}
+            ]
+          }
+        ]
+      },
+      "expect": [
+        {"path": "requiredTotal", "equals": 10.0},
+        {"path": "categories[0].required", "equals": 10.0},
+        {"path": "categories[0].requiredCourses", "equals": 4},
+        {"path": "categories[0].electiveCandidates", "equals": 10},
+        {"path": "categories[0].earned", "equals": 0.0}
+      ]
+    },
+    {
+      "name": "「专业基础限选」不是专业选修课组（不强制 4 门）",
+      "input": {
+        "scores": [],
+        "groups": [
+          {"id": "base", "name": "专业基础限选", "property": "限选", "requiredCredits": 8, "requiredCourses": 3}
+        ]
+      },
+      "expect": [
+        {"path": "categories[0].requiredCourses", "equals": 3},
+        {"path": "categories[0].electiveCandidates", "null": true}
+      ]
+    },
+    {
+      "name": "已通过课程按课组名模糊归集，同一门课只算一次",
+      "input": {
+        "scores": [
+          {"courseId": "REQ1", "courseName": "高等数学", "score": "90", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "REQ2", "courseName": "大学物理", "score": "80", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ],
+        "groups": [
+          {"id": "1", "name": "学科基础课程", "property": "必修", "requiredCredits": 20}
+        ]
+      },
+      "expect": [
+        {"path": "categories", "len": 1},
+        {"path": "categories[0].earned", "equals": 6.0},
+        {"path": "earnedTotal", "equals": 6.0},
+        {"path": "requiredTotal", "equals": 20.0},
+        {"path": "completionPercent", "equals": 30}
+      ]
+    },
+    {
+      "name": "同一门课不会被两个课组重复计分",
+      "input": {
+        "scores": [
+          {"courseId": "REQ1", "courseName": "高等数学", "score": "90", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ],
+        "groups": [
+          {"id": "1", "name": "学科基础课程", "property": "必修", "requiredCredits": 20},
+          {"id": "2", "name": "专业核心课程", "property": "必修", "requiredCredits": 30}
+        ]
+      },
+      "expect": [
+        {"path": "categories[0].earned", "equals": 3.0},
+        {"path": "categories[1].earned", "equals": 0.0},
+        {"path": "earnedTotal", "equals": 3.0},
+        {"path": "completionPercent", "equals": 6}
+      ]
+    },
+    {
+      "name": "未匹配方案课组的课程单列「方案外课程」",
+      "input": {
+        "scores": [
+          {"courseId": "REQ1", "courseName": "高等数学", "score": "90", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "OPT1", "courseName": "艺术鉴赏", "score": "95", "credit": 2, "courseGroup": "通识选修", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ],
+        "groups": [
+          {"id": "1", "name": "学科基础课程", "property": "必修", "requiredCredits": 20}
+        ]
+      },
+      "expect": [
+        {"path": "categories", "len": 2},
+        {"path": "categories[1].name", "equals": "方案外课程（通识选修 / 实践拓展）"},
+        {"path": "categories[1].earned", "equals": 2.0},
+        {"path": "earnedTotal", "equals": 5.0}
+      ]
+    },
+    {
+      "name": "完全没有课组时按课组名归类，未归类归入「其它课程」",
+      "input": {
+        "scores": [
+          {"courseId": "A", "courseName": "A", "score": "90", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "B", "courseName": "B", "score": "90", "credit": 2, "courseGroup": "", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ],
+        "groups": []
+      },
+      "expect": [
+        {"path": "categories[0].name", "equals": "学科基础课程"},
+        {"path": "categories[0].earned", "equals": 3.0},
+        {"path": "categories[1].name", "equals": "其它"},
+        {"path": "earnedTotal", "equals": 5.0}
+      ]
+    },
+    {
+      "name": "未通过课程不计入已获学分",
+      "input": {
+        "scores": [
+          {"courseId": "FAIL", "courseName": "FAIL", "score": "50", "credit": 4, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": false}
+        ],
+        "groups": [{"id": "1", "name": "学科基础课程", "property": "必修", "requiredCredits": 20}]
+      },
+      "expect": [
+        {"path": "earnedTotal", "equals": 0.0},
+        {"path": "categories", "len": 1}
+      ]
+    },
+    {
+      "name": "requiredOnly 只统计必修课",
+      "input": {
+        "scores": [
+          {"courseId": "REQ", "courseName": "REQ", "score": "90", "credit": 3, "courseGroup": "学科基础课程", "property": "必修", "examType": "正常考试", "year": "2024", "term": "1", "passed": true},
+          {"courseId": "OPT", "courseName": "OPT", "score": "95", "credit": 2, "courseGroup": "学科基础课程", "property": "任选", "examType": "正常考试", "year": "2024", "term": "1", "passed": true}
+        ],
+        "groups": [{"id": "1", "name": "学科基础课程", "property": "必修", "requiredCredits": 20}],
+        "requiredOnly": true
+      },
+      "expect": [
+        {"path": "earnedTotal", "equals": 3.0},
+        {"path": "requiredOnly", "equals": true}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "calendar-day-date",
+  "kind": "dayDate",
+  "description": "教学周第 N 天的 MM/DD 日期标签：超出教学周上限时不推测",
+  "reference": [
+    "web/src/utils/timetableDates.js",
+    "desktop-tauri/src-tauri/src/cli/calendar.rs"
+  ],
+  "cases": [
+    {
+      "name": "同一周内的周一日期",
+      "input": {"currentWeek": 6, "selectedWeek": 6, "day": 1, "today": "2026-01-01"},
+      "expect": [{"path": "label", "equals": "12/29"}]
+    },
+    {
+      "name": "下一周周一跨月",
+      "input": {"currentWeek": 6, "selectedWeek": 7, "day": 1, "today": "2026-01-01"},
+      "expect": [{"path": "label", "equals": "01/05"}]
+    },
+    {
+      "name": "闰年 2 月 29 日",
+      "input": {"currentWeek": 6, "selectedWeek": 6, "day": 4, "today": "2024-02-29"},
+      "expect": [{"path": "label", "equals": "02/29"}]
+    },
+    {
+      "name": "校历学期内的第 6 周周日",
+      "input": {"currentWeek": 6, "selectedWeek": 6, "day": 7, "today": "2026-10-10"},
+      "expect": [{"path": "label", "equals": "10/11"}]
+    },
+    {
+      "name": "超出教学周上限时不推测日期",
+      "input": {"currentWeek": 6, "selectedWeek": 20, "day": 1, "today": "2026-10-10"},
+      "expect": [{"path": "label", "equals": ""}]
+    },
+    {
+      "name": "非法当前周返回空串",
+      "input": {"currentWeek": 0, "selectedWeek": 1, "day": 1, "today": "2026-10-10"},
+      "expect": [{"path": "label", "equals": ""}]
+    },
+    {
+      "name": "非法星期返回空串",
+      "input": {"currentWeek": 6, "selectedWeek": 6, "day": 8, "today": "2026-10-10"},
+      "expect": [{"path": "label", "equals": ""}]
+    }
+  ]
+}

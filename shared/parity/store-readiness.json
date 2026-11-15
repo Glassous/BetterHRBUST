@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "id": "store-readiness",
+  "kind": "readiness",
+  "description": "就绪判定与退出码：未登录无数据为 2，已登录但缓存为空为 3，存储损坏为 3",
+  "reference": [
+    "web/src/composables/useAcademicData.js",
+    "desktop-tauri/src-tauri/src/cli/store.rs"
+  ],
+  "cases": [
+    {
+      "name": "未登录且无任何数据 → 必须回图形界面登录",
+      "input": {"storage": {}},
+      "expect": [
+        {"path": "kind", "equals": "needLogin"},
+        {"path": "exitCode", "equals": 2},
+        {"path": "errorCode", "equals": "NEED_GUI_LOGIN"},
+        {"path": "message", "contains": "图形界面"},
+        {"path": "message", "contains": "验证码"}
+      ]
+    },
+    {
+      "name": "未登录但有考试缓存 → 可离线查询",
+      "input": {"storage": {"better_hrbust_cache_exams": "[{\"courseName\":\"高等数学\"}]"}},
+      "expect": [
+        {"path": "kind", "equals": "ready"},
+        {"path": "offline", "equals": true},
+        {"path": "exitCode", "equals": 0},
+        {"path": "errorCode", "equals": ""}
+      ]
+    },
+    {
+      "name": "已登录且有课表 → 在线可查询",
+      "input": {
+        "storage": {
+          "better_hrbust_has_session": "true",
+          "better_hrbust_cache_timetable": "{\"cells\":[{\"day\":1}]}"
+        }
+      },
+      "expect": [
+        {"path": "kind", "equals": "ready"},
+        {"path": "offline", "equals": false},
+        {"path": "exitCode", "equals": 0}
+      ]
+    },
+    {
+      "name": "已登录但缓存为空 → 提示去图形界面刷新",
+      "input": {"storage": {"better_hrbust_has_session": "true"}},
+      "expect": [
+        {"path": "kind", "equals": "noData"},
+        {"path": "exitCode", "equals": 3},
+        {"path": "errorCode", "equals": "NO_LOCAL_DATA"},
+        {"path": "message", "contains": "刷新"}
+      ]
+    },
+    {
+      "name": "公告与课程名录单独存在不算有数据",
+      "input": {
+        "storage": {
+          "better_hrbust_has_session": "true",
+          "better_hrbust_cache_notices": "[{\"title\":\"关于选课的通知\"}]",
+          "better_hrbust_cache_current_courses": "[{\"courseName\":\"高等数学\"}]"
+        }
+      },
+      "expect": [
+        {"path": "kind", "equals": "noData"},
+        {"path": "exitCode", "equals": 3}
+      ]
+    },
+    {
+      "name": "登录标记只认精确的 true",
+      "input": {
+        "storage": {
+          "better_hrbust_has_session": "1",
+          "better_hrbust_cache_exams": "[{\"courseName\":\"高等数学\"}]"
+        }
+      },
+      "expect": [
+        {"path": "kind", "equals": "ready"},
+        {"path": "offline", "equals": true}
+      ]
+    },
+    {
+      "name": "存储文件损坏 → 退出码 3 并给出重建建议",
+      "input": {"storage": null, "loadError": "无法解析本地数据文件"},
+      "expect": [
+        {"path": "kind", "equals": "noData"},
+        {"path": "exitCode", "equals": 3},
+        {"path": "errorCode", "equals": "NO_LOCAL_DATA"},
+        {"path": "message", "contains": "无法解析本地数据文件"}
+      ]
+    }
+  ]
+}
