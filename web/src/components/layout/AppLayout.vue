@@ -34,6 +34,7 @@
         :activeTab="activeTab"
         @update:activeTab="handleTabSelect($event)"
         @close="mobileOpen = false"
+        @collapse="isCollapsed = true"
       />
 
       <div class="flex-1 flex flex-col min-w-0 min-h-0">

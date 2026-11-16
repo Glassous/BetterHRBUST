@@ -22,8 +22,8 @@
         <div class="text-[var(--ink-muted)] num-tabular shrink-0">上次同步：{{ lastSyncText }}</div>
       </div>
 
-      <!-- 顶部 4 栏关键指标（修复 3+1 落单排版） -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+      <!-- 顶部 4 栏关键指标（按主内容宽度重排，避免 AI 面板挤压） -->
+      <div class="score-metrics-grid grid gap-4 sm:gap-5">
         <!-- 主指标：MD3E hero 容器（secondaryContainer），低饱和不刺眼 -->
         <div class="rounded-[var(--shape-xl)] bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] p-5 transition-all duration-200 hover:-translate-y-0.5">
           <div class="text-[13px] font-medium opacity-75">平均学分绩点 (五分制 GPA)</div>
@@ -67,7 +67,7 @@
           <span class="text-[13px] text-[var(--ink-muted)]">门槛以学校教务处当期文件为准</span>
         </template>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 sm:p-5">
+        <div class="score-algo-grid grid gap-4 p-4 sm:p-5">
           <!-- ① 学位证算法 -->
           <div class="p-5 space-y-2.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)]">
             <div class="flex items-center justify-between gap-2">
@@ -132,9 +132,9 @@
       </UiCard>
 
       <!-- 走势图与成绩分布 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+      <div class="score-chart-grid grid gap-5 sm:gap-6">
         <!-- 各学期 GPA 走向趋势（可交互探查点位） -->
-        <UiCard title="各学期 GPA 走向趋势（五分制 · 仅必修课）" class="lg:col-span-2">
+        <UiCard title="各学期 GPA 走向趋势（五分制 · 仅必修课）">
           <template v-if="activeTrendPoint" #header-action>
             <div class="text-[13px] text-[var(--ink-secondary)] num-tabular bg-[var(--bg-subtle)] px-3 py-1 rounded-full border border-[var(--border-hairline)]">
               {{ activeTrendPoint.label }} · GPA <strong class="text-[var(--accent)] font-semibold">{{ activeTrendPoint.val }}</strong>（{{ activeTrendPoint.count }} 门 / {{ activeTrendPoint.credits }} 学分）
@@ -223,7 +223,7 @@
                 >
                   {{ p.val }}
                 </text>
-                <text x="p.x" y="168" text-anchor="middle" class="text-xs num-tabular" fill="var(--ink-muted)">
+                <text :x="p.x" y="168" text-anchor="middle" class="text-xs num-tabular" fill="var(--ink-muted)">
                   {{ p.label }}
                 </text>
               </g>

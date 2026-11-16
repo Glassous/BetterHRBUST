@@ -30,10 +30,9 @@
     <!-- 已登录或持离线缓存：工具型日常工作台 -->
     <template v-else>
       <!-- 第一视觉焦点：今日日程与教学周定位 + 快捷工具 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch">
+      <div class="dashboard-top-grid grid gap-5 sm:gap-6 items-stretch">
         <!-- 主工作区：今日剩余课程 & 下节提示 -->
         <UiCard
-          class="lg:col-span-2"
           customClass="h-full flex flex-col"
           :title="`今日课程安排 (${currentDayName})`"
           :subtitle="isSchoolHoliday ? `${todayDateLabel} · 当前处于假期` : `${todayDateLabel} · 当前教学第 ${currentWeek} 周`"
@@ -111,8 +110,8 @@
         </UiCard>
 
         <!-- 右侧栏：常用工具入口 -->
-        <UiCard title="快捷工具" customClass="h-full flex flex-col" bodyClass="p-4 sm:p-5 flex-1 flex items-center">
-          <div class="grid grid-cols-2 gap-3 w-full">
+        <UiCard title="快捷工具" customClass="h-full flex flex-col quick-tools-card" bodyClass="p-4 sm:p-5 flex-1 flex items-center">
+          <div class="quick-tools-grid grid grid-cols-2 gap-3 w-full">
             <button
               v-for="tool in quickTools"
               :key="tool.label"
@@ -207,8 +206,8 @@
       </div>
 
       <!-- 第三层：学业口径核对 + 考试与公告紧凑区 -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
-        <div class="lg:col-span-2 space-y-5 sm:space-y-6">
+      <div class="dashboard-bottom-grid grid gap-5 sm:gap-6">
+        <div class="space-y-5 sm:space-y-6">
           <!-- 学业指标摘要（已修复原版缺少 title 导致 header-action 丢失的问题） -->
           <UiCard title="学业口径核对" subtitle="与成绩分析、培养方案共用同一去重规则">
             <template #header-action>
@@ -307,11 +306,11 @@
           </UiCard>
         </div>
 
-        <!-- 最新教学运行公告：高度交由左侧两卡决定（lg 下绝对定位铺满该列），公告过多时卡内滚动 -->
-        <div class="relative">
+        <!-- 最新教学运行公告：与左侧两卡同高（网格拉伸），公告过多时卡内滚动 -->
+        <div class="relative min-w-0">
           <UiCard
             title="教学运行公告"
-            customClass="lg:absolute lg:inset-0 flex flex-col"
+            customClass="h-full flex flex-col"
             :bodyClass="latestNotices.length === 0 ? 'px-6 py-5 flex-1' : 'p-2.5 flex-1 min-h-0 overflow-y-auto'"
           >
             <template #header-action>

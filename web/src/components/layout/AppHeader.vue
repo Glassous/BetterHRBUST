@@ -54,13 +54,29 @@
       <button
         v-if="isLoggedIn || isSessionExpired"
         type="button"
-        class="h-10 px-4 rounded-full bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] hover:brightness-[0.97] cursor-pointer transition-all duration-200 active:scale-[0.97] flex items-center gap-2 text-[13px] font-medium disabled:opacity-60 disabled:cursor-wait"
+        class="h-10 w-10 justify-center px-0 gap-0 sm:w-auto sm:px-4 sm:gap-2 rounded-full bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] hover:brightness-[0.97] cursor-pointer transition-all duration-200 active:scale-[0.97] flex items-center text-[13px] font-medium disabled:opacity-60 disabled:cursor-wait"
         :title="`手动刷新教务数据（上次同步：${lastSyncText}）`"
         :disabled="syncing"
         @click="handleRefresh"
       >
         <Icon name="refresh" customClass="w-4 h-4 shrink-0" :class="syncing ? 'animate-spin' : ''" />
         <span class="hidden sm:inline">{{ syncing ? '同步中' : '同步数据' }}</span>
+      </button>
+
+      <!-- 手机 / 平板：AI 入口放在顶栏（宽屏使用侧栏底部入口） -->
+      <button
+        type="button"
+        :aria-label="aiOpen ? '关闭 AI 对话' : '打开 AI 对话'"
+        :title="aiOpen ? '关闭 AI 对话 (Ctrl+J)' : '打开 AI 对话 (Ctrl+J)'"
+        class="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-[11.5px] font-semibold cursor-pointer transition-all duration-200 active:scale-95 shrink-0"
+        :class="
+          aiOpen
+            ? 'bg-[var(--md-primary)] text-[var(--md-on-primary)]'
+            : 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)]'
+        "
+        @click="toggleAi"
+      >
+        AI
       </button>
 
       <button
@@ -83,8 +99,10 @@ import Icon from '@/components/icons/Icon.vue';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useToast } from '@/composables/useToast.js';
+import { useAiChat } from '@/composables/useAiChat.js';
 
 const { isDark, toggleTheme } = useTheme();
+const { open: aiOpen, toggle: toggleAi } = useAiChat();
 const {
   isLoggedIn,
   isSessionExpired,

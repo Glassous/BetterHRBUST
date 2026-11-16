@@ -746,3 +746,45 @@ details[open] > div {
 @container (min-width: 1020px) { .academic-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container (max-width: 500px) { .academic-summary-grid { grid-template-columns: minmax(0, 1fr); } }
 .academic-main details { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------------- 概览页：按主内容宽度重排 ----------------
+   侧栏展开或 AI 面板打开后，主内容变窄但视口仍可能很宽；
+   这里跟随 .academic-main 的容器宽度切换，而不是跟随视口断点。 */
+.dashboard-top-grid,
+.dashboard-bottom-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 980px) {
+  .dashboard-top-grid,
+  .dashboard-bottom-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+/* 快捷工具卡自身过窄时改单列，避免图标与文字被挤压截断 */
+.quick-tools-card { container-type: inline-size; }
+
+@container (max-width: 360px) {
+  .quick-tools-grid { grid-template-columns: minmax(0, 1fr); }
+  .quick-tools-grid > * { grid-column: span 1 / span 1 !important; }
+}
+
+/* ---------------- 成绩页：按主内容宽度重排 ---------------- */
+.score-metrics-grid { grid-template-columns: minmax(0, 1fr); }
+.score-algo-grid { grid-template-columns: minmax(0, 1fr); }
+.score-chart-grid { grid-template-columns: minmax(0, 1fr); }
+
+@container (min-width: 560px) {
+  .score-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container (min-width: 640px) {
+  .score-algo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@container (min-width: 1000px) {
+  .score-metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .score-algo-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .score-chart-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}

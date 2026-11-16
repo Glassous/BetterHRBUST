@@ -148,14 +148,14 @@
         :title="aiOpen ? '关闭 AI 对话 (Ctrl+J)' : '打开 AI 对话 (Ctrl+J)'"
         :aria-hidden="isCollapsedState ? 'true' : undefined"
         :tabindex="isCollapsedState ? -1 : 0"
-        class="shrink-0 h-10 rounded-full flex items-center justify-center text-[11.5px] font-semibold cursor-pointer overflow-hidden transition-[max-width,opacity,background-color,color] duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+        class="hidden lg:flex shrink-0 h-10 rounded-full items-center justify-center text-[11.5px] font-semibold cursor-pointer overflow-hidden transition-[max-width,opacity,background-color,color] duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
         :class="[
           isCollapsedState ? 'max-w-0 opacity-0' : 'max-w-[40px] opacity-100',
           aiOpen
             ? 'bg-[var(--md-primary)] text-[var(--md-on-primary)]'
             : 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)]'
         ]"
-        @click="toggleAi"
+        @click="handleAiToggle"
       >
         <span class="w-10 h-10 flex items-center justify-center shrink-0">AI</span>
       </button>
@@ -206,9 +206,19 @@ const props = defineProps({
   }
 });
 
-defineEmits(['update:activeTab', 'close']);
+const emit = defineEmits(['update:activeTab', 'close', 'collapse']);
 
 const isMobile = ref(false);
+
+/** 从侧栏打开 AI：移动端关闭抽屉，桌面端折叠为图标栏，把空间让给对话 */
+function handleAiToggle() {
+  const wasOpen = aiOpen.value;
+  toggleAi();
+  if (!wasOpen) {
+    emit('close');
+    emit('collapse');
+  }
+}
 
 function checkMobile() {
   if (typeof window !== 'undefined') {
