@@ -105,6 +105,8 @@ fun TimetableScreen(
     var selectedWeek by remember { mutableStateOf(currentWeek) }
     var viewMode by remember { mutableStateOf(TimetableViewMode.WEEK) }
     var sectionMode by remember { mutableStateOf(SectionMode.COMBINE) }
+    // 仅显示所选周次实际开设的课程（隐藏「非本周」课程）
+    var onlyCurrentWeek by remember { mutableStateOf(false) }
     // 用户是否已在本页调整过「周 / 日」「大节 / 小节」：调整过之后，迟到的偏好值不再回写覆盖
     var displayModeTouched by remember { mutableStateOf(false) }
     var showWeekPicker by remember { mutableStateOf(false) }
@@ -117,6 +119,7 @@ fun TimetableScreen(
         displayModeTouched = true
         viewMode = viewModeOfStored(loaded.timetableViewMode)
         sectionMode = sectionModeOfStored(loaded.timetableSectionMode)
+        onlyCurrentWeek = loaded.timetableOnlyCurrentWeek
     }
 
     val today = remember { LocalDate.now() }
@@ -299,6 +302,12 @@ fun TimetableScreen(
                     sectionMode = mode
                     coroutineScope.launch { prefsManager.setTimetableSectionMode(mode.name) }
                 },
+                onlyCurrentWeek = onlyCurrentWeek,
+                onToggleOnlyCurrentWeek = {
+                    val next = !onlyCurrentWeek
+                    onlyCurrentWeek = next
+                    coroutineScope.launch { prefsManager.setTimetableOnlyCurrentWeek(next) }
+                },
                 selectedWeek = selectedWeek,
                 currentWeek = currentWeek,
                 onWeekStep = { step ->
@@ -338,6 +347,7 @@ fun TimetableScreen(
                         viewMode = viewMode,
                         pagerState = pagerState,
                         sectionMode = sectionMode,
+                        onlyCurrentWeek = onlyCurrentWeek,
                         currentWeek = currentWeek,
                         isDark = isDark,
                         selectedDetail = selectedCourseDetail.takeIf { detailShown },
@@ -410,6 +420,8 @@ private fun TimetableControlBar(
     onViewModeChange: (TimetableViewMode) -> Unit,
     sectionMode: SectionMode,
     onSectionModeChange: (SectionMode) -> Unit,
+    onlyCurrentWeek: Boolean,
+    onToggleOnlyCurrentWeek: () -> Unit,
     selectedWeek: Int,
     currentWeek: Int,
     onWeekStep: (Int) -> Unit,
@@ -430,7 +442,7 @@ private fun TimetableControlBar(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SegmentedToggle(
@@ -442,6 +454,11 @@ private fun TimetableControlBar(
                     options = SectionMode.entries.map { it to it.label },
                     selected = sectionMode,
                     onSelect = onSectionModeChange
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                OnlyCurrentWeekToggle(
+                    onlyCurrentWeek = onlyCurrentWeek,
+                    onToggle = onToggleOnlyCurrentWeek
                 )
             }
 
@@ -643,6 +660,39 @@ private fun <T> SegmentedToggle(
     }
 }
 
+/** 紧凑开关：仅显示所选周次实际开设的课程，隐藏「非本周」课程。 */
+@Composable
+private fun OnlyCurrentWeekToggle(
+    onlyCurrentWeek: Boolean,
+    onToggle: () -> Unit
+) {
+    val container = if (onlyCurrentWeek) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+    val content = if (onlyCurrentWeek) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(container)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "仅看本周",
+            fontSize = 12.sp,
+            fontWeight = if (onlyCurrentWeek) FontWeight.SemiBold else FontWeight.Normal,
+            color = content
+        )
+    }
+}
+
 /**
  * 课表内容区：日/周视图共用同一网格实现，横向翻页交给 [HorizontalPager] ——
  * 拖拽过程中页面实时跟随手指，松手按位移与速度吸附到相邻页；纵向滚动由外层容器提供。
@@ -663,6 +713,7 @@ private fun TimetableContent(
     viewMode: TimetableViewMode,
     pagerState: PagerState,
     sectionMode: SectionMode,
+    onlyCurrentWeek: Boolean,
     currentWeek: Int,
     isDark: Boolean,
     selectedDetail: TimetableCell?,
@@ -692,9 +743,17 @@ private fun TimetableContent(
             modifier = Modifier.fillMaxWidth()
         ) { page ->
             val pageWeek = weekOfPage(viewMode, page)
+            // 开启「仅看本周」后只保留该页（周 / 天）实际开设的课程，空节次自动压缩
+            val pageCells = remember(result.cells, pageWeek, onlyCurrentWeek) {
+                if (onlyCurrentWeek) {
+                    result.cells.filter { AcademicParsers.isCourseActiveInWeek(it.weeks, pageWeek) }
+                } else {
+                    result.cells
+                }
+            }
             TimetableGrid(
-                // 行高等几何信息由全量课程决定（与页无关），翻页时网格高度恒定
-                cells = result.cells,
+                // 关闭筛选时几何信息由全量课程决定（与页无关），翻页时网格高度恒定
+                cells = pageCells,
                 days = if (isDayView) listOf(dayOfPage(page)) else WeekDays,
                 selectedWeek = pageWeek,
                 weekStart = com.glassous.betterhrbust.core.util.SchoolCalendar.semesterOn(LocalDate.now())?.start?.plusWeeks((pageWeek-1).toLong()) ?: com.glassous.betterhrbust.core.util.TeachingWeek.mondayForWeek(referenceWeek, referenceDate, pageWeek, maxWeeks = semesterWeeks),

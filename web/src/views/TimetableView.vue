@@ -108,7 +108,7 @@
                   ? 'bg-[var(--accent)] text-[var(--accent-ink)] border-transparent'
                   : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]'
               ]"
-              @click="onlyCurrentWeek = !onlyCurrentWeek"
+              @click="toggleOnlyCurrentWeek"
             >
               仅看本周课程
             </button>
@@ -376,6 +376,7 @@ import UiBadge from '@/components/ui/UiBadge.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import TimetableCourseCard from '@/components/timetable/TimetableCourseCard.vue';
 import Icon from '@/components/icons/Icon.vue';
+import { storageGetItem, storageSetItem } from '@/services/storage.js';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useTeachingProcess } from '@/composables/useTeachingProcess.js';
@@ -415,7 +416,19 @@ const stageHint = computed(() => {
   return { text: `${top.short || top.label} ${top.count} 个班`, parts: [top] };
 });
 
-const onlyCurrentWeek = ref(false);
+/** 「仅看本周课程」开关：持久化到本地，下次进入课表页沿用 */
+const ONLY_CURRENT_WEEK_KEY = 'better_hrbust_timetable_only_current_week';
+const onlyCurrentWeek = ref(storageGetItem(ONLY_CURRENT_WEEK_KEY) === 'true');
+
+function toggleOnlyCurrentWeek() {
+  onlyCurrentWeek.value = !onlyCurrentWeek.value;
+  try {
+    storageSetItem(ONLY_CURRENT_WEEK_KEY, String(onlyCurrentWeek.value));
+  } catch {
+    // 存储不可用时仅本次会话生效
+  }
+}
+
 const viewMode = ref('combine'); // 'combine' | 'base'
 const currentDayIndex = ref(new Date().getDay() || 7);
 const mobileSelectedDay = ref(new Date().getDay() || 7);

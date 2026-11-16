@@ -23,6 +23,8 @@ data class AppPreferences(
     val timetableViewMode: String = "WEEK",
     /** 课表节次粒度的持久化标识（`SectionMode.name`：COMBINE / BASE） */
     val timetableSectionMode: String = "COMBINE",
+    /** 课表是否只显示所选周次实际开设的课程（隐藏「非本周」课程） */
+    val timetableOnlyCurrentWeek: Boolean = false,
     val darkTheme: Boolean? = null,
     val offlineMode: Boolean = false,
     /** 上次成功登录时间（毫秒时间戳），用于会话失效提示的"一周节流"判定 */
@@ -79,6 +81,7 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
         private val KEY_SELECTED_WEEK = intPreferencesKey("selected_week")
         private val KEY_TIMETABLE_VIEW_MODE = stringPreferencesKey("timetable_view_mode")
         private val KEY_TIMETABLE_SECTION_MODE = stringPreferencesKey("timetable_section_mode")
+        private val KEY_TIMETABLE_ONLY_CURRENT_WEEK = booleanPreferencesKey("timetable_only_current_week")
         private val KEY_DARK_THEME = stringPreferencesKey("dark_theme") // "system", "dark", "light"
         private val KEY_OFFLINE_MODE = booleanPreferencesKey("offline_mode")
         private val KEY_LAST_LOGIN_AT = longPreferencesKey("last_login_at")
@@ -135,6 +138,7 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
             selectedWeek = prefs[KEY_SELECTED_WEEK] ?: 1,
             timetableViewMode = prefs[KEY_TIMETABLE_VIEW_MODE] ?: "WEEK",
             timetableSectionMode = prefs[KEY_TIMETABLE_SECTION_MODE] ?: "COMBINE",
+            timetableOnlyCurrentWeek = prefs[KEY_TIMETABLE_ONLY_CURRENT_WEEK] ?: false,
             darkTheme = darkThemeBool,
             offlineMode = prefs[KEY_OFFLINE_MODE] ?: false,
             lastLoginAt = prefs[KEY_LAST_LOGIN_AT] ?: 0L,
@@ -295,6 +299,13 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
     suspend fun setTimetableSectionMode(mode: String) {
         store.edit { prefs ->
             prefs[KEY_TIMETABLE_SECTION_MODE] = mode
+        }
+    }
+
+    /** 记忆课表「仅看本周课程」开关，下次进入课表页时沿用 */
+    suspend fun setTimetableOnlyCurrentWeek(enabled: Boolean) {
+        store.edit { prefs ->
+            prefs[KEY_TIMETABLE_ONLY_CURRENT_WEEK] = enabled
         }
     }
 

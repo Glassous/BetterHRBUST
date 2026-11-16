@@ -529,15 +529,16 @@ fun ScoresScreen(
                                         )
                                     }
 
+                                    // 仅不及格课程标红：60–69 分正常显示，避免把刚及格的成绩误读为风险
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = if (!GpaCalculator.isLowScore(item.score)) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                                        color = if (!item.passed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
                                     ) {
                                         Text(
                                             text = item.score,
                                             style = MaterialTheme.typography.titleLarge,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (!GpaCalculator.isLowScore(item.score)) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.error,
+                                            color = if (!item.passed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
                                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                         )
                                     }
