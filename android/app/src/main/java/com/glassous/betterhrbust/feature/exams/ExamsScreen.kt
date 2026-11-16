@@ -26,6 +26,7 @@ import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
@@ -140,7 +141,7 @@ fun ExamsScreen(
                                 val exam = upcomingExams[index]
                                 Card(
                                     modifier = Modifier.fillMaxSize(),
-                                    shape = RoundedCornerShape(20.dp),
+                                    shape = AppShapes.Card,
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.primaryContainer
                                     )
@@ -218,7 +219,7 @@ fun ExamsScreen(
                         val isFinished = (exam.countdownDays ?: 0) < 0
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = AppShapes.InnerCard,
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isFinished) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainer
                             )

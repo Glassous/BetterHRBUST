@@ -8,17 +8,20 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -53,8 +56,10 @@ import com.glassous.betterhrbust.core.ui.components.navigationDockInset
 import com.glassous.betterhrbust.core.ui.components.navigationDockStartPadding
 import com.glassous.betterhrbust.core.ui.components.rememberNavigationDockCollapseConnection
 import com.glassous.betterhrbust.core.ui.components.rememberNavigationDockCollapseState
+import com.glassous.betterhrbust.core.ui.components.SecondaryPageSurface
 import com.glassous.betterhrbust.core.ui.isTabletDevice
 import com.glassous.betterhrbust.core.ui.theme.BetterHRBUSTTheme
+import com.glassous.betterhrbust.core.ui.theme.AppMotion
 import com.glassous.betterhrbust.feature.auth.AuthScreen
 import com.glassous.betterhrbust.feature.auth.ReLoginOverlay
 import com.glassous.betterhrbust.feature.auth.SessionExpiredBanner
@@ -72,7 +77,6 @@ import com.glassous.betterhrbust.feature.settings.NoticesSettingsScreen
 import com.glassous.betterhrbust.feature.timetable.TimetableScreen
 import com.glassous.betterhrbust.navigation.*
 import com.glassous.betterhrbust.widget.TimetableWidgetUpdater
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
@@ -220,7 +224,7 @@ fun MainAppScaffold(
     val currentDestination = navBackStackEntry?.destination
 
     var showReLogin by remember { mutableStateOf(false) }
-    // 重新登录覆盖层：与二级页面一致的滑入 / 滑出与预测性返回
+    // 重新登录覆盖层：打开滑入、关闭滑出；返回交给系统默认处理
     var reLoginRendered by remember { mutableStateOf(false) }
     val reLoginSlide = remember { Animatable(1f) }
     var initialized by remember { mutableStateOf(false) }
@@ -330,10 +334,22 @@ fun MainAppScaffold(
                 NavHost(
                     navController = navController,
                     startDestination = startDestination,
-                    enterTransition = { slideInHorizontally(tween(320)) { it } + fadeIn(tween(320)) },
-                    exitTransition = { slideOutHorizontally(tween(320)) { -it / 4 } + fadeOut(tween(320)) },
-                    popEnterTransition = { slideInHorizontally(tween(320)) { -it / 4 } + fadeIn(tween(320)) },
-                    popExitTransition = { slideOutHorizontally(tween(320)) { it } + fadeOut(tween(320)) },
+                    enterTransition = {
+                        slideInHorizontally(tween(AppMotion.ScreenMillis)) { it } +
+                            fadeIn(tween(AppMotion.ScreenMillis))
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(tween(AppMotion.ScreenMillis)) { -it / 4 } +
+                            fadeOut(tween(AppMotion.ScreenMillis))
+                    },
+                    // 返回：二级页面整块滑走，全程不淡出——底色保持不透明，
+                    // 圆角（见 SecondaryPageSurface）在滑出时露出下层首页。
+                    popEnterTransition = {
+                        slideInHorizontally(tween(AppMotion.ScreenMillis)) { -it / 4 }
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(tween(AppMotion.ScreenMillis)) { it }
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .weight(1f)
@@ -363,8 +379,7 @@ fun MainAppScaffold(
                                 navController.navigate(AuthRoute) {
                                     launchSingleTop = true
                                 }
-                            },
-                            onQuickReLogin = { showReLogin = true }
+                            }
                         )
                     }
 
@@ -384,26 +399,73 @@ fun MainAppScaffold(
                                 navController.navigate(AuthRoute) {
                                     launchSingleTop = true
                                 }
-                            },
-                            onQuickReLogin = { showReLogin = true }
+                            }
                         )
+                    }
+
+                    // 二级页面：作为 NavHost 目的地承载，
+                    // 返回手势由 Navigation 组件接入系统原生预测性返回动画；
+                    // 统一套 SecondaryPageSurface，返回时整页不透明滑出并带圆角
+                    composable<ProgramRoute> {
+                        SecondaryPageSurface {
+                            ProgramScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<ClassroomsRoute> {
+                        SecondaryPageSurface {
+                            ClassroomsScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<CoursesRoute> {
+                        SecondaryPageSurface {
+                            CoursesScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<ProfileRoute> {
+                        SecondaryPageSurface {
+                            ProfileScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<EvaluationRoute> {
+                        SecondaryPageSurface {
+                            EvaluationScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<ResourcesRoute> {
+                        SecondaryPageSurface {
+                            ResourcesScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
+                    composable<FeedbackRoute> {
+                        SecondaryPageSurface {
+                            FeedbackScreen(
+                                onBack = { navController.popBackStack() },
+                                onGoLogin = { showReLogin = true }
+                            )
+                        }
                     }
                 }
             }
 
             // 会话已过期提示：悬浮在内容之上（不参与布局测量），出现 / 收起时其它区域不位移；
             // 按声明顺序位于内容之上、重新登录覆盖层之下
-            if (showSessionBanner) {
+            AnimatedVisibility(
+                visible = showSessionBanner,
+                enter = slideInVertically(animationSpec = tween(AppMotion.SmoothMillis)) { -it } +
+                    fadeIn(animationSpec = tween(AppMotion.SmoothMillis)),
+                exit = slideOutVertically(animationSpec = tween(AppMotion.SmoothMillis)) { -it } +
+                    fadeOut(animationSpec = tween(AppMotion.SmoothMillis)),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+            ) {
                 SessionExpiredBanner(
                     onReLoginClick = { showReLogin = true },
-                    onDismiss = { authRepo.dismissSessionPrompt() },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
+                    onDismiss = { authRepo.dismissSessionPrompt() }
                 )
             }
 
-            // 重新登录覆盖层：与二级页面一致的滑入 / 滑出动画；关闭时保留内容直到滑出结束
+            // 重新登录覆盖层：打开滑入、关闭滑出
             if (reLoginRendered) {
                 Box(
                     modifier = Modifier
@@ -427,57 +489,21 @@ fun MainAppScaffold(
     LaunchedEffect(showReLogin) {
         if (showReLogin) {
             reLoginRendered = true
-            reLoginSlide.animateTo(0f, tween(SecondaryPageTransitionMillis))
+            reLoginSlide.animateTo(0f, spring(dampingRatio = 0.9f, stiffness = 400f))
         } else if (reLoginRendered) {
-            reLoginSlide.animateTo(1f, tween(SecondaryPageTransitionMillis))
+            reLoginSlide.animateTo(1f, tween(ReLoginTransitionMillis))
             reLoginRendered = false
         }
     }
 
-    // 预测性返回：手势滑动过程实时跟手；进度完成（包括按键返回一次性的 1.0 事件）时，
-    // 统一交给滑出动画从当前位置补完剩余距离，避免按键返回时覆盖层被瞬间移出屏幕而没有滑出动画。
-    PredictiveBackHandler(enabled = showReLogin) { progress ->
-        try {
-            progress.collect { event ->
-                val target = event.progress.coerceIn(0f, 1f)
-                if (target < 1f) reLoginSlide.snapTo(target)
-            }
-            val remainingMillis = (SecondaryPageTransitionMillis * (1f - reLoginSlide.value))
-                .toInt()
-                .coerceAtLeast(1)
-            reLoginSlide.animateTo(1f, tween(remainingMillis))
-            showReLogin = false
-        } catch (cancellation: CancellationException) {
-            reLoginSlide.animateTo(0f, tween(SecondaryPageTransitionMillis))
-            throw cancellation
-        }
+    // 返回键 / 手势返回：交给系统默认返回处理，覆盖层只负责滑出动画
+    BackHandler(enabled = showReLogin) {
+        showReLogin = false
     }
 }
 
-/** 二级页面覆盖层的滑入 / 滑出时长（毫秒）。 */
-private const val SecondaryPageTransitionMillis = 320
-
-/**
- * 不在导航坞直达、只能从「概览」快捷入口打开的二级页面。
- *
- * 这些页面以**覆盖层**形式打开：主页始终保持在组合中（不重建、不回到顶部），
- * 页面自身从右侧滑入，关闭时向右侧滑出，主页全程固定不动。
- */
-private enum class SecondaryPage(val route: Any, val key: String) {
-    PROGRAM(ProgramRoute, "program"),
-    CLASSROOMS(ClassroomsRoute, "classrooms"),
-    COURSES(CoursesRoute, "courses"),
-    PROFILE(ProfileRoute, "profile"),
-    EVALUATION(EvaluationRoute, "evaluation"),
-    RESOURCES(ResourcesRoute, "resources"),
-    FEEDBACK(FeedbackRoute, "feedback");
-
-    companion object {
-        fun fromRoute(route: Any): SecondaryPage? = entries.firstOrNull { it.route == route }
-
-        fun fromKey(key: String): SecondaryPage? = entries.firstOrNull { it.key == key }
-    }
-}
+/** 重新登录覆盖层的滑入 / 滑出时长（毫秒）。 */
+private const val ReLoginTransitionMillis = 320
 
 /**
  * 承载 5 个一级导航 Tab 的主页面容器：
@@ -488,15 +514,13 @@ private enum class SecondaryPage(val route: Any, val key: String) {
  *   坞内水平滑动可手动展开 / 折叠，主区域的上下滚动不影响它；
  * - 折叠态由 [dockCollapsed] 持久化：用户手动展开 / 折叠后保存，冷启动沿用，
  *   且在此之前不再被自动行为改变；
- * - 二级页面（[SecondaryPage]）：以覆盖层从右侧滑入 / 滑出，主页不重建、不移动，状态原样保留。
+ * - 二级页面由外层 NavHost 承载，转场与系统原生预测性返回交给导航组件处理。
  */
 @Composable
 fun MainPagerScreen(
     navController: NavController,
     onLogout: () -> Unit,
     onReLogin: () -> Unit,
-    /** 打开「重新登录」覆盖层（不离开当前页面，登录成功后原地恢复） */
-    onQuickReLogin: () -> Unit = {},
     /** 持久化的导航坞折叠态，作为首帧状态（不播放动画） */
     dockCollapsed: Boolean = false,
     /** 桌面小部件请求打开的一级 Tab（null = 无请求）；冷启动时直接作为首帧页，避免先闪一下概览页 */
@@ -543,58 +567,10 @@ fun MainPagerScreen(
         }
     }
 
-    // ---- 二级页面覆盖层 ----
-    var secondaryKey by rememberSaveable { mutableStateOf<String?>(null) }
-    val secondaryPage = secondaryKey?.let(SecondaryPage::fromKey)
-    // 与「是否打开」解耦：关闭时保留内容直到滑出动画结束，避免动画期间页面空白
-    var renderedPage by remember { mutableStateOf(secondaryPage) }
-    /** 覆盖层水平位移：0 = 完全显示，1 = 完全滑出到屏幕右侧之外。 */
-    val slide = remember { Animatable(if (secondaryPage == null) 1f else 0f) }
-    // 覆盖层完全展开后隐藏导航坞（此时已被完全遮挡）
-    var dockVisible by remember { mutableStateOf(secondaryPage == null) }
-    val closeSecondaryPage = { secondaryKey = null }
-
-    LaunchedEffect(secondaryPage) {
-        val page = secondaryPage
-        if (page != null) {
-            dockVisible = true
-            renderedPage = page
-            slide.animateTo(0f, tween(SecondaryPageTransitionMillis))
-            dockVisible = false
-        } else if (renderedPage != null) {
-            dockVisible = true
-            slide.animateTo(1f, tween(SecondaryPageTransitionMillis))
-            renderedPage = null
-        }
-    }
-
-    // 非「概览」标签时，系统返回键平滑回到「概览」（二级页面打开时由覆盖层优先处理）
-    BackHandler(enabled = currentTab != 0 && secondaryPage == null) {
+    // 非「概览」标签时，系统返回键平滑回到「概览」
+    BackHandler(enabled = currentTab != 0) {
         tabIndex = 0
         coroutineScope.launch { pagerState.animateScrollToPage(0) }
-    }
-
-    // 二级页面打开时：返回手势实时驱动覆盖层跟随手指滑出（预测性返回动画），
-    // 手势取消则滑回原位，手势完成则关闭页面
-    PredictiveBackHandler(enabled = secondaryPage != null) { progress ->
-        try {
-            // 页面开始滑出时露出下层导航坞
-            dockVisible = true
-            progress.collect { event ->
-                slide.snapTo(event.progress.coerceIn(0f, 1f))
-            }
-            // 手势完成：收尾剩余距离后关闭页面
-            val remainingMillis = (SecondaryPageTransitionMillis * (1f - slide.value))
-                .toInt()
-                .coerceAtLeast(1)
-            slide.animateTo(1f, tween(remainingMillis))
-            closeSecondaryPage()
-        } catch (cancellation: CancellationException) {
-            // 手势取消：滑回完全显示，并重新遮住导航坞
-            slide.animateTo(0f, tween(SecondaryPageTransitionMillis))
-            dockVisible = false
-            throw cancellation
-        }
     }
 
     val onDashboardNavigate: (Any) -> Unit = { route ->
@@ -610,13 +586,7 @@ fun MainPagerScreen(
             tabIndex = targetTab
             coroutineScope.launch { pagerState.animateScrollToPage(targetTab) }
         } else {
-            val page = SecondaryPage.fromRoute(route)
-            if (page != null) {
-                // 覆盖层打开：主页保持原状，不做任何重建或滚动
-                secondaryKey = page.key
-            } else {
-                navController.navigate(route)
-            }
+            navController.navigate(route)
         }
     }
 
@@ -633,8 +603,6 @@ fun MainPagerScreen(
         .fillMaxSize()
         // 平板端：内容左让位随折叠进度收缩，折叠后页面可用宽度随之增大
         .navigationDockStartPadding(dockCollapseState)
-        // 覆盖层渲染期间冻结主页输入，避免触摸穿透（点击 / 滚动均不响应）
-        .then(if (renderedPage != null) Modifier.blockPointerInput() else Modifier)
 
     Box(modifier = containerModifier) {
         HorizontalPager(
@@ -649,79 +617,47 @@ fun MainPagerScreen(
                 2 -> ScoresScreen()
                 3 -> ExamsScreen()
                 4 -> NoticesSettingsScreen(
-                    onEvaluation = { secondaryKey = SecondaryPage.EVALUATION.key },
-                    onResources = { secondaryKey = SecondaryPage.RESOURCES.key },
-                    onFeedback = { secondaryKey = SecondaryPage.FEEDBACK.key },
+                    onEvaluation = { navController.navigate(EvaluationRoute) },
+                    onResources = { navController.navigate(ResourcesRoute) },
+                    onFeedback = { navController.navigate(FeedbackRoute) },
                     onLogout = onLogout,
                     onReLogin = onReLogin
                 )
             }
         }
 
-        if (dockVisible) {
-            NavigationDock(
-                destinations = dockDestinations,
-                selectedIndex = currentTab,
-                onSelected = { index ->
-                    tabIndex = index
-                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                },
-                collapseState = dockCollapseState,
-                vertical = isTablet,
-                // 仅平板：手动展开 / 折叠后持久化，并停止被自动行为改变（直到下次冷启动）；
-                // 手机端手动折叠保持原有"临时"语义，仍可被页面滚动重新展开
-                onManualCollapseChange = if (isTablet) {
-                    { collapsed: Boolean ->
-                        dockCollapseState.markUserControlled()
-                        coroutineScope.launch {
-                            preferencesManager.setNavigationDockCollapsed(collapsed)
-                        }
-                    }
-                } else {
-                    null
-                },
-                modifier = Modifier.align(
-                    if (isTablet) Alignment.CenterStart else Alignment.BottomCenter
-                )
-            )
-        }
-
-        // 二级页面：覆盖在主页之上，从右侧滑入 / 滑出；主页全程固定不动
-        renderedPage?.let { page ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { translationX = slide.value * size.width }
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                CompositionLocalProvider(
-                    // 覆盖层下没有导航坞，底部让位回归系统导航条
-                    LocalBottomContentInset provides WindowInsets.navigationBars
-                        .asPaddingValues()
-                        .calculateBottomPadding()
-                ) {
-                    when (page) {
-                        SecondaryPage.PROGRAM -> ProgramScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.CLASSROOMS -> ClassroomsScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.COURSES -> CoursesScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.PROFILE -> ProfileScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.EVALUATION -> EvaluationScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.RESOURCES -> ResourcesScreen(onBack = closeSecondaryPage)
-                        SecondaryPage.FEEDBACK -> FeedbackScreen(
-                            onBack = closeSecondaryPage,
-                            onGoLogin = onQuickReLogin
-                        )
+        NavigationDock(
+            destinations = dockDestinations,
+            selectedIndex = currentTab,
+            onSelected = { index ->
+                tabIndex = index
+                coroutineScope.launch { pagerState.animateScrollToPage(index) }
+            },
+            collapseState = dockCollapseState,
+            vertical = isTablet,
+            // 仅平板：手动展开 / 折叠后持久化，并停止被自动行为改变（直到下次冷启动）；
+            // 手机端手动折叠保持原有"临时"语义，仍可被页面滚动重新展开
+            onManualCollapseChange = if (isTablet) {
+                { collapsed: Boolean ->
+                    dockCollapseState.markUserControlled()
+                    coroutineScope.launch {
+                        preferencesManager.setNavigationDockCollapsed(collapsed)
                     }
                 }
-            }
-        }
+            } else {
+                null
+            },
+            modifier = Modifier.align(
+                if (isTablet) Alignment.CenterStart else Alignment.BottomCenter
+            )
+        )
     }
 }
 
 /**
  * 屏蔽该节点及其子节点的手势：在 Initial 阶段吞掉所有指针事件。
  *
- * 用于二级页面覆盖层渲染期间冻结下层主页，避免触摸穿透。
+ * 用于重新登录覆盖层渲染期间冻结下层主页，避免触摸穿透。
  */
 private fun Modifier.blockPointerInput(): Modifier = pointerInput(Unit) {
     awaitPointerEventScope {

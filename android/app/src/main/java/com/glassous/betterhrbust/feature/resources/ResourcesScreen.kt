@@ -18,6 +18,7 @@ import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import org.json.JSONObject
 
 private data class ResourceFile(val title: String, val url: String)
@@ -80,6 +81,7 @@ fun ResourcesScreen(onBack: () -> Unit) {
             items(filtered, key = { it.category + it.id }) { row ->
                 Card(
                     Modifier.fillMaxWidth(),
+                    shape = AppShapes.Card,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(row.title, style = MaterialTheme.typography.titleMedium)

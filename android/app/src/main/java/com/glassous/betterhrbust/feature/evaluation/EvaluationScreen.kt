@@ -38,7 +38,8 @@ fun EvaluationScreen(onBack: () -> Unit) {
     var error by remember { mutableStateOf("") }
     val chosen = tasks.filter { it.key in selected && it.pending && it.url.isNotBlank() }
     val back = { if (running) { stopped = true; message = "处理完当前课程后停止，再返回上一页" } else onBack() }
-    BackHandler(onBack = back)
+    // 仅在批处理进行中拦截返回以先停止任务；其余情况交给 NavHost 的原生预测性返回
+    BackHandler(enabled = running) { stopped = true; message = "处理完当前课程后停止，再返回上一页" }
     DisposableEffect(Unit) { onDispose { stopped = true } }
     fun refresh() {
         if (loading || running) return

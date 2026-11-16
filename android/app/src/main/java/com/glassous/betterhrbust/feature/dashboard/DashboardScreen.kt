@@ -26,6 +26,8 @@ import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.GpaCalculationHelp
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
+import com.glassous.betterhrbust.core.ui.theme.pressClickable
 import com.glassous.betterhrbust.core.util.GpaCalculator
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
@@ -180,7 +182,7 @@ fun DashboardScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
+                    shape = AppShapes.Card,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
@@ -196,7 +198,9 @@ fun DashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onNavigate(com.glassous.betterhrbust.navigation.ScoresRoute) }
+                                .pressClickable(pressedScale = 0.98f) {
+                                    onNavigate(com.glassous.betterhrbust.navigation.ScoresRoute)
+                                }
                         ) {
                             Text(
                                 text = stats?.gpa?.let { String.format("%.2f", it) } ?: "--",
@@ -211,12 +215,14 @@ fun DashboardScreen(
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
-                        VerticalDivider(modifier = Modifier.height(40.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onNavigate(com.glassous.betterhrbust.navigation.TimetableRoute) }
+                                .pressClickable(pressedScale = 0.98f) {
+                                    onNavigate(com.glassous.betterhrbust.navigation.TimetableRoute)
+                                }
                         ) {
                             Text(
                                 text = "${todayCourses.size} 门",
@@ -240,8 +246,10 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onNavigate(com.glassous.betterhrbust.navigation.ScoresRoute) },
-                    shape = RoundedCornerShape(18.dp),
+                        .pressClickable {
+                            onNavigate(com.glassous.betterhrbust.navigation.ScoresRoute)
+                        },
+                    shape = AppShapes.Card,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
@@ -300,8 +308,10 @@ fun DashboardScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigate(com.glassous.betterhrbust.navigation.ExamsRoute) },
-                        shape = RoundedCornerShape(16.dp),
+                            .pressClickable {
+                                onNavigate(com.glassous.betterhrbust.navigation.ExamsRoute)
+                            },
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer
                         )
@@ -356,7 +366,7 @@ fun DashboardScreen(
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         )
@@ -380,8 +390,10 @@ fun DashboardScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigate(com.glassous.betterhrbust.navigation.TimetableRoute) },
-                        shape = RoundedCornerShape(14.dp),
+                            .pressClickable {
+                                onNavigate(com.glassous.betterhrbust.navigation.TimetableRoute)
+                            },
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
@@ -442,7 +454,7 @@ fun DashboardScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = AppShapes.Card,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
@@ -460,11 +472,13 @@ fun DashboardScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier
                                             .weight(1f)
-                                            .clickable { onNavigate(item.route) }
+                                            .pressClickable(pressedScale = 0.94f) {
+                                                onNavigate(item.route)
+                                            }
                                             .padding(vertical = 4.dp)
                                     ) {
                                         Surface(
-                                            shape = RoundedCornerShape(12.dp),
+                                            shape = AppShapes.IconTile,
                                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                             modifier = Modifier.size(44.dp)
                                         ) {

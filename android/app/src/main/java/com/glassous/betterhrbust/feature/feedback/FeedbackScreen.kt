@@ -33,6 +33,7 @@ import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import com.glassous.betterhrbust.core.ui.theme.Amber500
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.Emerald500
 import com.glassous.betterhrbust.core.ui.theme.Rose500
 import com.glassous.betterhrbust.core.util.FeedbackText
@@ -47,11 +48,11 @@ import kotlinx.coroutines.launch
  * 隐私红线：只把用户主动填写的正文、选填联系方式与实名姓名文本提交到后端，
  * 不读取、不携带学号、教务内部 ID、Cookie、成绩、课表或设备信息。
  *
- * 该页面以二级覆盖层形式打开（见 MainActivity 的 SecondaryPage），
- * 因此自动获得统一的滑入 / 滑出与预测性返回动画；
+ * 该页面由 NavHost 承载（见 MainActivity 的 FeedbackRoute），
+ * 因此获得 Navigation 的滑入 / 滑出与系统预测性返回动画；
  * 沉浸式由 [LocalTopContentInset] / [LocalBottomContentInset] 与 imePadding 共同保证。
  *
- * @param onBack 关闭页面（覆盖层滑出）
+ * @param onBack 返回上一页
  * @param onGoLogin 未登录时点击「前往登录」：打开重新登录覆盖层，登录成功后本页自动放行
  */
 @Composable
@@ -222,7 +223,7 @@ fun FeedbackScreen(
 private fun FeedbackIntroCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
@@ -261,7 +262,7 @@ private fun FeedbackIntroCard() {
 private fun LoginGateCard(onGoLogin: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
@@ -319,7 +320,7 @@ private fun SubmittedCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
@@ -390,7 +391,7 @@ private fun FeedbackFormCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Column(
@@ -446,7 +447,7 @@ private fun FeedbackFormCard(
             // 实名发布：默认关闭，开启后姓名优先取教务缓存（只读），缺失时手动填写
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = AppShapes.InnerCard,
                 color = if (realNameEnabled) {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 } else {
@@ -486,9 +487,7 @@ private fun FeedbackFormCard(
                     }
 
                     if (realNameEnabled) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         if (loadedRealName.isNotBlank()) {
                             OutlinedTextField(
@@ -622,7 +621,7 @@ private fun FeedbackFormCard(
 private fun PrivacyCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

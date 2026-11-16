@@ -10,6 +10,11 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +28,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +48,9 @@ import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.theme.AppMotion
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
+import com.glassous.betterhrbust.core.ui.theme.pressClickable
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
@@ -223,11 +232,7 @@ fun NoticesSettingsScreen(
                 }
                 // Section: Academic Notices
                 item {
-                    Text(
-                        text = "教务通知",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    SettingsSectionLabel("教务通知")
                 }
 
                 if (notices.isEmpty() && (isRefreshing || isSyncing)) {
@@ -238,7 +243,7 @@ fun NoticesSettingsScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
+                            shape = AppShapes.InnerCard,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         ) {
                             Text(
@@ -254,8 +259,8 @@ fun NoticesSettingsScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { selectedNotice = notice },
-                            shape = RoundedCornerShape(14.dp),
+                                .pressClickable(pressedScale = 0.985f) { selectedNotice = notice },
+                            shape = AppShapes.InnerCard,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             Row(
@@ -288,18 +293,13 @@ fun NoticesSettingsScreen(
 
                 // Section: 外观（主题模式单独成组，与数据清理分离）
                 item {
-                    Text(
-                        text = "外观",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    SettingsSectionLabel("外观")
                 }
 
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -341,18 +341,13 @@ fun NoticesSettingsScreen(
 
                 // Section: 提醒（全设备可见：小米上岛、Android 16 实况通知、其余为普通通知）
                 item {
-                    Text(
-                        text = "提醒",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    SettingsSectionLabel("提醒")
                 }
 
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Column {
@@ -408,7 +403,6 @@ fun NoticesSettingsScreen(
                             }
                             // 调试构建专用：模拟「15 分钟后上课」，不依赖真实课表与提醒窗口
                             if (debugBuild) {
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                                 SettingsActionRow(
                                     icon = Icons.Default.BugReport,
                                     title = if (mockReminderEnabled) "关闭模拟上课提示" else "模拟上课提示（调试）",
@@ -445,28 +439,25 @@ fun NoticesSettingsScreen(
 
                 // Section: 账号与数据（意见反馈 / 清理缓存 / 重新登录 / 退出登录 合并为一组）
                 item {
-                    Text(
-                        text = "账号与数据",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    SettingsSectionLabel("账号与数据")
                 }
 
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
-                        Column {
+                        Column(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
                             SettingsActionRow(
                                 icon = Icons.Default.DeleteOutline,
                                 title = "清理离线缓存",
                                 subtitle = "清除本地缓存的教务数据",
                                 onClick = { showClearCacheDialog = true }
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             // 课表小部件的准点刷新需要系统的精确闹钟权限，与缓存清理同属「本机能力」，合并在同一卡片里
                             SettingsActionRow(
                                 icon = Icons.Default.Alarm,
@@ -483,21 +474,18 @@ fun NoticesSettingsScreen(
                                     }
                                 }
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.Outlined.Feedback,
                                 title = "意见反馈",
                                 subtitle = "提交使用中遇到的问题、建议或数据偏差",
                                 onClick = onFeedback
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.Default.Refresh,
                                 title = "重新登录",
                                 subtitle = "重新认证教务会话",
                                 onClick = onReLogin
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                             SettingsActionRow(
                                 icon = Icons.AutoMirrored.Filled.Logout,
                                 title = "退出登录",
@@ -511,12 +499,7 @@ fun NoticesSettingsScreen(
 
                 // Section: 关于与更新（数据源为 GitHub Release：仅提示 + 跳转下载页，不做应用内安装）
                 item {
-                    Text(
-                        text = "关于与更新",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    SettingsSectionLabel("关于与更新")
                 }
 
                 item {
@@ -525,7 +508,7 @@ fun NoticesSettingsScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
+                        shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -594,7 +577,7 @@ fun NoticesSettingsScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = AppShapes.InnerCard,
                                     color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
                                 ) {
                                     Row(
@@ -644,34 +627,52 @@ fun NoticesSettingsScreen(
         // Modal Bottom Sheet for notice detail
         if (selectedNotice != null) {
             val n = selectedNotice!!
+            var contentVisible by remember(n) { mutableStateOf(false) }
+            LaunchedEffect(n) { contentVisible = true }
             ModalBottomSheet(
                 onDismissRequest = { selectedNotice = null },
                 sheetState = sheetState,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                shape = AppShapes.Sheet,
+                containerColor = MaterialTheme.colorScheme.surface,
+                dragHandle = { BottomSheetDefaults.DragHandle() }
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(tween(AppMotion.SmoothMillis, delayMillis = 40)) +
+                        slideInVertically(tween(AppMotion.ScreenMillis)) { it / 10 }
                 ) {
-                    Text(text = n.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    if (n.date.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "发布日期: ${n.date}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = n.content, style = MaterialTheme.typography.bodyMedium, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight)
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { selectedNotice = null },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 4.dp, bottom = 16.dp)
                     ) {
-                        Text("关闭")
+                        Text(text = n.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        if (n.date.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Text(
+                                    text = "发布 ${n.date}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(text = n.content, style = MaterialTheme.typography.bodyMedium, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { selectedNotice = null },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("关闭")
+                        }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
@@ -744,7 +745,7 @@ fun NoticesSettingsScreen(
 
 /**
  * 设置项行：图标 + 标题 + 说明 + 箭头。
- * 采用低调的列表样式（无填充色按钮），替代原先的大号红色按钮。
+ * 无分割线：用行间呼吸间距、圆角按压高亮与图标底板表达分组。
  */
 @Composable
 private fun SettingsActionRow(
@@ -752,22 +753,33 @@ private fun SettingsActionRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clip(AppShapes.InnerCard)
+            .pressClickable(pressedScale = 0.985f, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(14.dp))
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -788,6 +800,18 @@ private fun SettingsActionRow(
             modifier = Modifier.size(18.dp)
         )
     }
+}
+
+/** 设置页分区标题：低对比、紧凑，不与卡片内标题抢层级。 */
+@Composable
+private fun SettingsSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.outline,
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+    )
 }
 
 /** 通知权限申请的前置动作：授权回调后据此决定「落库开关」还是「启动模拟提醒」。 */

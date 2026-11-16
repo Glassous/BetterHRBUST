@@ -22,6 +22,7 @@ import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.data.repository.AccountSwitchedException
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.launch
@@ -108,7 +109,7 @@ fun ProfileScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(20.dp),
+                            shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
@@ -170,12 +171,11 @@ fun ProfileScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(text = "学业学籍信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                HorizontalDivider()
                                 ProfileField("所在院系", p?.college ?: "")
                                 ProfileField("专业名称", p?.major ?: "")
                                 if (!p?.direction.isNullOrBlank()) {
@@ -192,12 +192,11 @@ fun ProfileScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(18.dp),
+                            shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text(text = "个人联络资料", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                HorizontalDivider()
                                 ProfileField("联系电话", p?.phone ?: "未填")
                                 ProfileField("电子邮箱", p?.email ?: "未填")
                                 ProfileField("通讯地址", p?.address ?: "未填")
@@ -216,7 +215,7 @@ fun ProfileScreen(
                         items(changes) { ch ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
+                                shape = AppShapes.InnerCard,
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 
 /**
  * 页面大标题。
@@ -44,7 +45,7 @@ fun PageHeaderTitle(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 4.dp),
+            .padding(top = 4.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onBack != null) {
@@ -62,8 +63,9 @@ fun PageHeaderTitle(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = if (emphasized) 36.sp else MaterialTheme.typography.titleLarge.fontSize,
-                lineHeight = if (emphasized) 44.sp else MaterialTheme.typography.titleLarge.lineHeight
+                fontSize = if (emphasized) 34.sp else MaterialTheme.typography.titleLarge.fontSize,
+                lineHeight = if (emphasized) 42.sp else MaterialTheme.typography.titleLarge.lineHeight,
+                letterSpacing = if (emphasized) (-0.4).sp else MaterialTheme.typography.titleLarge.letterSpacing
             ),
             fontWeight = FontWeight.Bold
         )
@@ -123,8 +125,9 @@ fun FixedPageTopBar(
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                // iOS inline nav 观感：顶栏标题比页面内容标题更克制
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -172,6 +175,7 @@ fun ErrorView(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer
             ),
+            shape = AppShapes.Card,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
