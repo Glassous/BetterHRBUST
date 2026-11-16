@@ -23,7 +23,12 @@
             />
           </div>
         </div>
-        <div v-if="!isCollapsedState" class="ml-2.5 min-w-0 flex-1 whitespace-nowrap overflow-hidden">
+        <div
+          :class="[
+            'ml-2.5 min-w-0 flex-1 whitespace-nowrap overflow-hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+            isCollapsedState ? 'opacity-0' : 'opacity-100'
+          ]"
+        >
           <div class="font-semibold text-[15px] leading-tight text-[var(--ink-primary)] tracking-tight truncate">
             BetterHRBUST
           </div>
@@ -32,18 +37,37 @@
       </div>
     </div>
 
-    <!-- Navigation List -->
-    <nav v-overlay-scroll class="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 space-y-5">
-      <div v-for="group in navGroups" :key="group.title">
-        <div class="h-7 flex items-center px-3 mb-1 overflow-hidden select-none">
+    <!-- Navigation List：折叠时分类标题让出高度，图标放大并与相邻项贴合 -->
+    <nav
+      v-overlay-scroll
+      class="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4"
+    >
+      <div
+        v-for="group in navGroups"
+        :key="group.title"
+        :class="[
+          'transition-[margin-top] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+          isCollapsedState ? 'mt-0' : 'mt-5 first:mt-0'
+        ]"
+      >
+        <div
+          :class="[
+            'flex items-center px-3 overflow-hidden select-none transition-[height,margin-bottom,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+            isCollapsedState ? 'h-0 mb-0 opacity-0' : 'h-7 mb-1 opacity-100'
+          ]"
+        >
           <span
-            v-if="!isCollapsedState"
             class="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--ink-muted)] whitespace-nowrap overflow-hidden truncate"
           >
             {{ group.title }}
           </span>
         </div>
-        <div class="space-y-0.5">
+        <div
+          :class="[
+            'flex flex-col transition-[gap] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+            isCollapsedState ? 'gap-0' : 'gap-0.5'
+          ]"
+        >
           <button
             v-for="item in group.items"
             :key="item.id"
@@ -51,22 +75,29 @@
             :title="isCollapsedState ? item.label : undefined"
             :aria-current="activeTab === item.id ? 'page' : undefined"
             :class="[
-              'relative w-full h-12 flex items-center rounded-[var(--shape-full)] text-[14px] transition-all duration-200 cursor-pointer select-none group overflow-hidden active:scale-[0.98]',
+              'relative w-full h-12 flex items-center rounded-[var(--shape-full)] text-[14px] cursor-pointer select-none group overflow-hidden active:scale-[0.98]',
               activeTab === item.id
                 ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
                 : 'text-[var(--ink-secondary)] font-medium hover:bg-[var(--md-surface-container)] hover:text-[var(--ink-primary)]'
             ]"
             @click="$emit('update:activeTab', item.id)"
           >
-            <div class="w-12 h-12 flex items-center justify-center shrink-0">
+            <div
+              class="w-12 h-12 flex items-center justify-center shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+              :class="isCollapsedState ? 'scale-125' : 'scale-100'"
+            >
               <Icon
                 :name="item.icon"
                 customClass="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-105"
               />
             </div>
+            <!-- 文字始终保留在 DOM 中，只淡入淡出：nowrap + overflow-hidden 保证宽度变化时不会换行、不会改变高度 -->
             <span
-              v-if="!isCollapsedState"
-              class="ml-1 pr-3 truncate whitespace-nowrap overflow-hidden select-none"
+              :class="[
+                'ml-1 pr-3 truncate whitespace-nowrap overflow-hidden select-none transition-opacity duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+                isCollapsedState ? 'opacity-0' : 'opacity-100'
+              ]"
+              :aria-hidden="isCollapsedState ? 'true' : undefined"
             >
               {{ item.label }}
             </span>
@@ -93,7 +124,13 @@
             {{ isLoggedIn && userProfile.realName ? userProfile.realName.slice(0, 1) : '?' }}
           </div>
         </div>
-        <div v-if="!isCollapsedState" class="ml-2 min-w-0 flex-1 leading-tight whitespace-nowrap overflow-hidden">
+        <div
+          :class="[
+            'ml-2 min-w-0 flex-1 leading-tight whitespace-nowrap overflow-hidden transition-opacity duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+            isCollapsedState ? 'opacity-0' : 'opacity-100'
+          ]"
+          :aria-hidden="isCollapsedState ? 'true' : undefined"
+        >
           <div class="text-[13px] font-semibold text-[var(--ink-primary)] truncate">
             {{ isLoggedIn ? (userProfile.realName || '已登录') : '未登录' }}
           </div>
@@ -103,21 +140,23 @@
         </div>
       </button>
 
-      <!-- AI 对话入口：与用户身份同一行，位于名称右侧 -->
+      <!-- AI 对话入口：与用户身份同一行，位于名称右侧；折叠时随文字一起淡出并收起宽度 -->
       <button
-        v-if="!isCollapsedState"
         type="button"
         :aria-label="aiOpen ? '关闭 AI 对话' : '打开 AI 对话'"
         :title="aiOpen ? '关闭 AI 对话 (Ctrl+J)' : '打开 AI 对话 (Ctrl+J)'"
-        class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-[11.5px] font-semibold cursor-pointer transition-all duration-200"
-        :class="
+        :aria-hidden="isCollapsedState ? 'true' : undefined"
+        :tabindex="isCollapsedState ? -1 : 0"
+        class="shrink-0 h-10 rounded-full flex items-center justify-center text-[11.5px] font-semibold cursor-pointer overflow-hidden transition-[max-width,opacity,background-color,color] duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+        :class="[
+          isCollapsedState ? 'max-w-0 opacity-0' : 'max-w-[40px] opacity-100',
           aiOpen
             ? 'bg-[var(--md-primary)] text-[var(--md-on-primary)]'
             : 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)]'
-        "
+        ]"
         @click="toggleAi"
       >
-        AI
+        <span class="w-10 h-10 flex items-center justify-center shrink-0">AI</span>
       </button>
     </div>
   </aside>
