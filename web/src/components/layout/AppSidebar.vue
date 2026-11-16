@@ -40,7 +40,11 @@
     <!-- Navigation List：折叠时分类标题让出高度，图标放大并与相邻项贴合 -->
     <nav
       v-overlay-scroll
-      class="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4"
+      :class="[
+        'flex-1 overflow-y-auto overflow-x-hidden pb-4 transition-[padding] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
+        isCollapsedState ? 'px-3.5' : 'px-3'
+      ]"
+      @scroll.passive="hideTooltipNow"
     >
       <div
         v-for="group in navGroups"
@@ -72,7 +76,7 @@
             v-for="item in group.items"
             :key="item.id"
             type="button"
-            :title="isCollapsedState ? item.label : undefined"
+            :aria-label="isCollapsedState ? item.label : undefined"
             :aria-current="activeTab === item.id ? 'page' : undefined"
             :class="[
               'relative w-full h-12 flex items-center rounded-[var(--shape-full)] text-[14px] cursor-pointer select-none group overflow-hidden active:scale-[0.98]',
@@ -81,6 +85,8 @@
                 : 'text-[var(--ink-secondary)] font-medium hover:bg-[var(--md-surface-container)] hover:text-[var(--ink-primary)]'
             ]"
             @click="$emit('update:activeTab', item.id)"
+            @mouseenter="showTooltip(item, $event)"
+            @mouseleave="scheduleHideTooltip"
           >
             <div
               class="w-12 h-12 flex items-center justify-center shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
@@ -159,11 +165,25 @@
         <span class="w-10 h-10 flex items-center justify-center shrink-0">AI</span>
       </button>
     </div>
+
+    <!-- 折叠态：右侧呼出的导航名称卡片（Teleport 到 body，避免被侧栏 overflow 裁切） -->
+    <Teleport to="body">
+      <div
+        v-if="tooltip.label"
+        class="fixed z-[60] pointer-events-none"
+        :style="tooltipStyle"
+        aria-hidden="true"
+      >
+        <div class="-translate-y-1/2 whitespace-nowrap rounded-[var(--shape-md)] bg-[var(--md-inverse-surface)] px-3 py-1.5 text-[12px] font-medium text-[var(--md-inverse-on-surface)] shadow-[var(--shadow-float)]">
+          {{ tooltip.label }}
+        </div>
+      </div>
+    </Teleport>
   </aside>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import Icon from '@/components/icons/Icon.vue';
 import logoUrl from '@/assets/BetterHRBUST.png';
 import { isUserscript } from '@/utils/platform.js';
@@ -208,11 +228,67 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile);
+  window.clearTimeout(tooltipTimer);
 });
 
 const isCollapsedState = computed(() => {
   if (isMobile.value) return false;
   return props.isCollapsed;
+});
+
+/* ---------------- 折叠态导航名称提示 ----------------
+   鼠标进入某个按钮时，在侧栏右侧呼出名称卡片；
+   按钮之间移动时只更新位置（卡片上下平滑滑动），离开后自动淡出。 */
+const tooltip = reactive({ visible: false, label: '', x: 0, y: 0 });
+let tooltipTimer = 0;
+
+const tooltipStyle = computed(() => ({
+  left: `${tooltip.x}px`,
+  top: `${tooltip.y}px`,
+  opacity: tooltip.visible ? '1' : '0',
+  transform: tooltip.visible ? 'translateX(0)' : 'translateX(-4px)',
+  // 隐藏时先就位再淡入（不补间 top），避免第一次出现时从屏幕顶部滑下来
+  transition: tooltip.visible
+    ? 'top 150ms cubic-bezier(0.2, 0, 0, 1), opacity 160ms cubic-bezier(0.2, 0, 0, 1), transform 160ms cubic-bezier(0.2, 0, 0, 1)'
+    : 'opacity 140ms cubic-bezier(0.3, 0, 0.8, 0.15), transform 140ms cubic-bezier(0.3, 0, 0.8, 0.15)'
+}));
+
+async function showTooltip(item, event) {
+  if (!isCollapsedState.value) return;
+  const el = event?.currentTarget;
+  if (!el) return;
+  window.clearTimeout(tooltipTimer);
+
+  const rect = el.getBoundingClientRect();
+  const rail = el.closest('aside')?.getBoundingClientRect();
+  tooltip.label = item.label;
+  tooltip.x = Math.round((rail ? rail.right : rect.right) + 10);
+  tooltip.y = Math.round(rect.top + rect.height / 2);
+
+  if (!tooltip.visible) {
+    await nextTick();
+  }
+  tooltip.visible = true;
+}
+
+function scheduleHideTooltip() {
+  window.clearTimeout(tooltipTimer);
+  tooltipTimer = window.setTimeout(() => {
+    tooltip.visible = false;
+  }, 90);
+}
+
+function hideTooltipNow() {
+  window.clearTimeout(tooltipTimer);
+  tooltip.visible = false;
+}
+
+// 展开侧栏后不再需要名称提示
+watch(isCollapsedState, (collapsed) => {
+  if (!collapsed) {
+    window.clearTimeout(tooltipTimer);
+    tooltip.visible = false;
+  }
 });
 
 const navGroups = [
