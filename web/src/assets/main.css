@@ -239,6 +239,50 @@ details[open] > div {
   background-color: hsl(calc(var(--course-h, 220) * 1deg) 70% 64%);
 }
 
+/* ---------------- 教学进程阶段色块 ----------------
+   色相由 teachingProcessSymbols.js 通过 --stage-h 注入；
+   假期/常规教学/未收录走中性样式，避免与课程动态配色混淆。 */
+.stage-block {
+  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 58% 88%);
+  border-radius: 3px;
+}
+
+.stage-block--break {
+  /* 假期要和轨道底色区分开，否则整段看不到 */
+  background-color: var(--ink-muted);
+  opacity: 0.26;
+  border-radius: 3px;
+}
+
+.stage-block--idle {
+  background-color: transparent;
+  border-radius: 3px;
+}
+
+.stage-block--unknown {
+  background-color: var(--sem-warning-soft);
+  border: 1px dashed var(--sem-warning-border);
+  border-radius: 3px;
+}
+
+.dark .stage-block {
+  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 36% 24%);
+}
+
+.dark .stage-block--break {
+  background-color: var(--ink-muted);
+  opacity: 0.45;
+}
+
+.dark .stage-block--idle {
+  background-color: transparent;
+}
+
+.dark .stage-block--unknown {
+  background-color: var(--sem-warning-soft);
+  border-color: var(--sem-warning-border);
+}
+
 /* 键盘焦点可见外框 */
 :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);

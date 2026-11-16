@@ -23,6 +23,7 @@ import TimetableView from '@/views/TimetableView.vue';
 import ScoreView from '@/views/ScoreView.vue';
 import ExamView from '@/views/ExamView.vue';
 import ProgramView from '@/views/ProgramView.vue';
+import TeachingProcessView from '@/views/TeachingProcessView.vue';
 import ClassroomView from '@/views/ClassroomView.vue';
 import ProfileView from '@/views/ProfileView.vue';
 import NoticeView from '@/views/NoticeView.vue';
@@ -79,6 +80,7 @@ const views = {
   score: ScoreView,
   exam: ExamView,
   program: ProgramView,
+  process: TeachingProcessView,
   classroom: ClassroomView,
   profile: ProfileView,
   notice: NoticeView,

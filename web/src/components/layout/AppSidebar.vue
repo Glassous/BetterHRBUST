@@ -205,6 +205,7 @@ const navGroups = [
     items: [
       { id: 'score', label: '成绩与GPA分析', icon: 'score' },
       { id: 'program', label: '培养方案与学分', icon: 'program' },
+      { id: 'process', label: '教学进程与阶段', icon: 'process' },
       { id: 'course', label: '我的课程名录', icon: 'course' },
       { id: 'classroom', label: '空教室与自习', icon: 'classroom' },
       { id: 'evaluation', label: '教学评价助手', icon: 'evaluation' },
