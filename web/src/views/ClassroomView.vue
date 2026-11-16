@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- 未登录提示 -->
     <UiCard v-if="!isLoggedIn" class="py-12 text-center max-w-lg mx-auto">
-      <div class="w-13 h-13 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center mx-auto mb-3.5">
+      <div class="w-14 h-14 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center mx-auto mb-4">
         <Icon name="classroom" customClass="w-6 h-6" />
       </div>
       <h3 class="text-base font-semibold text-[var(--ink-primary)] mb-1">未登录教务系统</h3>
@@ -12,7 +12,7 @@
 
     <!-- 会话校验中：校验通过前不开放查询 -->
     <UiCard v-else-if="!authChecked" class="py-12 text-center max-w-lg mx-auto">
-      <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2.5 text-[var(--accent)]" />
+      <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2.5 text-[var(--md-primary)]" />
       <p class="text-[13px] text-[var(--ink-muted)]">正在校验登录状态，请稍候…</p>
     </UiCard>
 
@@ -59,10 +59,10 @@
                   :aria-label="isCurrentDefaultBuilding ? '取消默认教学楼' : '设为默认教学楼'"
                   :aria-pressed="isCurrentDefaultBuilding"
                   :class="[
-                    'flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] border transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
+                    'flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
                     isCurrentDefaultBuilding
-                      ? 'border-[var(--sem-warning-border)] bg-[var(--sem-warning-soft)] text-[var(--sem-warning)]'
-                      : 'border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-muted)] hover:border-[var(--border-strong)] hover:text-[var(--sem-warning)]'
+                      ? 'bg-[var(--sem-warning-soft)] text-[var(--sem-warning)]'
+                      : 'bg-[var(--md-surface-container-high)] text-[var(--ink-muted)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--sem-warning)]'
                   ]"
                   @click="toggleDefaultBuilding"
                 >
@@ -147,7 +147,7 @@
       <!-- 错误态 -->
       <UiCard v-if="error" :custom-class="errorKind === 'session' ? '!border-[var(--sem-danger-border)]' : ''">
         <div class="flex items-start gap-3.5">
-          <div class="w-10 h-10 rounded-xl bg-[var(--sem-danger-soft)] border border-[var(--sem-danger-border)] text-[var(--sem-danger)] flex items-center justify-center shrink-0">
+          <div class="w-10 h-10 rounded-full bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] flex items-center justify-center shrink-0">
             <Icon name="alert-triangle" customClass="w-4.5 h-4.5" />
           </div>
           <div class="min-w-0 flex-1">
@@ -205,7 +205,7 @@
                 <tr>
                   <th
                     scope="col"
-                    class="sticky left-0 top-0 z-30 bg-[var(--bg-surface)]/95 backdrop-blur px-3 py-2.5 text-left font-semibold text-[var(--ink-secondary)] border-b border-[var(--border-hairline)] whitespace-nowrap"
+                    class="sticky left-0 top-0 z-30 bg-[var(--md-surface-container-low)]/95 backdrop-blur px-3 py-2.5 text-left font-semibold text-[var(--ink-secondary)] border-b border-[var(--border-hairline)] whitespace-nowrap"
                   >
                     教室
                   </th>
@@ -214,7 +214,7 @@
                     :key="slot.period"
                     scope="col"
                     :class="[
-                      'sticky top-0 z-20 bg-[var(--bg-surface)]/95 backdrop-blur px-1 py-2 text-center font-medium text-[var(--ink-secondary)] border-b border-[var(--border-hairline)] whitespace-nowrap',
+                      'sticky top-0 z-20 bg-[var(--md-surface-container-low)]/95 backdrop-blur px-1 py-2 text-center font-medium text-[var(--ink-secondary)] border-b border-[var(--border-hairline)] whitespace-nowrap',
                       groupSeparatorClass(slot.period)
                     ]"
                   >
@@ -237,7 +237,7 @@
                 >
                   <th
                     scope="row"
-                    class="sticky left-0 z-10 bg-[var(--bg-surface)] text-left px-3 py-1.5 border-b border-[var(--border-hairline)] cursor-pointer"
+                    class="sticky left-0 z-10 bg-[var(--md-surface-container-low)] text-left px-3 py-1.5 border-b border-[var(--border-hairline)] cursor-pointer"
                   >
                     <div class="truncate text-[13px] font-semibold text-[var(--ink-primary)]">{{ room.name }}</div>
                     <div class="truncate text-[11px] font-normal text-[var(--ink-muted)]">
@@ -321,7 +321,7 @@
             <button
               v-if="hasMoreRooms"
               type="button"
-              class="group inline-flex items-center gap-2 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-6 py-2.5 text-[13px] font-medium text-[var(--ink-primary)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-hover)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 cursor-pointer"
+              class="group inline-flex items-center gap-2 rounded-full bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] px-6 py-2.5 text-[13px] font-medium hover:brightness-[0.97] active:scale-[0.98] transition-all duration-200 cursor-pointer"
               @click="showMoreRooms"
             >
               <Icon
@@ -348,7 +348,7 @@
                 v-model="summaryQuery"
                 type="search"
                 placeholder="筛选教室"
-                class="w-36 min-h-[36px] text-[13px] pl-8 pr-2.5 py-1.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] focus:bg-[var(--bg-surface)] focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] transition-all duration-150"
+                class="w-36 min-h-[36px] text-[13px] pl-8 pr-2.5 py-1.5 rounded-full bg-[var(--md-surface-container-high)] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] border border-transparent focus:bg-[var(--bg-surface)] focus:border-[var(--md-primary)] focus:outline-none transition-all duration-150"
               />
             </div>
             <UiSelect
@@ -361,10 +361,10 @@
             <button
               type="button"
               :class="[
-                'text-[13px] min-h-[36px] px-3 py-1.5 rounded-[var(--radius-control)] border font-medium transition-all duration-150 active:scale-[0.97] cursor-pointer select-none',
+                'text-[13px] min-h-[36px] px-4 py-1.5 rounded-full font-medium transition-all duration-200 active:scale-[0.97] cursor-pointer select-none',
                 onlyWithFree
-                  ? 'bg-[var(--accent)] text-[var(--accent-ink)] border-transparent'
-                  : 'border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)]'
+                  ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]'
+                  : 'bg-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-high)]'
               ]"
               @click="onlyWithFree = !onlyWithFree"
             >

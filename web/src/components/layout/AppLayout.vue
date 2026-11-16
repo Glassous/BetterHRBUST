@@ -46,7 +46,8 @@
         <!-- 主区域自己滚动：宽内容（课表 / 成绩表）已在视图内自带 overflow-x-auto，
              这里再兜一层，保证任何情况下都不会把整页宽度撑破 -->
         <main
-          class="academic-main flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-6 sm:pt-8 pb-14 max-w-[1600px] w-full mx-auto"
+          v-overlay-scroll
+          class="academic-main flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-1 sm:pt-2 pb-16 max-w-[1600px] w-full mx-auto"
         >
           <slot />
         </main>

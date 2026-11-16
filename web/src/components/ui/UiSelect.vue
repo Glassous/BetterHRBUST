@@ -19,13 +19,13 @@
       </span>
       <Icon
         name="chevron-down"
-        customClass="w-3.5 h-3.5 text-[var(--ink-muted)] transition-transform duration-150 shrink-0"
+        customClass="w-4 h-4 text-[var(--ink-muted)] transition-transform duration-200 shrink-0"
         :class="open ? 'rotate-180' : ''"
       />
     </button>
 
     <Transition
-      enter-active-class="transition duration-160 ease-out"
+      enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 -translate-y-1 scale-95"
       enter-to-class="opacity-100 translate-y-0 scale-100"
       leave-active-class="transition duration-110 ease-in"
@@ -35,7 +35,7 @@
       <div
         v-if="open"
         role="listbox"
-        class="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full w-max max-w-[18rem] overflow-hidden rounded-[var(--radius-panel)] border border-[var(--border-strong)] bg-[var(--bg-surface)] shadow-[var(--shadow-float)]"
+        class="absolute left-0 top-[calc(100%+6px)] z-50 min-w-full w-max max-w-[18rem] overflow-hidden rounded-[var(--shape-lg)] border border-[var(--border-hairline)] bg-[var(--md-surface-container-lowest)] shadow-[var(--shadow-float)]"
       >
         <UiScrollArea viewport-class="p-1.5 max-h-64">
           <button
@@ -47,12 +47,12 @@
             tabindex="-1"
             :aria-selected="item.value === modelValue"
             :class="[
-              'w-full flex items-center justify-between gap-2 rounded-[var(--radius-badge)] px-2.5 py-2 text-left cursor-pointer transition-colors duration-100',
+              'w-full flex items-center justify-between gap-2 rounded-[var(--shape-sm)] px-3 py-2 text-left cursor-pointer transition-colors duration-100',
               sizeClass.option,
               item.value === modelValue
-                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
+                ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
                 : highlightIndex === idx
-                  ? 'bg-[var(--bg-hover)] text-[var(--ink-primary)]'
+                  ? 'bg-[var(--md-surface-container-high)] text-[var(--ink-primary)]'
                   : 'text-[var(--ink-secondary)]'
             ]"
             @mouseenter="highlightIndex = idx"
@@ -62,11 +62,11 @@
             <Icon
               v-if="item.value === modelValue"
               name="check"
-              customClass="w-3.5 h-3.5 text-[var(--accent)] shrink-0"
+              customClass="w-4 h-4 shrink-0"
             />
           </button>
 
-          <div v-if="items.length === 0" class="px-2.5 py-2 text-[13px] text-[var(--ink-muted)]">
+          <div v-if="items.length === 0" class="px-3 py-2 text-[13px] text-[var(--ink-muted)]">
             暂无可选项
           </div>
         </UiScrollArea>
@@ -121,19 +121,19 @@ const emit = defineEmits(['update:modelValue', 'change']);
 
 // 尺寸变体：sm 用于紧凑筛选条，lg 与页面输入框等高
 const SIZE_CLASS = {
-  sm: { trigger: 'text-[13px] py-1.5 pl-3.5 pr-3 min-h-[36px] rounded-[var(--radius-control)]', option: 'text-[13px]' },
-  md: { trigger: 'text-sm py-2.5 pl-3.5 pr-3 min-h-[42px] rounded-[var(--radius-control)]', option: 'text-sm' },
-  lg: { trigger: 'text-sm py-2.5 pl-3.5 pr-3 min-h-[44px] rounded-[var(--radius-control)]', option: 'text-sm' }
+  sm: { trigger: 'text-[13px] py-1.5 pl-4 pr-3 min-h-[36px] rounded-[var(--shape-md)]', option: 'text-[13px]' },
+  md: { trigger: 'text-sm py-2.5 pl-4 pr-3 min-h-[44px] rounded-[var(--shape-md)]', option: 'text-sm' },
+  lg: { trigger: 'text-sm py-2.5 pl-4 pr-3 min-h-[46px] rounded-[var(--shape-md)]', option: 'text-sm' }
 };
 
 const sizeClass = computed(() => SIZE_CLASS[props.size] || SIZE_CLASS.md);
 const idleClass = computed(() =>
   props.plain
     ? 'bg-[var(--bg-surface)] border-[var(--border-hairline)] hover:border-[var(--border-strong)]'
-    : 'bg-[var(--bg-subtle)] border-[var(--border-hairline)] hover:border-[var(--border-strong)]'
+    : 'bg-[var(--md-surface-container-high)] border-transparent hover:bg-[var(--md-surface-container-highest)]'
 );
 const openClass = computed(() =>
-  'bg-[var(--bg-surface)] border-[var(--accent)] ring-2 ring-[var(--accent-soft)]'
+  'bg-[var(--bg-surface)] border-[var(--md-primary)] ring-2 ring-[var(--accent-soft)]'
 );
 
 const rootRef = ref(null);

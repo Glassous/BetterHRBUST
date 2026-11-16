@@ -1,7 +1,7 @@
-﻿<template>
+<template>
   <span
     :class="[
-      'inline-flex items-center whitespace-nowrap shrink-0 font-medium rounded-full select-none leading-none transition-colors duration-150',
+      'inline-flex items-center whitespace-nowrap shrink-0 font-medium rounded-[var(--shape-full)] select-none leading-none transition-colors duration-150',
       sizeClasses,
       variantClasses,
       customClass
@@ -38,24 +38,24 @@ const props = defineProps({
 });
 
 const sizeClasses = computed(() => {
-  return props.size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-[13px]';
+  return props.size === 'sm' ? 'px-2.5 py-1 text-[11px] h-5' : 'px-3 py-1.5 text-[12px] h-6';
 });
 
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'accent':
     case 'info':
-      return 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]';
+      return 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]';
     case 'success':
-      return 'bg-[var(--sem-success-soft)] text-[var(--sem-success)] border border-[var(--sem-success-border)]';
+      return 'bg-[var(--sem-success-soft)] text-[var(--sem-success)]';
     case 'warning':
-      return 'bg-[var(--sem-warning-soft)] text-[var(--sem-warning)] border border-[var(--sem-warning-border)]';
+      return 'bg-[var(--sem-warning-soft)] text-[var(--sem-warning)]';
     case 'danger':
-      return 'bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] border border-[var(--sem-danger-border)]';
+      return 'bg-[var(--sem-danger-soft)] text-[var(--sem-danger)]';
     case 'outline':
-      return 'bg-transparent text-[var(--ink-secondary)] border border-[var(--border-strong)]';
+      return 'bg-transparent text-[var(--ink-secondary)] border border-[var(--md-outline-variant)]';
     default:
-      return 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border border-[var(--border-hairline)]';
+      return 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)]';
   }
 });
 
@@ -63,7 +63,7 @@ const dotClasses = computed(() => {
   switch (props.variant) {
     case 'accent':
     case 'info':
-      return 'bg-[var(--accent)]';
+      return 'bg-[var(--md-primary)]';
     case 'success':
       return 'bg-[var(--sem-success)]';
     case 'warning':

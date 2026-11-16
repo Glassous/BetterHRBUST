@@ -1,10 +1,10 @@
 <template>
-  <div ref="rootRef" class="relative">
+  <div ref="rootRef" class="relative ui-scroll-root group">
     <div
       ref="viewportRef"
       class="ui-scroll-viewport overflow-auto"
       :class="viewportClass"
-      @scroll.passive="updateMetrics"
+      @scroll.passive="onScroll"
     >
       <slot />
     </div>
@@ -17,7 +17,7 @@
     >
       <div
         class="ui-scroll-thumb"
-        :class="[thumbClass, dragging === 'y' ? 'opacity-100' : '']"
+        :class="[thumbClass, dragging === 'y' ? 'is-dragging' : '', active ? 'is-active' : '']"
         :style="{ height: `${thumbY.height}px`, transform: `translateY(${thumbY.top}px)` }"
         @pointerdown.prevent="startDrag('y', $event)"
       />
@@ -31,7 +31,7 @@
     >
       <div
         class="ui-scroll-thumb h-full"
-        :class="[thumbClass, dragging === 'x' ? 'opacity-100' : '']"
+        :class="[thumbClass, dragging === 'x' ? 'is-dragging' : '', active ? 'is-active' : '']"
         :style="{ width: `${thumbX.width}px`, transform: `translateX(${thumbX.left}px)` }"
         @pointerdown.prevent="startDrag('x', $event)"
       />
@@ -54,7 +54,7 @@ const props = defineProps({
   },
   thumbClass: {
     type: String,
-    default: 'bg-[var(--border-strong)]/80 hover:bg-[var(--ink-muted)]/85 transition-colors'
+    default: 'bg-[var(--md-outline)]'
   }
 });
 
@@ -64,6 +64,19 @@ const MIN_THUMB = 20;
 const rootRef = ref(null);
 const viewportRef = ref(null);
 const dragging = ref('');
+/** 刚滚动过：短暂清晰显示滑块 */
+const active = ref(false);
+let activeTimer = 0;
+
+/** 滚动时更新拇指并短暂显示，停手后自动淡出 */
+function onScroll() {
+  updateMetrics();
+  active.value = true;
+  window.clearTimeout(activeTimer);
+  activeTimer = window.setTimeout(() => {
+    active.value = false;
+  }, 900);
+}
 
 const metrics = reactive({
   scrollTop: 0,
@@ -173,6 +186,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   endDrag();
+  window.clearTimeout(activeTimer);
   resizeObserver?.disconnect();
   mutationObserver?.disconnect();
   window.removeEventListener('resize', updateMetrics);
@@ -194,15 +208,28 @@ onBeforeUnmount(() => {
 
 .ui-scroll-thumb {
   border-radius: 9999px;
-  opacity: 0.65;
-  transition: opacity 150ms ease, background-color 150ms ease;
+  opacity: 0;
+  transition:
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 150ms ease;
   pointer-events: auto;
   cursor: grab;
   touch-action: none;
 }
 
+/* 鼠标进入滚动区域：淡淡显示 */
+.ui-scroll-root:hover .ui-scroll-thumb {
+  opacity: 0.34;
+}
+
+/* 刚滚动过：清晰显示 */
+.ui-scroll-thumb.is-active {
+  opacity: 0.85;
+}
+
+/* 真正操作滑块：完全显示 */
 .ui-scroll-thumb:hover,
-.ui-scroll-thumb:active {
+.ui-scroll-thumb.is-dragging {
   opacity: 1;
 }
 

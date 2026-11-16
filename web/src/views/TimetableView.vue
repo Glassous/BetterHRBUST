@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- 未登录提示 -->
     <UiCard v-if="showLoginPrompt" class="py-12 text-center max-w-lg mx-auto">
-      <div class="w-13 h-13 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center mx-auto mb-3.5">
+      <div class="w-14 h-14 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center mx-auto mb-4">
         <Icon name="timetable" customClass="w-6 h-6" />
       </div>
       <h3 class="text-base font-semibold text-[var(--ink-primary)] mb-1.5">未登录教务系统</h3>
@@ -21,7 +21,7 @@
                 type="button"
                 aria-label="上一周"
                 :disabled="selectedWeek <= 1"
-                class="w-9 h-9 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] flex items-center justify-center transition-all duration-150 active:scale-95"
+                class="w-9 h-9 rounded-full bg-[var(--md-surface-container-high)] hover:bg-[var(--md-surface-container-highest)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] flex items-center justify-center transition-all duration-200 active:scale-95"
                 @click="prevWeek"
               >
                 <Icon name="chevron-left" customClass="w-4 h-4" />
@@ -32,7 +32,7 @@
                 type="button"
                 aria-haspopup="true"
                 :aria-expanded="showWeekPicker"
-                class="h-9 px-3.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] cursor-pointer min-w-[7rem] flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-[0.98]"
+                class="h-9 px-4 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--md-surface-container-low)] cursor-pointer min-w-[7.5rem] flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98]"
                 title="点击选择教学周次"
                 @click="showWeekPicker = !showWeekPicker"
               >
@@ -41,7 +41,7 @@
                 </span>
                 <Icon
                   name="chevron-down"
-                  customClass="w-3.5 h-3.5 text-[var(--ink-muted)] transition-transform duration-150"
+                  customClass="w-3.5 h-3.5 text-[var(--ink-muted)] transition-transform duration-200"
                   :class="showWeekPicker ? 'rotate-180' : ''"
                 />
               </button>
@@ -50,7 +50,7 @@
                 type="button"
                 aria-label="下一周"
                 :disabled="selectedWeek >= semesterTeachingWeeks"
-                class="w-9 h-9 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] flex items-center justify-center transition-all duration-150 active:scale-95"
+                class="w-9 h-9 rounded-full bg-[var(--md-surface-container-high)] hover:bg-[var(--md-surface-container-highest)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] flex items-center justify-center transition-all duration-200 active:scale-95"
                 @click="nextWeek"
               >
                 <Icon name="chevron-right" customClass="w-4 h-4" />
@@ -69,7 +69,7 @@
                   v-if="showWeekPicker"
                   role="dialog"
                   aria-label="选择教学周次"
-                  class="absolute left-0 top-[calc(100%+8px)] z-30 w-[min(320px,calc(100vw-2rem))] rounded-[var(--radius-panel)] border border-[var(--border-strong)] bg-[var(--bg-surface)] p-3.5 shadow-[var(--shadow-float)]"
+                  class="absolute left-0 top-[calc(100%+8px)] z-30 w-[min(320px,calc(100vw-2rem))] rounded-[var(--shape-xl)] bg-[var(--md-surface-container-high)] p-4 shadow-[var(--shadow-float)]"
                 >
                   <div class="flex items-center justify-between gap-2 mb-2.5">
                     <span class="text-xs font-semibold text-[var(--ink-primary)]">选择教学周次</span>
@@ -83,12 +83,12 @@
                       :key="w"
                       type="button"
                       :class="[
-                        'h-10 rounded-[var(--radius-control)] border flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none transition-colors num-tabular',
+                        'h-10 rounded-full flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none transition-colors num-tabular',
                         w === selectedWeek
-                          ? 'bg-[var(--accent)] text-[var(--accent-ink)] border-transparent font-semibold'
+                          ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
                           : w === currentWeek
-                            ? 'bg-[var(--sem-success-soft)] text-[var(--sem-success)] border-[var(--sem-success-border)] font-semibold'
-                            : 'border-[var(--border-hairline)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]'
+                            ? 'bg-[var(--sem-success-soft)] text-[var(--sem-success)] font-semibold'
+                            : 'text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-highest)]'
                       ]"
                       @click="pickWeek(w)"
                     >
@@ -103,10 +103,10 @@
             <button
               type="button"
               :class="[
-                'h-9 px-3 text-[13px] font-medium rounded-[var(--radius-control)] border cursor-pointer transition-all duration-150 active:scale-[0.98]',
+                'h-9 px-4 text-[13px] font-medium rounded-full cursor-pointer transition-colors duration-200 active:scale-[0.98]',
                 onlyCurrentWeek
-                  ? 'bg-[var(--accent)] text-[var(--accent-ink)] border-transparent'
-                  : 'border-[var(--border-hairline)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]'
+                  ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]'
+                  : 'bg-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-high)]'
               ]"
               @click="toggleOnlyCurrentWeek"
             >
@@ -115,7 +115,7 @@
 
             <span
               v-if="selectedWeek === currentWeek"
-              class="h-9 px-3 text-[13px] rounded-full border border-[var(--sem-success-border)] bg-[var(--sem-success-soft)] text-[var(--sem-success)] inline-flex items-center gap-1.5 select-none font-medium"
+              class="h-9 px-3.5 text-[13px] rounded-full bg-[var(--sem-success-soft)] text-[var(--sem-success)] inline-flex items-center gap-1.5 select-none font-medium"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-[var(--sem-success)]"></span>
               {{ isSchoolHoliday ? '假期中' : '当前周' }}
@@ -123,7 +123,7 @@
             <button
               v-else
               type="button"
-              class="h-9 px-3 text-[13px] rounded-full border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)] hover:opacity-85 cursor-pointer transition-all duration-150 active:scale-[0.98] inline-flex items-center gap-1.5 font-medium"
+              class="h-9 px-3.5 text-[13px] rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] hover:brightness-[0.98] cursor-pointer transition-all duration-200 active:scale-[0.98] inline-flex items-center gap-1.5 font-medium"
               @click="backToCurrentWeek"
             >
               <Icon name="refresh" customClass="w-3.5 h-3.5" />
@@ -163,13 +163,13 @@
         <button
           v-if="stageHint"
           type="button"
-          class="mt-2.5 flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-2 text-left text-[12px] transition-colors hover:brightness-[0.98]"
+          class="mt-3 flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded-[var(--shape-lg)] bg-[var(--md-primary-container)] px-4 py-2.5 text-left text-[12px] transition-all duration-200 hover:brightness-[0.98]"
           @click="$emit('navigate', 'process')"
         >
-          <span class="flex flex-wrap items-center gap-2 text-[var(--ink-secondary)]">
-            <Icon name="process" customClass="w-3.5 h-3.5 text-[var(--accent)]" />
+          <span class="flex flex-wrap items-center gap-2 text-[var(--md-on-primary-container)]/80">
+            <Icon name="process" customClass="w-3.5 h-3.5 text-[var(--md-on-primary-container)]" />
             <span>第 {{ selectedWeek }} 周教学阶段</span>
-            <span class="inline-flex items-center gap-1.5 font-medium text-[var(--ink-primary)]">
+            <span class="inline-flex items-center gap-1.5 font-medium text-[var(--md-on-primary-container)]">
               <span
                 v-for="part in stageHint.parts"
                 :key="part.key"
@@ -179,21 +179,21 @@
               {{ stageHint.text }}
             </span>
           </span>
-          <span class="inline-flex items-center gap-1 font-medium text-[var(--accent)]">
+          <span class="inline-flex items-center gap-1 font-medium text-[var(--md-on-primary-container)]">
             查看教学进程
             <Icon name="chevron-right" customClass="w-3.5 h-3.5" />
           </span>
         </button>
 
-        <div class="mt-2.5 pt-2.5 border-t border-[var(--border-hairline)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-muted)]">
+        <div class="mt-3 pt-3 border-t border-[var(--border-hairline)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-muted)]">
           <span>上次同步：<span class="num-tabular">{{ lastSyncText }}</span></span>
           <span>点击任意课程块查看任课教师与周次详情</span>
         </div>
       </UiCard>
 
       <!-- 加载状态 -->
-      <div v-if="loading" class="p-16 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-center text-xs text-[var(--ink-muted)]">
-        <Icon name="refresh" customClass="w-6 h-6 animate-spin mx-auto mb-2.5 text-[var(--accent)]" />
+      <div v-if="loading" class="p-16 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] text-center text-xs text-[var(--ink-muted)]">
+        <Icon name="refresh" customClass="w-6 h-6 animate-spin mx-auto mb-2.5 text-[var(--md-primary)]" />
         正在从哈理工教务系统拉取最新课表...
       </div>
 
@@ -201,18 +201,18 @@
         <!-- 移动端日视图（默认 < md 显示，免除手机端 980px 横拖墙） -->
         <div v-if="mobileLayout === 'day'" class="md:hidden space-y-3.5">
           <!-- 星期选择条 -->
-          <div class="grid grid-cols-7 gap-1 p-1.5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)]">
+          <div class="grid grid-cols-7 gap-1 p-1.5 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)]">
             <button
               v-for="(dayName, dIdx) in shortDaysOfWeek"
               :key="dayName"
               type="button"
               :class="[
-                'py-2 rounded-[var(--radius-control)] flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors num-tabular',
+                'py-2 rounded-full flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors num-tabular',
                 mobileSelectedDay === dIdx + 1
-                  ? 'bg-[var(--accent)] text-[var(--accent-ink)] font-semibold'
+                  ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
                   : isTodayColumn(dIdx + 1)
-                    ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
-                    : 'text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]'
+                    ? 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] font-semibold'
+                    : 'text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-high)]'
               ]"
               @click="mobileSelectedDay = dIdx + 1"
             >
@@ -221,20 +221,20 @@
               <span
                 class="w-1.5 h-1.5 rounded-full"
                 :class="dayHasCourses(dIdx + 1)
-                  ? (mobileSelectedDay === dIdx + 1 ? 'bg-[var(--accent-ink)]' : 'bg-[var(--accent)]')
+                  ? (mobileSelectedDay === dIdx + 1 ? 'bg-[var(--md-on-secondary-container)]' : 'bg-[var(--md-primary)]')
                   : 'bg-transparent'"
               />
             </button>
           </div>
 
           <!-- 当日节次时间轴（空节次保留时间刻度高度） -->
-          <div class="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] divide-y divide-[var(--border-hairline)] overflow-hidden">
+          <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] divide-y divide-[var(--border-hairline)] overflow-hidden">
             <div
               v-for="slot in activeSlots"
               :key="slot.period"
               class="flex items-stretch min-h-[56px]"
             >
-              <div class="w-20 shrink-0 px-2.5 py-2.5 border-r border-[var(--border-hairline)] bg-[var(--bg-subtle)]/40 flex flex-col justify-center text-center num-tabular">
+              <div class="w-20 shrink-0 px-2.5 py-2.5 border-r border-[var(--border-hairline)] bg-[var(--md-surface-container)]/60 flex flex-col justify-center text-center num-tabular">
                 <span class="text-xs font-semibold text-[var(--ink-primary)]">
                   {{ viewMode === 'combine' ? `第${slot.period}大节` : `第${slot.period}节` }}
                 </span>
@@ -263,14 +263,14 @@
         <!-- 桌面整周课表矩阵（md+ 默认展示，或手机端切换整周） -->
         <div
           :class="[
-            'rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-x-auto',
+            'rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] overflow-x-auto',
             mobileLayout === 'day' ? 'hidden md:block' : 'block'
           ]"
         >
           <div class="min-w-[980px]">
             <!-- 星期表头 -->
             <div
-              class="grid border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)]/65 text-[13px] font-semibold text-[var(--ink-secondary)]"
+              class="grid bg-[var(--md-surface-container)] text-[13px] font-semibold text-[var(--ink-secondary)]"
               :style="{ gridTemplateColumns: gridTemplate }"
             >
               <div class="p-3 text-center text-[var(--ink-muted)] border-r border-[var(--border-hairline)] flex items-center justify-center">
@@ -281,17 +281,17 @@
                 :key="dayName"
                 :class="[
                   'p-2.5 text-center border-r border-[var(--border-hairline)] last:border-r-0 transition-colors relative',
-                  isTodayColumn(dIdx + 1) ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''
+                  isTodayColumn(dIdx + 1) ? 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]' : ''
                 ]"
               >
                 <div class="flex items-center justify-center gap-1.5 text-sm font-semibold">
                   <span>{{ dayName }}</span>
-                  <span v-if="isTodayColumn(dIdx + 1)" class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+                  <span v-if="isTodayColumn(dIdx + 1)" class="w-1.5 h-1.5 rounded-full bg-[var(--md-primary)]"></span>
                 </div>
                 <div class="mt-0.5 text-xs font-normal num-tabular opacity-80">{{ dateForDay(dIdx + 1) }}</div>
                 <span
                   v-if="isTodayColumn(dIdx + 1)"
-                  class="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--accent)]"
+                  class="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--md-primary)]"
                 />
               </div>
             </div>
@@ -308,7 +308,7 @@
             >
               <!-- 节次与时间 -->
               <div
-                class="p-2 border-r border-[var(--border-hairline)] bg-[var(--bg-subtle)]/35 flex flex-col justify-center items-center text-center num-tabular"
+                class="p-2 border-r border-[var(--border-hairline)] bg-[var(--md-surface-container)]/55 flex flex-col justify-center items-center text-center num-tabular"
               >
                 <span class="text-xs font-semibold text-[var(--ink-primary)]">
                   {{ viewMode === 'combine' ? `第 ${slot.period} 大节` : `第 ${slot.period} 节` }}
@@ -324,7 +324,7 @@
                 :key="dayNum"
                 :class="[
                   'p-1.5 border-r border-[var(--border-hairline)] last:border-r-0 flex flex-col gap-1.5 relative min-w-0 transition-colors',
-                  isTodayColumn(dayNum) ? 'bg-[var(--accent-soft)]/50' : ''
+                  isTodayColumn(dayNum) ? 'bg-[var(--md-primary-container)]/35' : ''
                 ]"
               >
                 <!-- 每节课就是一张卡片：点开后同一节点由 GSAP Flip 展开成详情大卡 -->

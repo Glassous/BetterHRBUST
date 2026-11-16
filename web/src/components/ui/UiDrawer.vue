@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition
-      enter-active-class="transition duration-200 ease-out"
+      enter-active-class="transition duration-250 ease-out"
       enter-from-class="opacity-0"
       enter-to-class="opacity-100"
       leave-active-class="transition duration-150 ease-in"
@@ -17,23 +17,23 @@
         @click.self="$emit('update:modelValue', false)"
       >
         <div
-          class="drawer-panel-enter w-full max-w-md h-full bg-[var(--bg-surface)] border-l border-[var(--border-strong)] shadow-[var(--shadow-float)] flex flex-col"
+          class="drawer-panel-enter w-full max-w-md h-full bg-[var(--md-surface-container-low)] shadow-[var(--shadow-float)] flex flex-col rounded-l-[var(--shape-xxl)] overflow-hidden"
         >
-          <div class="px-5 py-4 border-b border-[var(--border-hairline)] flex items-center justify-between gap-3">
-            <h3 class="text-base font-semibold text-[var(--ink-primary)] tracking-tight truncate">{{ title }}</h3>
+          <div class="px-6 pt-5 pb-3 flex items-center justify-between gap-3">
+            <h3 class="text-[18px] leading-7 font-semibold tracking-tight truncate">{{ title }}</h3>
             <button
               type="button"
               aria-label="关闭抽屉"
-              class="w-8 h-8 rounded-[var(--radius-control)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors flex items-center justify-center shrink-0"
+              class="md-icon-btn w-9 h-9 cursor-pointer shrink-0"
               @click="$emit('update:modelValue', false)"
             >
               <Icon name="x" customClass="w-4 h-4" />
             </button>
           </div>
-          <div class="flex-1 p-5 overflow-y-auto text-[var(--ink-primary)]">
+          <div v-overlay-scroll class="flex-1 px-6 pb-5 overflow-y-auto text-[var(--ink-primary)]">
             <slot />
           </div>
-          <div v-if="$slots.footer" class="p-4 border-t border-[var(--border-hairline)] bg-[var(--bg-subtle)]/55">
+          <div v-if="$slots.footer" class="px-6 py-4 border-t border-[var(--border-hairline)] bg-[var(--md-surface-container)]/50">
             <slot name="footer" />
           </div>
         </div>

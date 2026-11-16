@@ -423,7 +423,7 @@
 
         <UiTabs v-if="campuses.length > 1" v-model="pickerCampus" :items="campusItems" />
 
-        <div class="max-h-[52vh] divide-y divide-[var(--border-hairline)] overflow-y-auto rounded-[var(--radius-panel)] border border-[var(--border-hairline)]">
+        <div v-overlay-scroll class="max-h-[52vh] divide-y divide-[var(--border-hairline)] overflow-y-auto rounded-[var(--radius-panel)] border border-[var(--border-hairline)]">
           <button
             v-for="item in pickerResults"
             :key="item.name"

@@ -23,7 +23,7 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div class="text-[15px] font-semibold text-[var(--ink-primary)]">深色模式 / 浅色模式</div>
-          <div class="text-[13px] text-[var(--ink-muted)] mt-1">冷静矿石与教务索引配色系统（自动适配浅色与深色界面）</div>
+          <div class="text-[13px] text-[var(--ink-muted)] mt-1">Material 3 Expressive 设计系统 · 低饱和雾蓝靛配色（自动适配浅色与深色界面）</div>
         </div>
         <UiTabs
           :items="[

@@ -2,49 +2,125 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * ===========================================================================
+ * Material 3 Expressive 设计令牌（Web）
+ *
+ * 与 Android 端 core/ui/theme/Color.kt 使用同一套 HCT 派生色板：
+ * 品牌色为低饱和雾蓝靛，容器色统一走 tonal container 层级，避免大面积高饱和色块。
+ * 旧变量（--bg-* / --ink-* / --accent-* / --radius-*）保留为别名，
+ * 页面无需改动即可整体迁移到 MD3E 配色与形状，同时新代码可直接使用 --md-* 角色。
+ * ===========================================================================
+ */
 :root {
   color-scheme: light;
   /* 自定义标题栏占位高度：浏览器环境为 0，布局零影响 */
   --tb: 0px;
 
-  /* 冷静矿石与教务索引（Cool Mineral Ink & Slate Blue）— 浅色主题 */
-  --bg-canvas: #f4f6f9;
-  --bg-surface: #ffffff;
-  --bg-subtle: #eceff4;
-  --bg-hover: #e2e7ee;
-  --bg-backdrop: rgba(15, 23, 36, 0.36);
+  /* ---------------- MD3E 颜色角色（浅色） ---------------- */
+  --md-primary: #4c5b7e;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #dde4f5;
+  --md-on-primary-container: #1b2539;
+  --md-primary-fixed: #dde4f5;
+  --md-primary-fixed-dim: #b6c4e3;
+  --md-on-primary-fixed: #101b2f;
+  --md-on-primary-fixed-variant: #35456a;
 
-  --border-hairline: rgba(19, 24, 32, 0.09);
-  --border-strong: rgba(19, 24, 32, 0.17);
+  --md-secondary: #63597c;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #e9ddff;
+  --md-on-secondary-container: #4b4263;
 
-  --ink-primary: #131820;
-  --ink-secondary: #475263;
-  --ink-muted: #616d7e;
+  --md-tertiary: #705382;
+  --md-on-tertiary: #ffffff;
+  --md-tertiary-container: #f3daff;
+  --md-on-tertiary-container: #573c69;
 
-  --accent: #255585;
-  --accent-hover: #1d456d;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(37, 85, 133, 0.10);
-  --accent-border: rgba(37, 85, 133, 0.24);
+  --md-error: #ba1a1a;
+  --md-on-error: #ffffff;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #93000a;
 
-  --sem-success: #15803d;
-  --sem-success-soft: rgba(21, 128, 61, 0.10);
-  --sem-success-border: rgba(21, 128, 61, 0.24);
+  --md-surface: #fcf8ff;
+  --md-on-surface: #1b1b25;
+  --md-surface-variant: #e3e0f2;
+  --md-on-surface-variant: #464554;
+  --md-surface-dim: #dbd8e7;
+  --md-surface-bright: #fcf8ff;
+  --md-surface-container-lowest: #ffffff;
+  --md-surface-container-low: #f5f2ff;
+  --md-surface-container: #efecfb;
+  --md-surface-container-high: #e9e6f5;
+  --md-surface-container-highest: #e3e1ef;
 
-  --sem-warning: #b45309;
-  --sem-warning-soft: rgba(180, 83, 9, 0.10);
-  --sem-warning-border: rgba(180, 83, 9, 0.24);
+  --md-outline: #767585;
+  --md-outline-variant: #c7c5d6;
+  --md-inverse-surface: #302f3a;
+  --md-inverse-on-surface: #f2effe;
+  --md-scrim: rgba(27, 27, 37, 0.34);
 
-  --sem-danger: #be123c;
-  --sem-danger-soft: rgba(190, 18, 60, 0.10);
-  --sem-danger-border: rgba(190, 18, 60, 0.24);
+  /* ---------------- 兼容别名：旧页面变量 ---------------- */
+  --bg-canvas: var(--md-surface);
+  --bg-surface: var(--md-surface-container-lowest);
+  --bg-subtle: var(--md-surface-container);
+  --bg-hover: var(--md-surface-container-high);
+  --bg-backdrop: var(--md-scrim);
 
-  --radius-card: 16px;
-  --radius-panel: 12px;
-  --radius-control: 10px;
-  --radius-badge: 8px;
+  --border-hairline: rgba(27, 27, 37, 0.07);
+  --border-strong: rgba(27, 27, 37, 0.14);
 
-  --shadow-float: 0 14px 34px -8px rgba(15, 23, 36, 0.15), 0 2px 8px -2px rgba(15, 23, 36, 0.07);
+  --ink-primary: var(--md-on-surface);
+  --ink-secondary: var(--md-on-surface-variant);
+  --ink-muted: #6b6a7a;
+
+  --accent: var(--md-primary);
+  --accent-hover: #3e4c6b;
+  --accent-ink: var(--md-on-primary);
+  --accent-soft: rgba(76, 91, 126, 0.10);
+  --accent-border: rgba(76, 91, 126, 0.24);
+
+  /* 语义色：保持 MD3E 柔和的容器层级，不参与品牌主色 */
+  --sem-success: #3d6b52;
+  --sem-success-soft: rgba(61, 107, 82, 0.10);
+  --sem-success-border: rgba(61, 107, 82, 0.24);
+
+  --sem-warning: #8a5a18;
+  --sem-warning-soft: rgba(138, 90, 24, 0.10);
+  --sem-warning-border: rgba(138, 90, 24, 0.24);
+
+  --sem-danger: var(--md-error);
+  --sem-danger-soft: var(--md-error-container);
+  --sem-danger-border: rgba(186, 26, 26, 0.24);
+
+  /* ---------------- MD3E 形状体系（8 步） ---------------- */
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 20px;
+  --shape-xl-plus: 24px;
+  --shape-xxl: 28px;
+  --shape-xxxl: 32px;
+  --shape-full: 9999px;
+
+  /* 兼容别名 */
+  --radius-card: var(--shape-xl);
+  --radius-panel: var(--shape-lg);
+  --radius-control: var(--shape-md);
+  --radius-badge: var(--shape-sm);
+  --radius-pill: var(--shape-full);
+
+  /* ---------------- MD3E 动效 ---------------- */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-expressive: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --duration-short: 120ms;
+  --duration-medium: 240ms;
+  --duration-long: 420ms;
+
+  --shadow-float: 0 18px 44px -14px rgba(27, 27, 37, 0.22), 0 3px 10px -4px rgba(27, 27, 37, 0.08);
 }
 
 /* 桌面端（Tauri）：main.js 检测到 window.desktopWindow 时挂 desktop-chrome */
@@ -55,39 +131,82 @@ html.desktop-chrome {
 .dark {
   color-scheme: dark;
 
-  /* 冷静矿石与教务索引（Deep Carbon Obsidian）— 深邃碳黑深色主题 */
-  --bg-canvas: #06080b;
-  --bg-surface: #0c0f15;
-  --bg-subtle: #121721;
-  --bg-hover: #19202e;
-  --bg-backdrop: rgba(2, 3, 6, 0.80);
+  /* ---------------- MD3E 颜色角色（深色） ---------------- */
+  --md-primary: #b6c4e3;
+  --md-on-primary: #1d2b45;
+  --md-primary-container: #354564;
+  --md-on-primary-container: #dde4f5;
+  --md-primary-fixed: #dde4f5;
+  --md-primary-fixed-dim: #b6c4e3;
+  --md-on-primary-fixed: #101b2f;
+  --md-on-primary-fixed-variant: #35456a;
 
-  --border-hairline: rgba(232, 238, 248, 0.08);
-  --border-strong: rgba(232, 238, 248, 0.16);
+  --md-secondary: #cdc0e9;
+  --md-on-secondary: #342b4b;
+  --md-secondary-container: #4b4263;
+  --md-on-secondary-container: #e9ddff;
 
-  --ink-primary: #f1f5fb;
-  --ink-secondary: #a8b4c6;
-  --ink-muted: #828ea2;
+  --md-tertiary: #dcbaf0;
+  --md-on-tertiary: #3f2551;
+  --md-tertiary-container: #573c69;
+  --md-on-tertiary-container: #f3daff;
 
-  --accent: #72ace3;
-  --accent-hover: #8cc0ef;
-  --accent-ink: #06101c;
-  --accent-soft: rgba(114, 172, 227, 0.13);
-  --accent-border: rgba(114, 172, 227, 0.28);
+  --md-error: #ffb4ab;
+  --md-on-error: #690005;
+  --md-error-container: #93000a;
+  --md-on-error-container: #ffdad6;
 
-  --sem-success: #34d399;
-  --sem-success-soft: rgba(52, 211, 153, 0.14);
-  --sem-success-border: rgba(52, 211, 153, 0.28);
+  --md-surface: #12121c;
+  --md-on-surface: #e3e1ef;
+  --md-surface-variant: #464554;
+  --md-on-surface-variant: #c7c5d6;
+  --md-surface-dim: #12121c;
+  --md-surface-bright: #383843;
+  --md-surface-container-lowest: #0d0d17;
+  --md-surface-container-low: #1b1b25;
+  --md-surface-container: #1f1f29;
+  --md-surface-container-high: #292934;
+  --md-surface-container-highest: #34343f;
 
-  --sem-warning: #fbbf24;
-  --sem-warning-soft: rgba(251, 191, 36, 0.14);
-  --sem-warning-border: rgba(251, 191, 36, 0.28);
+  --md-outline: #908f9f;
+  --md-outline-variant: #464554;
+  --md-inverse-surface: #e3e1ef;
+  --md-inverse-on-surface: #302f3a;
+  --md-scrim: rgba(2, 3, 8, 0.72);
 
-  --sem-danger: #fb7185;
-  --sem-danger-soft: rgba(251, 113, 133, 0.14);
-  --sem-danger-border: rgba(251, 113, 133, 0.28);
+  /* ---------------- 兼容别名 ---------------- */
+  --bg-canvas: var(--md-surface);
+  --bg-surface: var(--md-surface-container-low);
+  --bg-subtle: var(--md-surface-container);
+  --bg-hover: var(--md-surface-container-high);
+  --bg-backdrop: var(--md-scrim);
 
-  --shadow-float: 0 22px 48px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(232, 238, 248, 0.08);
+  --border-hairline: rgba(227, 225, 239, 0.08);
+  --border-strong: rgba(227, 225, 239, 0.18);
+
+  --ink-primary: var(--md-on-surface);
+  --ink-secondary: var(--md-on-surface-variant);
+  --ink-muted: #918fa2;
+
+  --accent: var(--md-primary);
+  --accent-hover: #cbd6ee;
+  --accent-ink: var(--md-on-primary);
+  --accent-soft: rgba(182, 196, 227, 0.13);
+  --accent-border: rgba(182, 196, 227, 0.28);
+
+  --sem-success: #8cc9a6;
+  --sem-success-soft: rgba(140, 201, 166, 0.13);
+  --sem-success-border: rgba(140, 201, 166, 0.26);
+
+  --sem-warning: #e6b878;
+  --sem-warning-soft: rgba(230, 184, 120, 0.13);
+  --sem-warning-border: rgba(230, 184, 120, 0.26);
+
+  --sem-danger: var(--md-error);
+  --sem-danger-soft: var(--md-error-container);
+  --sem-danger-border: rgba(255, 180, 171, 0.26);
+
+  --shadow-float: 0 22px 52px -14px rgba(0, 0, 0, 0.82), 0 0 0 1px rgba(227, 225, 239, 0.06);
 }
 
 html {
@@ -111,6 +230,48 @@ body {
 /* 等宽数字对齐：专用于绩点、学分、时间、倒计时、日期与统计表 */
 .num-tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- MD3E 排版补充 ----------------
+   MD3E 用更大的字重对比与更紧的字距建立编辑式层级；
+   数值类（GPA、倒计时）使用 display 风格，标题使用 title 风格。 */
+.md-num-hero {
+  font-size: clamp(2.125rem, 4.4vw, 2.75rem);
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-num-large {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-title-hero {
+  font-size: 1.375rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md-label {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.006em;
+}
+
+/* 页面区块标题：作为卡片之外的轻量分组标题使用 */
+.md-section-title {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-secondary);
 }
 
 /* ---------------- 页面与交互动效系统 ---------------- */
@@ -177,26 +338,26 @@ body {
 }
 
 .view-enter {
-  animation: viewEnter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: viewEnter 320ms var(--ease-emphasized-decelerate) both;
 }
 
 .modal-panel-enter {
-  animation: modalEnter 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: modalEnter 280ms var(--ease-expressive) both;
 }
 
 .drawer-panel-enter {
-  animation: drawerEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: drawerEnter 300ms var(--ease-emphasized-decelerate) both;
 }
 
 .panel-expand,
 details[open] > div {
-  animation: accordionEnter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: accordionEnter 220ms var(--ease-emphasized-decelerate) both;
 }
 
 .chart-line-draw {
   stroke-dasharray: 1200;
   stroke-dashoffset: 0;
-  animation: chartDraw 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: chartDraw 650ms var(--ease-emphasized-decelerate) both;
 }
 
 .chart-area-reveal {
@@ -206,67 +367,68 @@ details[open] > div {
 /* ---------------- 课程动态配色 ----------------
    色相由 courseColors.js 通过 CSS 变量 --course-h（0~360 无单位数字）注入，
    每门课独占一个色相，颜色数量随课程数量增长，互不重复；
+   色度整体压低到 MD3E 容器色的柔和区间，避免课表出现刺眼的大色块。
    --course-h 为后备值 220（中性蓝），仅用于异常兜底。 */
 .course-card {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 62% 93%);
-  color: hsl(calc(var(--course-h, 220) * 1deg) 54% 23%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 50% 80%);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 40% 93%);
+  color: hsl(calc(var(--course-h, 220) * 1deg) 32% 24%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 26% 82%);
   box-shadow: none;
 }
 
 .course-card:hover {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 64% 90%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 52% 70%);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 42% 90%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 28% 74%);
 }
 
 .dark .course-card {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 34% 14%);
-  color: hsl(calc(var(--course-h, 220) * 1deg) 62% 88%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 46% 56% / 0.32);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 20% 18%);
+  color: hsl(calc(var(--course-h, 220) * 1deg) 34% 86%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 26% 46% / 0.34);
   box-shadow: none;
 }
 
 .dark .course-card:hover {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 38% 18%);
-  border-color: hsl(calc(var(--course-h, 220) * 1deg) 52% 62% / 0.48);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 22% 22%);
+  border-color: hsl(calc(var(--course-h, 220) * 1deg) 30% 58% / 0.48);
 }
 
 .course-dot {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 64% 48%);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 40% 48%);
 }
 
 .dark .course-dot {
-  background-color: hsl(calc(var(--course-h, 220) * 1deg) 70% 64%);
+  background-color: hsl(calc(var(--course-h, 220) * 1deg) 44% 66%);
 }
 
 /* ---------------- 教学进程阶段色块 ----------------
    色相由 teachingProcessSymbols.js 通过 --stage-h 注入；
    假期/常规教学/未收录走中性样式，避免与课程动态配色混淆。 */
 .stage-block {
-  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 58% 88%);
-  border-radius: 3px;
+  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 36% 88%);
+  border-radius: var(--shape-xs);
 }
 
 .stage-block--break {
   /* 假期要和轨道底色区分开，否则整段看不到 */
   background-color: var(--ink-muted);
   opacity: 0.26;
-  border-radius: 3px;
+  border-radius: var(--shape-xs);
 }
 
 .stage-block--idle {
   background-color: transparent;
-  border-radius: 3px;
+  border-radius: var(--shape-xs);
 }
 
 .stage-block--unknown {
   background-color: var(--sem-warning-soft);
   border: 1px dashed var(--sem-warning-border);
-  border-radius: 3px;
+  border-radius: var(--shape-xs);
 }
 
 .dark .stage-block {
-  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 36% 24%);
+  background-color: hsl(calc(var(--stage-h, 214) * 1deg) 24% 26%);
 }
 
 .dark .stage-block--break {
@@ -283,9 +445,156 @@ details[open] > div {
   border-color: var(--sem-warning-border);
 }
 
-/* 键盘焦点可见外框 */
+/* ---------------- MD3E 共享组件样式 ----------------
+   状态层（state layer）统一用 currentColor 叠加 8% / 12%，
+   与 Material 的 hover / pressed 反馈一致，且不依赖具体色值。
+   放进 components 层：页面上的 Tailwind 工具类可以覆盖这里的默认值
+   （例如 lg:hidden、w-full 等不会被组件默认 display 抢走优先级）。 */
+@layer components {
+.md-state {
+  position: relative;
+  isolation: isolate;
+}
+
+.md-state::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-short) var(--ease-emphasized);
+}
+
+.md-state:hover::after {
+  opacity: 0.08;
+}
+
+.md-state:active::after {
+  opacity: 0.12;
+}
+
+.md-state > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 按钮：MD3E 全圆角（pill），高度 36 / 44 / 52 */
+.md-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--shape-full);
+  border: 1px solid transparent;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--duration-short) var(--ease-emphasized),
+    color var(--duration-short) var(--ease-emphasized),
+    border-color var(--duration-short) var(--ease-emphasized),
+    transform var(--duration-short) var(--ease-expressive);
+}
+
+.md-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.md-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.md-btn--filled {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+}
+
+.md-btn--tonal {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+.md-btn--outlined {
+  background: transparent;
+  color: var(--md-primary);
+  border-color: var(--md-outline-variant);
+}
+
+.md-btn--text {
+  background: transparent;
+  color: var(--md-primary);
+}
+
+.md-btn--danger {
+  background: var(--md-error);
+  color: var(--md-on-error);
+}
+
+/* 图标按钮：MD3E 圆形 40/48 */
+.md-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--shape-full);
+  color: var(--md-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-short) var(--ease-emphasized),
+    color var(--duration-short) var(--ease-emphasized),
+    transform var(--duration-short) var(--ease-expressive);
+}
+
+.md-icon-btn:hover {
+  background: var(--md-surface-container-high);
+  color: var(--md-on-surface);
+}
+
+.md-icon-btn:active {
+  transform: scale(0.94);
+}
+
+/* 过滤 Chip：MD3E 胶囊，选中走 secondaryContainer */
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: var(--shape-full);
+  border: 1px solid var(--md-outline-variant);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-short) var(--ease-emphasized),
+    color var(--duration-short) var(--ease-emphasized),
+    border-color var(--duration-short) var(--ease-emphasized);
+}
+
+.md-chip:hover {
+  background: var(--md-surface-container-high);
+}
+
+.md-chip[aria-pressed="true"],
+.md-chip.is-selected {
+  background: var(--md-secondary-container);
+  border-color: transparent;
+  color: var(--md-on-secondary-container);
+}
+}
+
+/* 键盘焦点可见外框：MD3E 使用主色描边 */
 :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--md-primary);
   outline-offset: 2px;
 }
 
@@ -299,20 +608,110 @@ details[open] > div {
   }
 }
 
-/* Custom scrollbar */
+/* ---------------- 滚动条 ----------------
+   原生滚动条只作为兜底（未被 v-overlay-scroll 接管的区域）：
+   细、默认透明、鼠标悬停容器时淡淡显现；真正的侧栏 / 主区域 / AI 面板
+   使用 .overlay-scroll + 覆盖式滑块，完全不占布局宽度。 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: color-mix(in srgb, var(--md-outline) 40%, transparent) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(110, 122, 140, 0.25);
-  border-radius: 9999px;
+  background: transparent;
+  border-radius: var(--shape-full);
 }
+
+*:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--md-outline) 38%, transparent);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(110, 122, 140, 0.45);
+  background: color-mix(in srgb, var(--md-outline) 70%, transparent);
+}
+
+/* 覆盖式滚动条：隐藏原生滚动条，滑块绝对定位在内容内侧 */
+.overlay-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.overlay-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ov-scroll-track {
+  position: absolute;
+  width: 10px;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-emphasized);
+}
+
+.ov-scroll-track.is-visible {
+  opacity: 1;
+}
+
+.ov-scroll-thumb {
+  position: absolute;
+  right: 3px;
+  width: 4px;
+  border-radius: var(--shape-full);
+  background: var(--md-outline);
+  opacity: 0;
+  pointer-events: auto;
+  cursor: grab;
+  transition:
+    opacity 180ms var(--ease-emphasized),
+    width 150ms var(--ease-emphasized),
+    background-color 150ms var(--ease-emphasized);
+}
+
+/* 透明扩展命中区：滑块很细，但抓取范围足够宽 */
+.ov-scroll-thumb::after {
+  content: "";
+  position: absolute;
+  inset: -5px -6px;
+  border-radius: inherit;
+}
+
+/* 鼠标进入容器：淡淡显示 */
+.ov-scroll-track.is-visible.is-faint .ov-scroll-thumb {
+  opacity: 0.34;
+}
+
+/* 正在滚动 / 刚滚动过：清晰显示 */
+.ov-scroll-track.is-visible:not(.is-faint) .ov-scroll-thumb {
+  opacity: 0.85;
+}
+
+/* 鼠标真正放在滑块上或拖动：完全显示并加粗 */
+.ov-scroll-thumb:hover,
+.ov-scroll-track.is-dragging .ov-scroll-thumb {
+  right: 2px;
+  width: 6px;
+  opacity: 1;
+}
+
+.ov-scroll-track.is-dragging .ov-scroll-thumb {
+  cursor: grabbing;
+  background: var(--md-primary);
 }
 
 /* 按内容实际可用宽度排列，适配高 DPI 与浏览器缩放后的窄窗口。 */

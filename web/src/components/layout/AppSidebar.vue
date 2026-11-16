@@ -1,87 +1,72 @@
 <template>
   <aside
     :class="[
-      'h-[calc(100vh_-_var(--tb))] flex flex-col bg-[var(--bg-surface)] border-r border-[var(--border-hairline)] select-none',
+      'h-[calc(100vh_-_var(--tb))] flex flex-col bg-[var(--md-surface-container-low)] select-none overflow-hidden',
       // Desktop layout（sticky 顶部让出标题栏高度）
-      'lg:sticky lg:top-[var(--tb)] lg:shrink-0 lg:z-30',
-      'lg:transition-[width,background-color,border-color] lg:duration-200 lg:ease-out',
-      isCollapsedState ? 'lg:w-[72px]' : 'lg:w-[264px]',
+      'lg:sticky lg:top-[var(--tb)] lg:shrink-0 lg:z-30 lg:rounded-r-[var(--shape-xxl)]',
+      'lg:transition-[width,background-color] lg:duration-300 lg:ease-[cubic-bezier(0.2,0,0,1)]',
+      isCollapsedState ? 'lg:w-[76px]' : 'lg:w-[272px]',
       // Mobile / Responsive overlay layout
-      'fixed top-[var(--tb)] bottom-0 left-0 z-50 w-[264px] transition-transform duration-250 ease-out',
+      'fixed top-[var(--tb)] bottom-0 left-0 z-50 w-[272px] rounded-r-[var(--shape-xxl)] transition-transform duration-300 ease-out',
       mobileOpen ? 'translate-x-0 shadow-[var(--shadow-float)] lg:shadow-none' : '-translate-x-full lg:translate-x-0'
     ]"
   >
     <!-- Brand / Header -->
-    <div class="h-[62px] flex items-center px-3.5 border-b border-[var(--border-hairline)] overflow-hidden shrink-0">
-      <div class="w-full flex items-center justify-between">
-        <div class="flex items-center min-w-0">
-          <div class="w-11 h-11 flex items-center justify-center shrink-0">
-            <div class="w-9 h-9 rounded-xl overflow-hidden shrink-0 flex items-center justify-center bg-[var(--bg-subtle)] border border-[var(--border-hairline)]">
-              <img
-                :src="logoUrl"
-                alt="HRBUST"
-                class="w-full h-full object-cover shrink-0"
-              />
-            </div>
-          </div>
-          <div v-if="!isCollapsedState" class="ml-2 min-w-0 flex-1 whitespace-nowrap overflow-hidden">
-            <div class="font-semibold text-base text-[var(--ink-primary)] tracking-tight truncate">
-              BetterHRBUST
-            </div>
+    <div class="h-[72px] flex items-center px-4 overflow-hidden shrink-0">
+      <div class="flex items-center min-w-0">
+        <div class="w-11 h-11 flex items-center justify-center shrink-0">
+          <div class="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-[var(--md-surface-container-high)]">
+            <img
+              :src="logoUrl"
+              alt="HRBUST"
+              class="w-full h-full object-cover shrink-0"
+            />
           </div>
         </div>
-
-        <!-- Mobile Close Button -->
-        <button
-          type="button"
-          class="lg:hidden w-9 h-9 rounded-[var(--radius-control)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors shrink-0 flex items-center justify-center"
-          title="关闭侧边栏"
-          aria-label="关闭侧边栏"
-          @click="$emit('close')"
-        >
-          <Icon name="x" customClass="w-5 h-5" />
-        </button>
+        <div v-if="!isCollapsedState" class="ml-2.5 min-w-0 flex-1 whitespace-nowrap overflow-hidden">
+          <div class="font-semibold text-[15px] leading-tight text-[var(--ink-primary)] tracking-tight truncate">
+            BetterHRBUST
+          </div>
+          <div class="text-[11px] text-[var(--ink-muted)] truncate mt-0.5">哈理工教务在线</div>
+        </div>
       </div>
     </div>
 
     <!-- Navigation List -->
-    <nav class="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-5">
+    <nav v-overlay-scroll class="flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 space-y-5">
       <div v-for="group in navGroups" :key="group.title">
-        <div class="h-6 flex items-center px-2.5 mb-1 overflow-hidden select-none">
+        <div class="h-7 flex items-center px-3 mb-1 overflow-hidden select-none">
           <span
             v-if="!isCollapsedState"
-            class="text-xs font-semibold tracking-wide text-[var(--ink-muted)] whitespace-nowrap overflow-hidden truncate"
+            class="text-[11px] font-semibold tracking-[0.08em] uppercase text-[var(--ink-muted)] whitespace-nowrap overflow-hidden truncate"
           >
             {{ group.title }}
           </span>
         </div>
-        <div class="space-y-1">
+        <div class="space-y-0.5">
           <button
             v-for="item in group.items"
             :key="item.id"
             type="button"
             :title="isCollapsedState ? item.label : undefined"
+            :aria-current="activeTab === item.id ? 'page' : undefined"
             :class="[
-              'relative w-full h-[42px] flex items-center rounded-[var(--radius-control)] text-[14px] font-medium transition-all duration-150 cursor-pointer select-none group overflow-hidden active:scale-[0.985]',
+              'relative w-full h-12 flex items-center rounded-[var(--shape-full)] text-[14px] transition-all duration-200 cursor-pointer select-none group overflow-hidden active:scale-[0.98]',
               activeTab === item.id
-                ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold'
-                : 'text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]'
+                ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
+                : 'text-[var(--ink-secondary)] font-medium hover:bg-[var(--md-surface-container)] hover:text-[var(--ink-primary)]'
             ]"
             @click="$emit('update:activeTab', item.id)"
           >
-            <span
-              v-if="activeTab === item.id && !isCollapsedState"
-              class="absolute left-0 top-2.5 bottom-2.5 w-[3.5px] rounded-r-full bg-[var(--accent)] transition-all duration-200"
-            />
-            <div class="w-11 h-[42px] flex items-center justify-center shrink-0">
+            <div class="w-12 h-12 flex items-center justify-center shrink-0">
               <Icon
                 :name="item.icon"
-                customClass="w-[19px] h-[19px] shrink-0 transition-transform duration-150 group-hover:scale-105"
+                customClass="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-105"
               />
             </div>
             <span
               v-if="!isCollapsedState"
-              class="ml-1 truncate whitespace-nowrap overflow-hidden select-none"
+              class="ml-1 pr-3 truncate whitespace-nowrap overflow-hidden select-none"
             >
               {{ item.label }}
             </span>
@@ -91,28 +76,28 @@
     </nav>
 
     <!-- Bottom User Area：用户身份 + AI 入口 -->
-    <div class="p-3 border-t border-[var(--border-hairline)] overflow-hidden shrink-0 flex items-center gap-1.5">
+    <div class="p-3 shrink-0 flex items-center gap-1.5 overflow-hidden">
       <button
         type="button"
-        class="flex-1 min-w-0 h-[52px] px-1 flex items-center text-left rounded-[var(--radius-panel)] cursor-pointer hover:bg-[var(--bg-subtle)] transition-all duration-150 active:scale-[0.985] select-none overflow-hidden group"
+        class="flex-1 min-w-0 h-[56px] px-1.5 flex items-center text-left rounded-[var(--shape-full)] cursor-pointer hover:bg-[var(--md-surface-container)] transition-colors duration-150 active:scale-[0.98] select-none overflow-hidden group"
         :title="isLoggedIn ? '已登录 · 点击可切换账号或重新认证' : '登录教务在线'"
         @click="openLoginModal()"
       >
         <div class="w-10 h-10 flex items-center justify-center shrink-0">
           <div
-            class="w-9 h-9 rounded-full font-semibold text-sm flex items-center justify-center shrink-0 transition-colors"
+            class="w-10 h-10 rounded-full font-semibold text-sm flex items-center justify-center shrink-0 transition-colors"
             :class="isLoggedIn
-              ? 'bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-border)]'
-              : 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border border-[var(--border-hairline)]'"
+              ? 'bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)]'
+              : 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)]'"
           >
             {{ isLoggedIn && userProfile.realName ? userProfile.realName.slice(0, 1) : '?' }}
           </div>
         </div>
         <div v-if="!isCollapsedState" class="ml-2 min-w-0 flex-1 leading-tight whitespace-nowrap overflow-hidden">
-          <div class="text-sm font-semibold text-[var(--ink-primary)] truncate">
+          <div class="text-[13px] font-semibold text-[var(--ink-primary)] truncate">
             {{ isLoggedIn ? (userProfile.realName || '已登录') : '未登录' }}
           </div>
-          <div class="text-xs text-[var(--ink-muted)] num-tabular truncate mt-0.5">
+          <div class="text-[11px] text-[var(--ink-muted)] num-tabular truncate mt-0.5">
             {{ isLoggedIn ? (userProfile.studentNumber || studentNumber) : '点击登录教务' }}
           </div>
         </div>
@@ -124,11 +109,11 @@
         type="button"
         :aria-label="aiOpen ? '关闭 AI 对话' : '打开 AI 对话'"
         :title="aiOpen ? '关闭 AI 对话 (Ctrl+J)' : '打开 AI 对话 (Ctrl+J)'"
-        class="shrink-0 w-9 h-9 rounded-[var(--radius-control)] flex items-center justify-center text-[11.5px] font-semibold cursor-pointer transition-colors duration-150"
+        class="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-[11.5px] font-semibold cursor-pointer transition-all duration-200"
         :class="
           aiOpen
-            ? 'bg-[var(--accent)] text-[var(--accent-ink)]'
-            : 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border border-[var(--border-hairline)] hover:bg-[var(--bg-hover)] hover:text-[var(--ink-primary)]'
+            ? 'bg-[var(--md-primary)] text-[var(--md-on-primary)]'
+            : 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)]'
         "
         @click="toggleAi"
       >

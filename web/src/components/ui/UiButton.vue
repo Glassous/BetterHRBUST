@@ -3,23 +3,30 @@
     :type="type"
     :disabled="disabled || loading"
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-[var(--radius-control)] transition-all duration-150 ease-out cursor-pointer select-none active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 whitespace-nowrap',
-      block ? 'w-full flex' : '',
+      'md-btn md-state',
       sizeClasses,
       variantClasses,
+      block ? 'w-full flex' : '',
       customClass
     ]"
     @click="$emit('click', $event)"
   >
+    <!-- MD3E 加载态：细描边圆弧 + 旋转，尺寸随按钮高度 -->
     <svg
       v-if="loading"
-      class="animate-spin -ml-0.5 h-4 w-4 text-current shrink-0"
+      class="animate-spin shrink-0"
+      :class="size === 'sm' ? 'h-3.5 w-3.5' : size === 'lg' ? 'h-5 w-5' : 'h-4 w-4'"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
+      aria-hidden="true"
     >
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" />
+      <path
+        class="opacity-90"
+        fill="currentColor"
+        d="M21 12a9 9 0 0 0-9-9V0a12 12 0 0 1 12 12h-3Z"
+      />
     </svg>
     <slot name="prefix" />
     <slot />
@@ -65,24 +72,24 @@ defineEmits(['click']);
 
 const sizeClasses = computed(() => {
   switch (props.size) {
-    case 'sm': return 'text-[13px] px-3 py-1.5 gap-1.5 min-h-[34px]';
-    case 'lg': return 'text-[15px] font-semibold px-6 py-2.5 gap-2 min-h-[46px]';
-    default: return 'text-sm px-4 py-2 gap-2 min-h-[40px]';
+    case 'sm': return 'text-[13px] px-4 gap-1.5 min-h-[36px]';
+    case 'lg': return 'text-[15px] font-semibold px-6 gap-2 min-h-[52px]';
+    default: return 'text-sm px-5 gap-2 min-h-[44px]';
   }
 });
 
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'secondary':
-      return 'bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--ink-primary)] border border-[var(--border-hairline)]';
+      return 'md-btn--tonal';
     case 'outline':
-      return 'border border-[var(--border-strong)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)] text-[var(--ink-primary)]';
+      return 'md-btn--outlined';
     case 'ghost':
-      return 'bg-transparent hover:bg-[var(--bg-hover)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]';
+      return 'md-btn--text';
     case 'danger':
-      return 'bg-[var(--sem-danger)] hover:opacity-90 text-white';
-    default: // primary
-      return 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-ink)]';
+      return 'md-btn--danger';
+    default:
+      return 'md-btn--filled';
   }
 });
 </script>

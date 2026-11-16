@@ -2,22 +2,22 @@
   <div class="space-y-6">
     <!-- 初始认证探测中：轻量骨架屏 -->
     <div v-if="!authChecked && !hasCachedData" class="space-y-6">
-      <div class="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 space-y-3">
-        <div class="h-4 w-44 bg-[var(--bg-subtle)] animate-pulse rounded" />
-        <div class="h-14 w-full bg-[var(--bg-subtle)] animate-pulse rounded-[var(--radius-panel)]" />
+      <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] p-6 space-y-3">
+        <div class="h-4 w-44 bg-[var(--md-surface-container-high)] animate-pulse rounded-full" />
+        <div class="h-14 w-full bg-[var(--md-surface-container-high)] animate-pulse rounded-[var(--shape-lg)]" />
       </div>
       <div class="academic-summary-grid grid gap-5">
         <div
           v-for="i in 4"
           :key="i"
-          class="p-5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] space-y-3"
+          class="p-5 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] space-y-3"
         >
-          <div class="h-3.5 w-20 bg-[var(--bg-subtle)] animate-pulse rounded" />
-          <div class="h-7 w-24 bg-[var(--bg-subtle)] animate-pulse rounded" />
+          <div class="h-3.5 w-20 bg-[var(--md-surface-container-high)] animate-pulse rounded-full" />
+          <div class="h-7 w-24 bg-[var(--md-surface-container-high)] animate-pulse rounded-full" />
         </div>
       </div>
-      <div class="p-12 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] text-center text-[13px] text-[var(--ink-muted)]">
-        <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2.5 text-[var(--accent)]" />
+      <div class="p-12 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] text-center text-[13px] text-[var(--ink-muted)]">
+        <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2.5 text-[var(--md-primary)]" />
         正在连接教务在线网关并验证身份...
       </div>
     </div>
@@ -50,7 +50,7 @@
 
           <div v-if="todayCourses.length === 0" class="px-6 py-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-11 h-11 rounded-2xl bg-[var(--bg-subtle)] text-[var(--ink-muted)] flex items-center justify-center shrink-0">
+              <div class="w-11 h-11 rounded-full bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] flex items-center justify-center shrink-0">
                 <Icon name="calendar" customClass="w-5 h-5" />
               </div>
               <div class="min-w-0">
@@ -69,7 +69,7 @@
             <div
               v-for="(item, idx) in todayCourses"
               :key="item.courseName + item.sectionIndex + idx"
-              class="px-5 sm:px-6 py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--bg-subtle)]/45 transition-colors"
+              class="px-5 sm:px-6 py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--md-surface-container)]/55 transition-colors"
             >
               <div class="flex items-start gap-4 sm:gap-5 min-w-0">
                 <div class="w-30 shrink-0 pt-0.5 num-tabular">
@@ -93,7 +93,7 @@
                   </div>
                   <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[var(--ink-secondary)] mt-2">
                     <span v-if="item.location" class="flex items-center gap-1.5 font-medium text-[var(--ink-primary)]">
-                      <Icon name="map-pin" customClass="w-4 h-4 text-[var(--accent)] shrink-0" />
+                      <Icon name="map-pin" customClass="w-4 h-4 text-[var(--md-primary)] shrink-0" />
                       {{ item.location }}
                     </span>
                     <span v-if="item.teacher" class="flex items-center gap-1.5">
@@ -117,16 +117,16 @@
               v-for="tool in quickTools"
               :key="tool.label"
               type="button"
-              class="p-3 rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/55 hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 ease-out text-left cursor-pointer flex items-center gap-2.5 min-h-[54px] group"
+              class="p-3.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)] hover:bg-[var(--md-surface-container-high)] active:scale-[0.98] transition-all duration-200 ease-out text-left cursor-pointer flex items-center gap-2.5 min-h-[58px] group"
               :class="tool.wide ? 'col-span-2' : ''"
               @click="$emit('navigate', tool.target)"
             >
-              <div class="w-9 h-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center text-[var(--accent)] shrink-0 transition-transform duration-150 group-hover:scale-105">
+              <div class="w-10 h-10 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
                 <Icon :name="tool.icon" customClass="w-[18px] h-[18px]" />
               </div>
               <div class="min-w-0">
                 <div class="text-[13px] font-semibold text-[var(--ink-primary)] truncate">{{ tool.label }}</div>
-                <div class="text-xs text-[var(--ink-muted)] truncate mt-0.5">{{ tool.desc }}</div>
+                <div class="text-[11.5px] text-[var(--ink-muted)] truncate mt-0.5">{{ tool.desc }}</div>
               </div>
             </button>
           </div>
@@ -136,27 +136,27 @@
       <!-- 第二层：核心遥测索引条（保留 .academic-summary-grid 响应容器查询与 2 列缩放校验） -->
       <div class="academic-summary-grid grid gap-4 sm:gap-5">
         <!-- 今日剩余课程（严格维持文本结构以保障 E2E /0 门/ 校验） -->
-        <div class="p-5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] transition-colors flex items-start justify-between gap-3">
+        <div class="p-5 rounded-[var(--shape-xl)] bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] transition-all duration-200 hover:-translate-y-0.5 flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <div class="text-[13px] font-medium text-[var(--ink-muted)]">今日剩余课程</div>
-            <div class="text-[28px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
-              {{ todayCourses.length }} <span class="text-[13px] font-normal text-[var(--ink-muted)]">门待上</span>
+            <div class="text-[13px] font-medium opacity-75">今日剩余课程</div>
+            <div class="text-[30px] leading-tight font-bold num-tabular mt-1.5">
+              {{ todayCourses.length }} <span class="text-[13px] font-normal opacity-70">门待上</span>
             </div>
-            <div class="text-[13px] text-[var(--ink-secondary)] mt-1.5">
+            <div class="text-[13px] opacity-80 mt-1.5">
               {{ isSchoolHoliday ? '当前处于假期' : `当前教学周第 ${currentWeek} 周` }}
             </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center shrink-0">
+          <div class="w-11 h-11 rounded-full bg-[var(--md-on-secondary-container)]/10 flex items-center justify-center shrink-0">
             <Icon name="timetable" customClass="w-5 h-5" />
           </div>
         </div>
 
         <!-- 近期考试（无考试时保持沉稳中性，绝不用红色报错误导） -->
-        <div class="p-5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] transition-colors flex items-start justify-between gap-3">
+        <div class="p-5 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] transition-all duration-200 hover:-translate-y-0.5 flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="text-[13px] font-medium text-[var(--ink-muted)]">近期考试</div>
             <div
-              class="text-[28px] leading-tight font-bold num-tabular mt-1.5"
+              class="text-[30px] leading-tight font-bold num-tabular mt-1.5"
               :class="upcomingExams.length > 0 ? 'text-[var(--sem-warning)]' : 'text-[var(--ink-primary)]'"
             >
               {{ upcomingExams.length }} <span class="text-[13px] font-normal text-[var(--ink-muted)]">门</span>
@@ -166,41 +166,41 @@
             </div>
           </div>
           <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            :class="upcomingExams.length > 0 ? 'bg-[var(--sem-warning-soft)] text-[var(--sem-warning)]' : 'bg-[var(--bg-subtle)] text-[var(--ink-muted)]'"
+            class="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+            :class="upcomingExams.length > 0 ? 'bg-[var(--sem-warning-soft)] text-[var(--sem-warning)]' : 'bg-[var(--md-surface-container-high)] text-[var(--ink-muted)]'"
           >
             <Icon name="exam" customClass="w-5 h-5" />
           </div>
         </div>
 
         <!-- GPA Card -->
-        <div class="p-5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] transition-colors flex items-start justify-between gap-3">
+        <div class="p-5 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] transition-all duration-200 hover:-translate-y-0.5 flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="text-[13px] font-medium text-[var(--ink-muted)]">平均学分绩点 (五分制)</div>
-            <div class="text-[28px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
+            <div class="text-[30px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
               {{ stats.gpa.toFixed(2) }}
             </div>
             <div class="text-[13px] text-[var(--ink-secondary)] mt-1.5 num-tabular">
               加权均分 {{ stats.weightedAvg.toFixed(1) }} · 仅必修
             </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-[var(--bg-subtle)] text-[var(--ink-secondary)] flex items-center justify-center shrink-0">
+          <div class="w-11 h-11 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center shrink-0">
             <Icon name="score" customClass="w-5 h-5" />
           </div>
         </div>
 
         <!-- Credits Card -->
-        <div class="p-5 rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] transition-colors flex items-start justify-between gap-3">
+        <div class="p-5 rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] transition-all duration-200 hover:-translate-y-0.5 flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="text-[13px] font-medium text-[var(--ink-muted)]">已获得学分 / 方案总学分</div>
-            <div class="text-[28px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
+            <div class="text-[30px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-1.5">
               {{ creditsProgress.earnedTotal }} <span class="text-[13px] font-normal text-[var(--ink-muted)]">/ {{ creditsProgress.requiredTotal || '待同步' }}</span>
             </div>
             <div class="text-[13px] text-[var(--ink-secondary)] mt-1.5 num-tabular truncate">
               必修已修 {{ stats.totalCredits }} 学分 ({{ stats.courseCount }} 门)
             </div>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-[var(--bg-subtle)] text-[var(--ink-secondary)] flex items-center justify-center shrink-0">
+          <div class="w-11 h-11 rounded-full bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] flex items-center justify-center shrink-0">
             <Icon name="program" customClass="w-5 h-5" />
           </div>
         </div>

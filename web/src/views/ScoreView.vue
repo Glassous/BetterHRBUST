@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- 未登录提示 -->
     <UiCard v-if="showLoginPrompt" class="py-12 text-center max-w-lg mx-auto">
-      <div class="w-13 h-13 rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center mx-auto mb-3.5">
+      <div class="w-14 h-14 rounded-full bg-[var(--md-primary-container)] text-[var(--md-on-primary-container)] flex items-center justify-center mx-auto mb-4">
         <Icon name="score" customClass="w-6 h-6" />
       </div>
       <h3 class="text-base font-semibold text-[var(--ink-primary)] mb-1.5">未登录教务系统</h3>
@@ -24,31 +24,32 @@
 
       <!-- 顶部 4 栏关键指标（修复 3+1 落单排版） -->
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
-        <UiCard hoverable>
-          <div class="text-[13px] text-[var(--ink-muted)] font-medium">平均学分绩点 (五分制 GPA)</div>
-          <div class="text-[32px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-2">{{ stats.gpa.toFixed(2) }}</div>
-          <div class="text-[13px] text-[var(--ink-muted)] mt-2">60 分 = 1 绩点，每分 +0.1</div>
-        </UiCard>
+        <!-- 主指标：MD3E hero 容器（secondaryContainer），低饱和不刺眼 -->
+        <div class="rounded-[var(--shape-xl)] bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] p-5 transition-all duration-200 hover:-translate-y-0.5">
+          <div class="text-[13px] font-medium opacity-75">平均学分绩点 (五分制 GPA)</div>
+          <div class="text-[34px] leading-tight font-bold num-tabular mt-2">{{ stats.gpa.toFixed(2) }}</div>
+          <div class="text-[13px] opacity-75 mt-2">60 分 = 1 绩点，每分 +0.1</div>
+        </div>
 
-        <UiCard hoverable>
-          <div class="text-[13px] text-[var(--ink-muted)] font-medium">加权平均分</div>
-          <div class="text-[32px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-2">{{ stats.weightedAvg.toFixed(1) }}</div>
+        <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] p-5 transition-all duration-200 hover:-translate-y-0.5">
+          <div class="text-[13px] font-medium text-[var(--ink-muted)]">加权平均分</div>
+          <div class="text-[34px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-2">{{ stats.weightedAvg.toFixed(1) }}</div>
           <div class="text-[13px] text-[var(--sem-success)] mt-2 num-tabular font-medium">优秀率 {{ stats.excellentRate }}%</div>
-        </UiCard>
+        </div>
 
-        <UiCard hoverable>
-          <div class="text-[13px] text-[var(--ink-muted)] font-medium">已获得学分 / 修读总学分</div>
-          <div class="text-[32px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-2">
+        <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] p-5 transition-all duration-200 hover:-translate-y-0.5">
+          <div class="text-[13px] font-medium text-[var(--ink-muted)]">已获得学分 / 修读总学分</div>
+          <div class="text-[34px] leading-tight font-bold text-[var(--ink-primary)] num-tabular mt-2">
             {{ stats.earnedCredits }} <span class="text-sm font-normal text-[var(--ink-muted)]">/ {{ stats.totalCredits }}</span>
           </div>
           <div class="text-[13px] text-[var(--ink-muted)] mt-2 leading-snug">{{ earnedCreditsNote }}</div>
-        </UiCard>
+        </div>
 
-        <UiCard hoverable>
-          <div class="text-[13px] text-[var(--ink-muted)] font-medium">不及格课程门数</div>
+        <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] p-5 transition-all duration-200 hover:-translate-y-0.5">
+          <div class="text-[13px] font-medium text-[var(--ink-muted)]">不及格课程门数</div>
           <div
             :class="[
-              'text-[32px] leading-tight font-bold num-tabular mt-2',
+              'text-[34px] leading-tight font-bold num-tabular mt-2',
               stats.failedCount > 0 ? 'text-[var(--sem-danger)]' : 'text-[var(--ink-primary)]'
             ]"
           >
@@ -57,7 +58,7 @@
           <div class="text-[13px] text-[var(--ink-muted)] mt-2 num-tabular">
             累计挂科 {{ stats.failedCredits }} 学分
           </div>
-        </UiCard>
+        </div>
       </div>
 
       <!-- 特色学业算法：横向无叠框三栏索引 -->
@@ -66,16 +67,16 @@
           <span class="text-[13px] text-[var(--ink-muted)]">门槛以学校教务处当期文件为准</span>
         </template>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[var(--border-hairline)]">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 sm:p-5">
           <!-- ① 学位证算法 -->
-          <div class="p-6 space-y-2.5">
+          <div class="p-5 space-y-2.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)]">
             <div class="flex items-center justify-between gap-2">
               <span class="text-sm font-semibold text-[var(--ink-primary)]">学位证算法</span>
               <UiBadge size="sm" :variant="stats.degree.qualified ? 'success' : 'warning'">
                 {{ stats.degree.qualified ? '达标' : '未达标' }}
               </UiBadge>
             </div>
-            <div class="text-[26px] leading-tight font-bold text-[var(--ink-primary)] num-tabular">{{ stats.degree.gpa.toFixed(2) }}</div>
+            <div class="text-[28px] leading-tight font-bold text-[var(--ink-primary)] num-tabular">{{ stats.degree.gpa.toFixed(2) }}</div>
             <div class="text-[13px] text-[var(--ink-secondary)] leading-relaxed num-tabular">
               学业课 + E 类最高一门 + 剩余 A–E 类最高一门，门槛 {{ stats.degree.threshold.toFixed(1) }}
             </div>
@@ -88,14 +89,14 @@
           </div>
 
           <!-- ② 推免资格自检 -->
-          <div class="p-6 space-y-2.5">
+          <div class="p-5 space-y-2.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)]">
             <div class="flex items-center justify-between gap-2">
               <span class="text-sm font-semibold text-[var(--ink-primary)]">推免资格自检</span>
               <UiBadge size="sm" :variant="stats.recommend.retakeWithinLimit ? 'success' : 'warning'">
                 {{ stats.recommend.retakeWithinLimit ? '良好' : '超过上限' }}
               </UiBadge>
             </div>
-            <div class="text-[26px] leading-tight font-bold text-[var(--ink-primary)] num-tabular">
+            <div class="text-[28px] leading-tight font-bold text-[var(--ink-primary)] num-tabular">
               {{ stats.recommend.retakeCount }} <span class="text-sm font-normal text-[var(--ink-muted)]">/ {{ stats.recommend.retakeLimit }}</span>
             </div>
             <div class="text-[13px] text-[var(--ink-secondary)] leading-relaxed num-tabular">
@@ -107,7 +108,7 @@
           </div>
 
           <!-- ③ 学业风险预警 -->
-          <div class="p-6 space-y-2.5">
+          <div class="p-5 space-y-2.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)]">
             <div class="flex items-center justify-between gap-2">
               <span class="text-sm font-semibold text-[var(--ink-primary)]">学业风险预警</span>
               <UiBadge
@@ -118,7 +119,7 @@
               </UiBadge>
             </div>
             <div
-              class="text-[26px] leading-tight font-bold num-tabular"
+              class="text-[28px] leading-tight font-bold num-tabular"
               :class="stats.risk.level === 'none' ? 'text-[var(--ink-primary)]' : 'text-[var(--sem-danger)]'"
             >
               {{ stats.risk.failedCredits }} <span class="text-sm font-normal text-[var(--ink-muted)]">学分</span>
@@ -304,14 +305,14 @@
       </UiCard>
 
       <!-- 成绩总表 -->
-      <div class="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-surface)] overflow-x-auto">
+      <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] overflow-x-auto">
         <div v-if="syncing && scores.length === 0" class="p-12 text-center text-[13px] text-[var(--ink-muted)]">
-          <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--accent)]" />
+          <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--md-primary)]" />
           正在拉取教务成绩单...
         </div>
         <table v-else class="w-full min-w-[1040px] text-left border-collapse text-[13px]">
           <thead>
-            <tr class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)]/75 text-[var(--ink-secondary)] font-semibold">
+            <tr class="border-b border-[var(--border-hairline)] bg-[var(--md-surface-container)] text-[var(--ink-secondary)] font-semibold">
               <th class="whitespace-nowrap p-4 pl-6">学年 / 学期</th>
               <th class="whitespace-nowrap p-4">课程代码</th>
               <th class="whitespace-nowrap p-4">课程名称</th>

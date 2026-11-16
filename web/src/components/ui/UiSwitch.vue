@@ -1,23 +1,23 @@
-﻿<template>
+<template>
   <button
     type="button"
     role="switch"
     :aria-checked="modelValue"
     :class="[
-      'relative inline-flex shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-[var(--accent)]',
-      size === 'sm' ? 'h-5 w-9' : 'h-6 w-11',
-      modelValue ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+      'relative inline-flex shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200',
+      size === 'sm' ? 'h-6 w-10' : 'h-8 w-13',
+      modelValue
+        ? 'bg-[var(--md-primary)] border-transparent'
+        : 'bg-[var(--md-surface-container-highest)] border-[var(--md-outline)]'
     ]"
     @click="$emit('update:modelValue', !modelValue)"
   >
     <span
       :class="[
-        'pointer-events-none inline-block transform rounded-full shadow-xs ring-0 transition duration-200 ease-in-out',
-        modelValue ? 'bg-[var(--accent-ink)]' : 'bg-[var(--bg-surface)]',
-        size === 'sm' ? 'h-4 w-4 mt-0.5' : 'h-5 w-5 mt-0.5',
-        modelValue
-          ? (size === 'sm' ? 'translate-x-4 ml-0.5' : 'translate-x-5 ml-0.5')
-          : 'translate-x-0.5'
+        'pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full transition-all duration-200',
+        size === 'sm'
+          ? (modelValue ? 'h-[18px] w-[18px] left-[19px] bg-[var(--md-on-primary)]' : 'h-3 w-3 left-[5px] bg-[var(--md-outline)]')
+          : (modelValue ? 'h-6 w-6 left-[23px] bg-[var(--md-on-primary)]' : 'h-4 w-4 left-[6px] bg-[var(--md-outline)]')
       ]"
     />
   </button>

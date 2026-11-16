@@ -2,7 +2,7 @@
   <div class="relative w-full">
     <div
       v-if="$slots.prefix"
-      class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--ink-muted)]"
+      class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--ink-muted)]"
     >
       <slot name="prefix" />
     </div>
@@ -17,14 +17,15 @@
       :maxlength="maxlength > 0 ? maxlength : undefined"
       :autocomplete="autocomplete"
       :class="[
-        'w-full rounded-[var(--radius-control)] transition-all duration-150 outline-none',
-        'bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] border border-[var(--border-hairline)]',
+        'w-full rounded-[var(--shape-md)] transition-all duration-150 outline-none',
+        'bg-[var(--md-surface-container-high)] hover:bg-[var(--md-surface-container-highest)]',
+        'border border-transparent',
         'text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]',
-        'focus:bg-[var(--bg-surface)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]',
+        'focus:bg-[var(--bg-surface)] focus:border-[var(--md-primary)]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
-        $slots.prefix ? 'pl-9.5' : 'pl-3.5',
-        $slots.suffix || clearable ? 'pr-9.5' : 'pr-3.5',
-        size === 'sm' ? 'py-1.5 text-[13px] min-h-[36px]' : 'py-2.5 text-sm min-h-[42px]',
+        $slots.prefix ? 'pl-10' : 'pl-4',
+        $slots.suffix || clearable ? 'pr-10' : 'pr-4',
+        size === 'sm' ? 'py-1.5 text-[13px] min-h-[36px]' : 'py-2.5 text-sm min-h-[44px]',
         customClass
       ]"
       @blur="$emit('blur', $event)"
@@ -40,7 +41,7 @@
         v-if="clearable && modelValue"
         type="button"
         aria-label="清除输入"
-        class="p-1 rounded-[var(--radius-badge)] cursor-pointer hover:bg-[var(--bg-hover)]"
+        class="md-icon-btn w-7 h-7 cursor-pointer"
         @click="$emit('update:modelValue', '')"
       >
         <Icon name="x" customClass="w-3.5 h-3.5" />

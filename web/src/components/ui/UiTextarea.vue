@@ -9,10 +9,11 @@
       :rows="rows"
       :maxlength="maxlength > 0 ? maxlength : undefined"
       :class="[
-        'w-full rounded-[var(--radius-control)] transition-all duration-150 outline-none resize-y leading-relaxed',
-        'bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] border border-[var(--border-hairline)]',
+        'w-full rounded-[var(--shape-md)] transition-all duration-150 outline-none resize-y leading-relaxed',
+        'bg-[var(--md-surface-container-high)] hover:bg-[var(--md-surface-container-highest)]',
+        'border border-transparent',
         'text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)]',
-        'focus:bg-[var(--bg-surface)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]',
+        'focus:bg-[var(--bg-surface)] focus:border-[var(--md-primary)]',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         size === 'sm' ? 'px-3.5 py-2 text-[13px]' : 'px-4 py-3 text-sm',
         customClass

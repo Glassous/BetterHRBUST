@@ -10,15 +10,15 @@
     :aria-hidden="open ? 'false' : 'true'"
   >
     <aside
-      class="w-[400px] xl:w-[440px] h-full min-h-0 flex flex-col bg-[var(--bg-surface)] border-l border-[var(--border-strong)] transition-opacity duration-200 ease-out motion-reduce:transition-none"
+      class="w-[400px] xl:w-[440px] h-full min-h-0 flex flex-col bg-[var(--md-surface-container-low)] rounded-l-[var(--shape-xxl)] transition-opacity duration-200 ease-out motion-reduce:transition-none"
       :class="open ? 'opacity-100' : 'opacity-0'"
       role="complementary"
       aria-label="AI 对话"
     >
           <!-- 头部 -->
-          <div class="px-5 py-4 border-b border-[var(--border-hairline)] flex items-center justify-between gap-3">
+          <div class="px-5 pt-5 pb-3 flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <h3 class="text-base font-semibold text-[var(--ink-primary)] tracking-tight truncate">AI 对话</h3>
+              <h3 class="text-[17px] font-semibold text-[var(--ink-primary)] tracking-tight truncate">AI 对话</h3>
               <p class="text-[12px] text-[var(--ink-muted)] mt-0.5 truncate">
                 <template v-if="streaming">生成中<template v-if="round"> · 第 {{ round }} 轮</template></template>
                 <template v-else-if="ready">就绪 · {{ provider }}</template>
@@ -28,7 +28,7 @@
             <div class="flex items-center gap-1 shrink-0">
               <button
                 type="button"
-                class="px-2.5 h-8 rounded-[var(--radius-control)] text-[12px] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+                class="px-3 h-9 rounded-full text-[12px] font-medium text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-high)] cursor-pointer transition-colors"
                 @click="openSettings"
               >
                 设置
@@ -36,7 +36,7 @@
               <button
                 type="button"
                 aria-label="关闭对话"
-                class="w-8 h-8 rounded-[var(--radius-control)] text-[var(--ink-muted)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors flex items-center justify-center"
+                class="md-icon-btn w-9 h-9 cursor-pointer"
                 @click="close"
               >
                 <Icon name="x" customClass="w-4 h-4" />
@@ -45,11 +45,11 @@
           </div>
 
           <!-- 消息区 -->
-          <div ref="scrollRef" class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3.5">
+          <div ref="scrollRef" v-overlay-scroll class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3.5">
             <!-- 未就绪引导 -->
             <div
               v-if="!ready"
-              class="rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-4 space-y-3"
+              class="rounded-[var(--shape-lg)] bg-[var(--md-surface-container)] p-4 space-y-3"
             >
               <p class="text-[13px] font-semibold text-[var(--ink-primary)]">三步开始使用</p>
               <ol class="text-[13px] text-[var(--ink-secondary)] space-y-1.5 list-decimal pl-4 leading-relaxed">
@@ -59,8 +59,8 @@
               </ol>
               <p class="text-[12px] text-[var(--ink-muted)] leading-relaxed">当前状态：{{ readiness.reason }}</p>
               <div class="flex flex-wrap gap-2 text-[12px] text-[var(--ink-muted)]">
-                <span class="px-2 py-1 rounded-[var(--radius-badge)] bg-[var(--bg-hover)]">DeepSeek · https://api.deepseek.com/v1</span>
-                <span class="px-2 py-1 rounded-[var(--radius-badge)] bg-[var(--bg-hover)]">Ollama · http://127.0.0.1:11434/v1</span>
+                <span class="px-2 py-1 rounded-full bg-[var(--md-surface-container-high)]">DeepSeek · https://api.deepseek.com/v1</span>
+                <span class="px-2 py-1 rounded-full bg-[var(--md-surface-container-high)]">Ollama · http://127.0.0.1:11434/v1</span>
               </div>
               <UiButton variant="outline" size="sm" @click="openSettings">前往设置</UiButton>
             </div>
@@ -74,7 +74,7 @@
                 v-for="sample in samples"
                 :key="sample"
                 type="button"
-                class="w-full text-left px-3.5 py-2.5 rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] hover:border-[var(--border-strong)] text-[13px] text-[var(--ink-secondary)] cursor-pointer transition-colors"
+                class="w-full text-left px-4 py-2.5 rounded-[var(--shape-lg)] bg-[var(--md-surface-container)] hover:bg-[var(--md-surface-container-high)] text-[13px] text-[var(--ink-secondary)] cursor-pointer transition-colors"
                 @click="fill(sample)"
               >
                 {{ sample }}
@@ -85,7 +85,7 @@
             <template v-for="entry in entries" :key="entry.id">
               <div v-if="entry.role === 'user'" class="flex justify-end">
                 <div
-                  class="max-w-[85%] rounded-[var(--radius-panel)] px-3.5 py-2.5 bg-[var(--accent-soft)] text-[13.5px] leading-relaxed text-[var(--ink-primary)] whitespace-pre-wrap break-words"
+                  class="max-w-[85%] rounded-[var(--shape-xl)] rounded-br-[var(--shape-xs)] px-4 py-2.5 bg-[var(--md-primary-container)] text-[13.5px] leading-relaxed text-[var(--md-on-primary-container)] whitespace-pre-wrap break-words"
                 >
                   {{ entry.text }}
                 </div>
@@ -108,7 +108,7 @@
 
               <div
                 v-else-if="entry.role === 'error'"
-                class="rounded-[var(--radius-control)] border border-[var(--sem-danger)]/40 bg-[var(--sem-danger)]/10 px-3.5 py-2.5 text-[13px] text-[var(--ink-primary)] whitespace-pre-wrap break-words"
+                class="rounded-[var(--shape-md)] bg-[var(--sem-danger-soft)] px-4 py-2.5 text-[13px] text-[var(--ink-primary)] whitespace-pre-wrap break-words"
               >
                 <span class="font-semibold text-[var(--sem-danger)]">出错了</span>
                 <span class="ml-2">{{ entry.text }}</span>
@@ -119,13 +119,13 @@
           </div>
 
           <!-- 输入区 -->
-          <div class="border-t border-[var(--border-hairline)] p-3.5 space-y-2">
+          <div class="p-3.5 space-y-2">
             <textarea
               v-model="input"
               rows="2"
               :disabled="streaming"
               placeholder="问点什么，例如“我这学期绩点多少”“明天有什么课”（Enter 发送，Shift+Enter 换行）"
-              class="w-full resize-none rounded-[var(--radius-control)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[13.5px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)] disabled:opacity-60"
+              class="w-full resize-none rounded-[var(--shape-lg)] bg-[var(--md-surface-container)] px-4 py-3 text-[13.5px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] outline-none border border-transparent focus:bg-[var(--bg-surface)] focus:border-[var(--md-primary)] transition-colors disabled:opacity-60"
               @keydown="onKeydown"
             />
             <div class="flex items-center justify-between gap-2">

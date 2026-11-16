@@ -1,12 +1,12 @@
 <template>
   <header
-    class="h-[62px] px-5 sm:px-8 lg:px-10 sticky top-[var(--tb)] z-20 bg-[var(--bg-canvas)]/92 backdrop-blur-md border-b border-[var(--border-hairline)] flex items-center justify-between gap-3 transition-colors duration-200"
+    class="h-[68px] px-5 sm:px-8 lg:px-10 sticky top-[var(--tb)] z-20 bg-[var(--bg-canvas)]/88 backdrop-blur-xl flex items-center justify-between gap-3 transition-colors duration-200"
   >
     <!-- 左侧：侧栏折叠 + 当前页面与周次定位 -->
-    <div class="flex items-center gap-3.5 min-w-0">
+    <div class="flex items-center gap-3 min-w-0">
       <button
         type="button"
-        class="w-10 h-10 rounded-[var(--radius-control)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] cursor-pointer transition-all duration-150 active:scale-95 flex items-center justify-center shrink-0"
+        class="w-10 h-10 rounded-full bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)] cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center shrink-0"
         :title="isCollapsed ? '展开侧边栏' : '折叠侧边栏'"
         :aria-label="isCollapsed ? '展开侧边栏' : '折叠侧边栏'"
         @click="$emit('toggle-sidebar')"
@@ -15,14 +15,14 @@
       </button>
 
       <div class="flex items-center gap-2.5 min-w-0">
-        <h1 class="text-base font-semibold text-[var(--ink-primary)] tracking-tight truncate">
+        <h1 class="text-[17px] font-semibold text-[var(--ink-primary)] tracking-tight truncate">
           {{ activeTitle }}
         </h1>
         <span
-          class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[13px] font-medium num-tabular shrink-0 border transition-colors"
+          class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-medium num-tabular shrink-0 transition-colors"
           :class="isSchoolHoliday
-            ? 'bg-[var(--bg-subtle)] text-[var(--ink-secondary)] border-[var(--border-hairline)]'
-            : 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-border)]'"
+            ? 'bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)]'
+            : 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)]'"
         >
           {{ isSchoolHoliday ? '假期中' : `第 ${currentWeek} 周` }}
         </span>
@@ -30,20 +30,20 @@
     </div>
 
     <!-- 右侧操作区：会话提示 + 手动同步 + 主题切换 -->
-    <div class="flex items-center gap-2.5 shrink-0">
-      <div v-if="shouldShowSessionBanner" class="flex items-center gap-1.5 px-3 py-1 rounded-[var(--radius-control)] bg-[var(--sem-warning-soft)] border border-[var(--sem-warning-border)] text-[var(--sem-warning)] text-[13px]">
+    <div class="flex items-center gap-2 shrink-0">
+      <div v-if="shouldShowSessionBanner" class="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-[var(--sem-warning-soft)] text-[var(--sem-warning)] text-[12.5px]">
         <span class="w-1.5 h-1.5 rounded-full bg-[var(--sem-warning)] shrink-0" />
         <span class="hidden sm:inline font-medium">会话已失效</span>
         <button
           type="button"
-          class="hidden sm:inline-block px-1.5 py-0.5 rounded font-medium hover:bg-[var(--sem-warning-soft)] cursor-pointer transition-colors"
+          class="hidden sm:inline-block px-2 py-0.5 rounded-full font-medium hover:bg-[var(--sem-warning-soft)] cursor-pointer transition-colors"
           @click="dismissSessionPrompt"
         >
           忽略
         </button>
         <button
           type="button"
-          class="px-2 py-0.5 rounded-[var(--radius-badge)] bg-[var(--sem-warning)] text-white font-medium cursor-pointer transition-opacity hover:opacity-90"
+          class="px-2.5 py-1 rounded-full bg-[var(--sem-warning)] text-white font-medium cursor-pointer transition-opacity hover:opacity-90"
           @click="openLoginModal"
         >
           重登
@@ -54,23 +54,23 @@
       <button
         v-if="isLoggedIn || isSessionExpired"
         type="button"
-        class="h-10 px-3.5 rounded-[var(--radius-control)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] cursor-pointer transition-all duration-150 active:scale-[0.97] flex items-center gap-2 text-[13px] font-medium disabled:opacity-60 disabled:cursor-wait"
+        class="h-10 px-4 rounded-full bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] hover:brightness-[0.97] cursor-pointer transition-all duration-200 active:scale-[0.97] flex items-center gap-2 text-[13px] font-medium disabled:opacity-60 disabled:cursor-wait"
         :title="`手动刷新教务数据（上次同步：${lastSyncText}）`"
         :disabled="syncing"
         @click="handleRefresh"
       >
-        <Icon name="refresh" customClass="w-4 h-4 shrink-0" :class="syncing ? 'animate-spin text-[var(--accent)]' : ''" />
+        <Icon name="refresh" customClass="w-4 h-4 shrink-0" :class="syncing ? 'animate-spin' : ''" />
         <span class="hidden sm:inline">{{ syncing ? '同步中' : '同步数据' }}</span>
       </button>
 
       <button
         type="button"
-        class="w-10 h-10 rounded-[var(--radius-control)] bg-[var(--bg-surface)] text-[var(--ink-secondary)] hover:text-[var(--ink-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] cursor-pointer transition-all duration-150 active:scale-95 flex items-center justify-center shrink-0 group"
+        class="w-10 h-10 rounded-full bg-[var(--md-surface-container-high)] text-[var(--ink-secondary)] hover:bg-[var(--md-surface-container-highest)] hover:text-[var(--ink-primary)] cursor-pointer transition-all duration-200 active:scale-95 flex items-center justify-center shrink-0 group"
         :title="isDark ? '切换浅色模式' : '切换深色模式'"
         :aria-label="isDark ? '切换浅色模式' : '切换深色模式'"
         @click="toggleTheme"
       >
-        <Icon :name="isDark ? 'sun' : 'moon'" customClass="w-[18px] h-[18px] transition-transform duration-200 group-hover:rotate-12" />
+        <Icon :name="isDark ? 'sun' : 'moon'" customClass="w-[18px] h-[18px] transition-transform duration-300 group-hover:rotate-45" />
       </button>
     </div>
   </header>
