@@ -9,7 +9,11 @@ export default defineConfig({
   base: './',
   plugins: [vue(), tailwindcss()],
   resolve: {
-    dedupe: ['vue'],
+    // landing 直接引用了 web/src,源码文件按自身路径向上找依赖,而 CI 只安装
+    // landing 的 node_modules;gsap 必须 dedupe 到本项目根,否则构建报
+    // "Rollup failed to resolve import gsap"(web/node_modules 在 CI 中不存在),
+    // 同时保证与 landing 自身的 GSAP 共用同一实例。
+    dedupe: ['vue', 'gsap'],
     alias: {
       '@': path.resolve(process.cwd(), '../web/src')
     }
