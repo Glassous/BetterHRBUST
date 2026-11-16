@@ -55,8 +55,7 @@ fun GpaCalculationHelp(
     }
     if (open) AlertDialog(
         onDismissRequest = { open = false },
-        // 弹窗表面与 Web 端 Modal 一致（白 / #1c1e24），而非 M3 默认的浅灰容器色
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = { Text("GPA 计算说明") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {

@@ -184,8 +184,8 @@ internal fun TimetableGrid(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = DayNames[day - 1],
-                                fontSize = 13.sp,
-                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Medium,
                                 color = if (isToday) {
                                     MaterialTheme.colorScheme.onSurface
                                 } else {
@@ -194,8 +194,7 @@ internal fun TimetableGrid(
                             )
                             Text(
                                 text = weekStart?.plusDays((day - 1).toLong())?.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd")) ?: "待同步",
-                                fontSize = 10.sp,
-                                lineHeight = 14.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
                             )
@@ -218,12 +217,16 @@ internal fun TimetableGrid(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "${slot.period}",
-                                    fontSize = if (occupied) 14.sp else 9.sp,
+                                    style = if (occupied) {
+                                        MaterialTheme.typography.titleSmall
+                                    } else {
+                                        MaterialTheme.typography.labelSmall
+                                    },
                                     fontWeight = FontWeight.Bold,
                                     color = if (occupied) {
                                         MaterialTheme.colorScheme.onSurface
                                     } else {
-                                        MaterialTheme.colorScheme.outline
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                     },
                                     // 压缩后的空行很矮，行高需同步收紧避免文字被裁切
                                     lineHeight = if (occupied) 16.sp else 11.sp
@@ -233,13 +236,13 @@ internal fun TimetableGrid(
                                         text = slot.start,
                                         fontSize = 9.sp,
                                         lineHeight = 11.sp,
-                                        color = MaterialTheme.colorScheme.outline
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = slot.end,
                                         fontSize = 9.sp,
                                         lineHeight = 11.sp,
-                                        color = MaterialTheme.colorScheme.outline
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -382,7 +385,7 @@ private fun CourseBlock(
     val colors = remember(key, isDark, active) {
         CourseColorPalette.cardColors(key = key, dark = isDark, muted = !active)
     }
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     // 非本周的块要多带一行「非本周」标记，课程名相应少一行，避免整块内容溢出被裁切
     val nameLines = if (active) nameMaxLines else (nameMaxLines - 1).coerceAtLeast(1)

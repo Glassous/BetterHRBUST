@@ -18,8 +18,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.glassous.betterhrbust.core.ui.theme.AppMotion
 
-/** 二级页面返回（滑出）时收起的圆角半径。 */
-val SecondaryPageExitCorner = 20.dp
+/** 二级页面返回（滑出）时收起的圆角半径（MD3E extraLarge）。 */
+val SecondaryPageExitCorner = 28.dp
 
 /**
  * 二级页面容器：返回（含系统预测性返回手势）时保持整页底色不透明，并把页面裁成圆角卡片。

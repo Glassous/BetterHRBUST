@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
@@ -55,43 +56,82 @@ fun ResourcesScreen(onBack: () -> Unit) {
                 start = 16.dp,
                 end = 16.dp,
                 top = pageTopBarTopPadding(),
-                bottom = LocalBottomContentInset.current + 16.dp
+                bottom = LocalBottomContentInset.current + 24.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                Text("教务处公开资料目录，原文与附件在学校网站打开。")
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text("搜索标题：学生证、缓考、四六级…") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .registerInputField(),
-                    shape = AppTextFieldShape
-                )
-                Text("${filtered.size} 条结果 · 索引更新 ${catalog.getOrNull()?.optString("updatedAt")?.take(10).orEmpty()}", style = MaterialTheme.typography.bodySmall)
-                if (catalog.isFailure) Text("资料索引读取失败", color = MaterialTheme.colorScheme.error)
-                if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error)
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = AppShapes.Card,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Column(
+                        Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "教务处公开资料目录，原文与附件在学校网站打开。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedTextField(
+                            value = query,
+                            onValueChange = { query = it },
+                            label = { Text("搜索标题：学生证、缓考、四六级…") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .registerInputField(),
+                            shape = AppTextFieldShape
+                        )
+                        Text(
+                            "${filtered.size} 条结果 · 索引更新 ${catalog.getOrNull()?.optString("updatedAt")?.take(10).orEmpty()}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (catalog.isFailure) {
+                            Text("资料索引读取失败", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                        }
+                        if (error.isNotBlank()) {
+                            Text(error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
             }
             item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = category.isBlank(), onClick = { category = "" }, label = { Text("全部") }) }
-                items(items.map { it.category }.distinct()) { name -> FilterChip(selected = category == name, onClick = { category = name }, label = { Text(name) }) }
+                item { FilterChip(selected = category.isBlank(), onClick = { category = "" }, label = { Text("全部") }, shape = AppShapes.Pill) }
+                items(items.map { it.category }.distinct()) { name -> FilterChip(selected = category == name, onClick = { category = name }, label = { Text(name) }, shape = AppShapes.Pill) }
             } }
             items(filtered, key = { it.category + it.id }) { row ->
                 Card(
                     Modifier.fillMaxWidth(),
                     shape = AppShapes.Card,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-                ) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(row.title, style = MaterialTheme.typography.titleMedium)
-                    Text("${row.category} · ${row.date}", style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = { open(row.url) }) { Text("查看学校原文") }
-                    row.files.forEach { file -> TextButton(onClick = { open(file.url) }) { Text("↓ ${file.title.ifBlank { "附件" }}") } }
+                ) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        row.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "${row.category} · ${row.date}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    TextButton(onClick = { open(row.url) }, shape = AppShapes.Pill) { Text("查看学校原文") }
+                    row.files.forEach { file -> TextButton(onClick = { open(file.url) }, shape = AppShapes.Pill) { Text("↓ ${file.title.ifBlank { "附件" }}") } }
                 } }
             }
-            if (filtered.isEmpty() && catalog.isSuccess) item { Text("未找到匹配资料，请尝试其他关键词或分类。") }
-            item { TextButton(onClick = { open("http://jwzx.hrbust.edu.cn/homepage/info.do?columnId=344") }) { Text("打开教务处资料下载原站") } }
+            if (filtered.isEmpty() && catalog.isSuccess) {
+                item {
+                    Text(
+                        "未找到匹配资料，请尝试其他关键词或分类。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            item { TextButton(onClick = { open("http://jwzx.hrbust.edu.cn/homepage/info.do?columnId=344") }, shape = AppShapes.Pill) { Text("打开教务处资料下载原站") } }
         }
         FixedPageTopBar(title = "资料查找", onBack = onBack)
     }

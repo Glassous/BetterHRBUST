@@ -147,12 +147,13 @@ fun ProgramScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.Card,
+                            shape = AppShapes.Hero,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
+                            Column(modifier = Modifier.padding(22.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -161,40 +162,42 @@ fun ProgramScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "毕业学分进度",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
                                         Text(
                                             text = "${creditsProgress?.earnedTotal ?: 0.0} / " +
                                                 creditsProgress?.requiredTotal?.takeIf { it > 0 }?.let { "$it 学分" } ?: "待同步",
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
                                     }
                                     Text(
                                         text = "${creditsProgress?.completionPercent ?: 0}%",
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        fontWeight = FontWeight.Black,
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                LinearProgressIndicator(
+                                Spacer(modifier = Modifier.height(16.dp))
+                                // MD3E 波浪进度：把「学分完成度」做成页面的一个高光时刻
+                                LinearWavyProgressIndicator(
                                     progress = {
                                         ((creditsProgress?.completionPercent ?: 0) / 100f)
                                             .coerceIn(0f, 1f)
                                     },
-                                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                                    color = MaterialTheme.colorScheme.primary
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.14f)
                                 )
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = GpaCalculator.EARNED_CREDITS_NOTE,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
                                 )
                             }
                         }
@@ -203,8 +206,8 @@ fun ProgramScreen(
                     item {
                         Text(
                             text = "课组要求（${groups.size}）",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
 
@@ -242,7 +245,7 @@ fun CurriculumGroupCard(
         shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -254,19 +257,19 @@ fun CurriculumGroupCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = group.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = AppShapes.Pill,
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Text(
                                 text = group.property,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
                     }
@@ -274,46 +277,48 @@ fun CurriculumGroupCard(
                     Text(
                         text = "要求 $requiredCredits 学分 · " + if (GpaCalculator.isProfessionalElectiveGroup(group) && group.courses.isNotEmpty()) "${group.courses.size} 选 4" else "${GpaCalculator.planGroupRequiredCourses(group)} 门",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // 已获 / 要求 学分对照（与概览页同口径）
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "学分进度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(text = "学分进度", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     text = "$earnedCredits / $requiredCredits",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = if (qualified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
-            LinearProgressIndicator(
+            Spacer(modifier = Modifier.height(8.dp))
+            LinearWavyProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(6.dp),
-                color = if (qualified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                modifier = Modifier.fillMaxWidth(),
+                color = if (qualified) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
             )
 
             if (GpaCalculator.resolveProperty(group.property) == "limited" ||
                 GpaCalculator.resolveProperty(group.property) == "elective"
             ) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "选修课学分不计入已获得学分",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -326,27 +331,27 @@ fun CurriculumGroupCard(
                 ) {
                     Text(
                         text = "课程（${group.courses.size}）",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
 
                     for (c in group.courses) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = AppShapes.InnerCard,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(10.dp),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = c.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                    Text(text = "课号: ${c.code} • ${c.property}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                    Text(text = c.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                                    Text(text = "课号: ${c.code} • ${c.property}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                Text(text = "${c.credit} 学分", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                Text(text = "${c.credit} 学分", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

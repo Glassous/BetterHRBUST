@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -32,7 +31,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.glassous.betterhrbust.BetterHrbustApp
@@ -53,7 +51,6 @@ import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import com.glassous.betterhrbust.core.ui.theme.AppShapes
-import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
 import com.glassous.betterhrbust.data.repository.Resource
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.launch
@@ -82,7 +79,6 @@ fun ClassroomsScreen(
     val prefsManager = remember { app.preferencesManager }
     val prefs by prefsManager.preferencesFlow.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
-    val isDark = LocalDarkTheme.current
 
     val sessionExpired by authRepo.isSessionExpired.collectAsState()
     var showLoginDialog by remember { mutableStateOf(false) }
@@ -378,7 +374,7 @@ fun ClassroomsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(
                 top = pageTopBarTopPadding(),
                 bottom = LocalBottomContentInset.current + 24.dp
@@ -443,7 +439,7 @@ fun ClassroomsScreen(
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (buildingName.isNotBlank()) BadgePill(buildingName)
@@ -453,8 +449,8 @@ fun ClassroomsScreen(
                     Text(
                         text = if (summaryRooms.isEmpty()) "" else
                             "共 ${summaryRooms.size} 间 · 整天无课 $allDayFree · 可自习 $studyable",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -485,7 +481,6 @@ fun ClassroomsScreen(
                         else -> ClassroomMatrix(
                             rooms = summaryRooms.take(visibleLimit),
                             day = selectedDay,
-                            isDark = isDark,
                             showMoreCount = (summaryRooms.size - visibleLimit).coerceAtLeast(0),
                             onShowMore = { visibleLimit += 40 }
                         )
@@ -508,23 +503,46 @@ fun ClassroomsScreen(
                             shape = AppTextFieldShape
                         )
 
-                        Row(
+                        // 横向可滚动：筛选项较多时不再压缩单个 Chip，最后一项不会被挤成多行
+                        LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            (1..3).forEach { span ->
+                            items(3) { index ->
+                                val span = index + 1
                                 FilterChip(
                                     selected = minSpan == span,
                                     onClick = { minSpan = span },
-                                    label = { Text("连续≥${span}节", fontSize = 11.sp) }
+                                    label = {
+                                        Text(
+                                            text = "连续≥${span}节",
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    },
+                                    shape = AppShapes.Pill,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    )
                                 )
                             }
-                            Spacer(modifier = Modifier.weight(1f))
-                            FilterChip(
-                                selected = onlyFree,
-                                onClick = { onlyFree = !onlyFree },
-                                label = { Text("只看有空档", fontSize = 11.sp) }
-                            )
+                            item {
+                                FilterChip(
+                                    selected = onlyFree,
+                                    onClick = { onlyFree = !onlyFree },
+                                    label = {
+                                        Text(
+                                            text = "只看有空档",
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    },
+                                    shape = AppShapes.Pill,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                )
+                            }
                         }
 
                         if (filteredRooms.isEmpty()) {
@@ -542,8 +560,8 @@ fun ClassroomsScreen(
                             if (filteredRooms.size > 30) {
                                 Text(
                                     text = "仅显示前 30 间，请用关键字缩小范围",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -554,8 +572,8 @@ fun ClassroomsScreen(
                             } else {
                                 "当前为单日结果（$dayLabel）。点击「加载整周」可补齐周一至周日，用于规划整周自习。"
                             } + "数据来自教务「教室时间占用」，座位数为教务登记值。",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -614,8 +632,8 @@ private fun FilterCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             FilterChipRow(
                 label = "教学区",
@@ -632,13 +650,17 @@ private fun FilterCard(
                     IconButton(
                         onClick = onToggleDefaultBuilding,
                         enabled = selectedBuilding.isNotBlank(),
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = if (isDefaultBuilding) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = if (isDefaultBuilding) "取消默认教学楼" else "设为默认教学楼",
-                            tint = if (isDefaultBuilding) Color(0xFFF59E0B) else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(17.dp)
+                            tint = if (isDefaultBuilding) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -664,7 +686,7 @@ private fun FilterCard(
                 Button(
                     onClick = onQuery,
                     enabled = selectedBuilding.isNotBlank() && !isLoading,
-                    shape = RoundedCornerShape(10.dp)
+                    shape = AppShapes.Pill
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -674,10 +696,10 @@ private fun FilterCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
-                    Text("查询", fontSize = 13.sp)
+                    Text("查询", style = MaterialTheme.typography.labelLarge)
                 }
                 TextButton(onClick = onToday, enabled = !isLoading) {
-                    Text("今天", fontSize = 13.sp)
+                    Text("今天", style = MaterialTheme.typography.labelLarge)
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 TextButton(onClick = onLoadWeek, enabled = !isWeekLoading && !weekLoaded && selectedBuilding.isNotBlank()) {
@@ -689,9 +711,18 @@ private fun FilterCard(
                             isWeekLoading -> "加载中 $weekProgress/7"
                             else -> "加载整周"
                         },
-                        fontSize = 13.sp
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
+            }
+
+            if (isWeekLoading) {
+                LinearWavyProgressIndicator(
+                    progress = { weekProgress / 7f },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
             }
         }
     }
@@ -712,7 +743,7 @@ private fun FilterChipRow(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(52.dp)
         )
         LazyRow(
@@ -723,7 +754,12 @@ private fun FilterChipRow(
                 FilterChip(
                     selected = value == selected,
                     onClick = { onSelected(value) },
-                    label = { Text(name, fontSize = 11.sp) }
+                    label = { Text(name, style = MaterialTheme.typography.labelMedium) },
+                    shape = AppShapes.Pill,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         }
@@ -742,19 +778,18 @@ private fun FilterChipRow(
 private fun ClassroomMatrix(
     rooms: List<RoomSummary>,
     day: Int,
-    isDark: Boolean,
     showMoreCount: Int,
     onShowMore: () -> Unit
 ) {
-    val occupiedColor = if (isDark) Color(0xFF3F3F46) else Color(0xFFE4E4E7)
-    val freeColor = if (isDark) Color(0xFF10B981).copy(alpha = 0.16f) else Color(0xFFECFDF5)
+    val occupiedColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val freeColor = MaterialTheme.colorScheme.secondaryContainer
     val borderColor = MaterialTheme.colorScheme.outlineVariant
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "占用标记：● 课程 / 考试 / 其它，浅绿为可自习",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         // 宽屏（平板 / 横屏）走矩阵，窄屏改为每间教室一张卡片，二者共用同一份占用数据
@@ -790,7 +825,7 @@ private fun ClassroomMatrix(
                 TextButton(onClick = onShowMore) {
                     Text(
                         "再显示 ${minOf(40, showMoreCount)} 间（共 ${rooms.size + showMoreCount} 间）",
-                        fontSize = 13.sp
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
             }
@@ -815,9 +850,9 @@ private fun MatrixTable(
             ) {
                 Text(
                     text = "教室",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             (1..ClassroomScheduleLogic.SECTION_COUNT).forEach { section ->
@@ -828,7 +863,7 @@ private fun MatrixTable(
                     Text(
                         text = "$section",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -854,7 +889,7 @@ private fun MatrixTable(
                             if (item.room.seats > 0) append(" · ${item.room.seats}座")
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -868,16 +903,16 @@ private fun MatrixTable(
                             .height(28.dp)
                             .background(
                                 color = if (occupancy == null) freeColor else occupiedColor,
-                                shape = RoundedCornerShape(4.dp)
+                                shape = MaterialTheme.shapes.extraSmall
                             )
-                            .border(0.5.dp, borderColor, RoundedCornerShape(4.dp)),
+                            .border(0.5.dp, borderColor, MaterialTheme.shapes.extraSmall),
                         contentAlignment = Alignment.Center
                     ) {
                         if (occupancy != null) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
-                                    .background(occupancyColor(occupancy.type), RoundedCornerShape(3.dp))
+                                    .background(occupancyColor(occupancy.type), AppShapes.Pill)
                             )
                         }
                     }
@@ -915,7 +950,7 @@ private fun MatrixCards(
                             if (item.room.seats > 0) append(" · ${item.room.seats}座")
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
                 }
@@ -932,7 +967,7 @@ private fun MatrixCards(
                                 .height(18.dp)
                                 .background(
                                     color = if (occupancy == null) freeColor else occupiedColor,
-                                    shape = RoundedCornerShape(3.dp)
+                                    shape = MaterialTheme.shapes.extraSmall
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -940,7 +975,7 @@ private fun MatrixCards(
                                 Box(
                                     modifier = Modifier
                                         .size(5.dp)
-                                        .background(occupancyColor(occupancy.type), RoundedCornerShape(3.dp))
+                                        .background(occupancyColor(occupancy.type), AppShapes.Pill)
                                 )
                             }
                         }
@@ -955,7 +990,7 @@ private fun MatrixCards(
                         Text(
                             text = label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -972,11 +1007,12 @@ private fun occupancyAt(
 ): ClassroomOccupancy? =
     room.occupancy.firstOrNull { it.day == day && section >= it.start && section < it.start + it.span }
 
+@Composable
 private fun occupancyColor(type: String): Color = when (type) {
-    "course" -> Color(0xFFE11D48)
-    "exam" -> Color(0xFFF59E0B)
-    "other" -> Color(0xFF0EA5E9)
-    else -> Color(0xFF71717A)
+    "course" -> MaterialTheme.colorScheme.error
+    "exam" -> MaterialTheme.colorScheme.tertiary
+    "other" -> MaterialTheme.colorScheme.primary
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 /* ------------------------------------------------------------------ *
@@ -985,49 +1021,73 @@ private fun occupancyColor(type: String): Color = when (type) {
 
 @Composable
 private fun RoomFreeRow(item: RoomSummary) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.room.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = buildString {
-                    append(item.room.roomType.ifBlank { "类型未知" })
-                    if (item.room.seats > 0) append(" · ${item.room.seats} 座")
-                    if (item.occupiedCount > 0) append(" · 已排 ${item.occupiedCount} 节")
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+    val hasFreeSlot = item.labels.isNotEmpty()
+    val containerColor = if (hasFreeSlot) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val titleColor = if (hasFreeSlot) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val metaColor = if (hasFreeSlot) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (item.labels.isEmpty()) {
+    Surface(
+        shape = AppShapes.InnerCard,
+        color = containerColor,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "已排满",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    text = item.room.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else {
-                item.labels.take(2).forEach { label ->
-                    FreeSlotChip(label)
-                }
-                if (item.labels.size > 2) {
+                Text(
+                    text = buildString {
+                        append(item.room.roomType.ifBlank { "类型未知" })
+                        if (item.room.seats > 0) append(" · ${item.room.seats} 座")
+                        if (item.occupiedCount > 0) append(" · 已排 ${item.occupiedCount} 节")
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = metaColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (item.labels.isEmpty()) {
                     Text(
-                        text = "+${item.labels.size - 2}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        text = "已排满",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = metaColor
                     )
+                } else {
+                    item.labels.take(2).forEach { label ->
+                        FreeSlotChip(label)
+                    }
+                    if (item.labels.size > 2) {
+                        Text(
+                            text = "+${item.labels.size - 2}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = metaColor
+                        )
+                    }
                 }
             }
         }
@@ -1037,14 +1097,14 @@ private fun RoomFreeRow(item: RoomSummary) {
 @Composable
 private fun FreeSlotChip(label: String) {
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = Color(0xFF10B981).copy(alpha = 0.12f)
+        shape = AppShapes.Pill,
+        color = MaterialTheme.colorScheme.surface
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF047857),
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
@@ -1052,14 +1112,14 @@ private fun FreeSlotChip(label: String) {
 @Composable
 private fun BadgePill(text: String) {
     Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        shape = AppShapes.Pill,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
         )
     }
 }
@@ -1081,12 +1141,12 @@ private fun SectionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             content()
@@ -1200,9 +1260,9 @@ private fun ClassroomQuickLoginDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            shape = AppShapes.Card,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
+            shape = AppShapes.Hero,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shadowElevation = 6.dp,
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .widthIn(max = 420.dp)
@@ -1212,16 +1272,16 @@ private fun ClassroomQuickLoginDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "登录教务系统",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "登录状态已失效，登录后继续查询空教室",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -1268,8 +1328,8 @@ private fun ClassroomQuickLoginDialog(
                     Box(
                         modifier = Modifier
                             .size(width = 100.dp, height = 52.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clip(AppShapes.InnerCard)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                             .clickable { refreshCaptcha() },
                         contentAlignment = Alignment.Center
                     ) {
@@ -1287,8 +1347,8 @@ private fun ClassroomQuickLoginDialog(
                             )
                             else -> Text(
                                 text = "点击刷新",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -1327,7 +1387,7 @@ private fun ClassroomQuickLoginDialog(
                     Button(
                         onClick = { submit() },
                         enabled = !isLoading && captchaBitmap != null,
-                        shape = RoundedCornerShape(10.dp)
+                        shape = AppShapes.Pill
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(

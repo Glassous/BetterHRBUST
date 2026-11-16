@@ -36,6 +36,7 @@ import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.datastore.UserPreferencesManager
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
 import com.glassous.betterhrbust.core.ui.theme.warningBannerColors
 import com.glassous.betterhrbust.data.repository.Resource
@@ -192,8 +193,8 @@ fun AuthScreen(
                         horizontalArrangement = Arrangement.Start
                     ) {
                         Surface(
-                            modifier = Modifier.size(48.dp),
-                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.size(56.dp),
+                            shape = AppShapes.Pill,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Box(contentAlignment = Alignment.Center) {
@@ -201,15 +202,15 @@ fun AuthScreen(
                                     imageVector = Icons.Default.School,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(30.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
                         Text(
                             text = "BetterHRBUST",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -221,11 +222,11 @@ fun AuthScreen(
                         val warning = warningBannerColors(LocalDarkTheme.current)
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShapes.Card,
                             color = warning.container,
                             border = BorderStroke(1.dp, warning.border)
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = "登录状态已失效",
                                     color = warning.content,
@@ -246,14 +247,14 @@ fun AuthScreen(
                     if (errorMessage != null) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = AppShapes.Card,
                             color = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Text(
                                 text = errorMessage!!,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(12.dp)
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp)
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -341,11 +342,13 @@ fun AuthScreen(
                             modifier = Modifier
                                 .width(112.dp)
                                 .height(56.dp)
+                                .clip(AppShapes.InnerCard)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 .clickable { refreshCaptcha() },
                             contentAlignment = Alignment.Center
                         ) {
                             if (isCaptchaLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                CircularWavyProgressIndicator(modifier = Modifier.size(28.dp))
                             } else if (captchaBytes != null) {
                                 val bitmap = remember(captchaBytes) {
                                     BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes!!.size)
@@ -402,19 +405,18 @@ fun AuthScreen(
                         enabled = !isLoading && !isCaptchaLoading && captchaBytes != null,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp)
+                            .height(56.dp),
+                        shape = AppShapes.Pill
                     ) {
                         if (isLoading) {
-                            CircularProgressIndicator(
+                            CircularWavyProgressIndicator(
                                 color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.size(22.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
                             Text("正在登录...")
                         } else {
-                            Text("登录", fontWeight = FontWeight.Bold)
+                            Text("登录", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

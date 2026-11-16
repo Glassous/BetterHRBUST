@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.glassous.betterhrbust.core.ui.components.MarkdownText
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 
 /**
  * 版本更新说明弹窗
@@ -36,9 +37,8 @@ fun UpdateDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
                 .padding(horizontal = 16.dp, vertical = 24.dp)
                 .widthIn(max = 560.dp)
@@ -55,8 +55,8 @@ fun UpdateDialog(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "发现新版本 v$latestVersion",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
@@ -69,21 +69,21 @@ fun UpdateDialog(
                                     append(" 发布")
                                 }
                             },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "关闭",
-                            tint = MaterialTheme.colorScheme.outline
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
 
                 Column(
@@ -105,7 +105,7 @@ fun UpdateDialog(
                 }
 
                 HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
 
                 Row(
@@ -121,7 +121,7 @@ fun UpdateDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = onDownload,
-                        shape = RoundedCornerShape(10.dp)
+                        shape = AppShapes.Pill
                     ) {
                         Icon(
                             imageVector = Icons.Default.Download,

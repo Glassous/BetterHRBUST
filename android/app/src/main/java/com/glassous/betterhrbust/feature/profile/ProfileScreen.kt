@@ -109,58 +109,59 @@ fun ProfileScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.Card,
+                            shape = AppShapes.Hero,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(20.dp),
+                                    .padding(22.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
-                                    shape = RoundedCornerShape(16.dp),
+                                    shape = AppShapes.Pill,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(64.dp)
+                                    modifier = Modifier.size(72.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = Icons.Default.AccountCircle,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.size(44.dp)
+                                            modifier = Modifier.size(52.dp)
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(16.dp))
+                                Spacer(modifier = Modifier.width(18.dp))
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = p?.realName?.ifEmpty { "哈理工同学" } ?: "哈理工同学",
-                                            style = MaterialTheme.typography.headlineSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(10.dp))
                                         Surface(
-                                            shape = RoundedCornerShape(6.dp),
+                                            shape = AppShapes.Pill,
                                             color = MaterialTheme.colorScheme.primary
                                         ) {
                                             Text(
                                                 text = p?.status ?: "在籍",
-                                                style = MaterialTheme.typography.labelSmall,
+                                                style = MaterialTheme.typography.labelMedium,
                                                 color = MaterialTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
                                         text = "学号: ${p?.studentNumber?.ifEmpty { prefs?.username } ?: prefs?.username ?: "未知"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                                     )
                                 }
                             }
@@ -174,8 +175,8 @@ fun ProfileScreen(
                             shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
-                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(text = "学业学籍信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Text(text = "学业学籍信息", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                 ProfileField("所在院系", p?.college ?: "")
                                 ProfileField("专业名称", p?.major ?: "")
                                 if (!p?.direction.isNullOrBlank()) {
@@ -195,8 +196,8 @@ fun ProfileScreen(
                             shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
-                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(text = "个人联络资料", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Text(text = "个人联络资料", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                                 ProfileField("联系电话", p?.phone ?: "未填")
                                 ProfileField("电子邮箱", p?.email ?: "未填")
                                 ProfileField("通讯地址", p?.address ?: "未填")
@@ -209,30 +210,30 @@ fun ProfileScreen(
                     val changes = p?.changes ?: emptyList()
                     if (changes.isNotEmpty()) {
                         item {
-                            Text(text = "学籍异动记录 (${changes.size} 条)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(text = "学籍异动记录 (${changes.size} 条)", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         }
 
                         items(changes) { ch ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = AppShapes.InnerCard,
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                                shape = AppShapes.Card,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                             ) {
-                                Column(modifier = Modifier.padding(14.dp)) {
+                                Column(modifier = Modifier.padding(18.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text(text = ch.type, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                        Text(text = ch.date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                        Text(text = ch.type, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                        Text(text = ch.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     if (ch.reason.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = "原因: ${ch.reason}", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(text = "原因: ${ch.reason}", style = MaterialTheme.typography.bodyMedium)
                                     }
                                     if (ch.remark.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(text = "备注: ${ch.remark}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(text = "备注: ${ch.remark}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                             }
@@ -251,7 +252,7 @@ private fun ProfileField(label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
-        Text(text = value.ifEmpty { "未登记" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value.ifEmpty { "未登记" }, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
     }
 }

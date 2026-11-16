@@ -55,11 +55,11 @@ fun MarkdownText(
                     InlineMarkdown(
                         text = block.text,
                         style = when (block.level) {
-                            1 -> MaterialTheme.typography.titleMedium
-                            2 -> MaterialTheme.typography.titleSmall
+                            1 -> MaterialTheme.typography.titleLarge
+                            2 -> MaterialTheme.typography.titleMedium
                             else -> MaterialTheme.typography.bodyLarge
                         },
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -78,7 +78,7 @@ fun MarkdownText(
                             Text(
                                 text = "•",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(14.dp)
                             )
                             InlineMarkdown(
@@ -100,7 +100,7 @@ fun MarkdownText(
                             Text(
                                 text = "${block.start + index}.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.outline,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(22.dp)
                             )
                             InlineMarkdown(
@@ -117,8 +117,8 @@ fun MarkdownText(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(12.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
@@ -143,8 +143,8 @@ fun MarkdownText(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                            shape = RoundedCornerShape(10.dp)
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = RoundedCornerShape(12.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
@@ -162,7 +162,7 @@ fun MarkdownText(
                 is MarkdownBlock.Table -> MarkdownTable(block)
 
                 MarkdownBlock.Divider -> HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
         }
@@ -171,11 +171,11 @@ fun MarkdownText(
 
 @Composable
 private fun MarkdownTable(table: MarkdownBlock.Table) {
-    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(0.5.dp, borderColor, RoundedCornerShape(8.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp))
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             table.header.forEach { cell ->
@@ -215,7 +215,7 @@ private fun RowScope.TableCell(
             .weight(weight)
             .border(0.25.dp, borderColor)
             .background(
-                if (header) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f) else Color.Transparent
+                if (header) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
             )
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {

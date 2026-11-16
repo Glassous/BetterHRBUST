@@ -11,7 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -35,13 +34,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.datastore.UserPreferencesManager
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
+
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.registerInputField
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
 import com.glassous.betterhrbust.core.ui.theme.warningBannerColors
 import com.glassous.betterhrbust.data.repository.Resource
@@ -89,7 +89,7 @@ fun SessionExpiredBanner(
                 indication = null,
                 onClick = {}
             ),
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShapes.Card,
         color = bannerBg,
         border = BorderStroke(1.dp, bannerBorder),
         shadowElevation = 6.dp
@@ -97,7 +97,7 @@ fun SessionExpiredBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -114,27 +114,29 @@ fun SessionExpiredBanner(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "登录状态已失效",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = textColor
                 )
             }
             TextButton(
                 onClick = onDismiss,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                modifier = Modifier.height(30.dp)
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                shape = AppShapes.Pill,
+                modifier = Modifier.height(32.dp)
             ) {
                 Text(
                     text = "忽略",
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelLarge,
                     color = textColor
                 )
             }
+            Spacer(modifier = Modifier.width(4.dp))
             Button(
                 onClick = onReLoginClick,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                modifier = Modifier.height(30.dp),
-                shape = RoundedCornerShape(15.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp),
+                shape = AppShapes.Pill,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = buttonBg,
                     contentColor = Color.White
@@ -142,8 +144,8 @@ fun SessionExpiredBanner(
             ) {
                 Text(
                     text = "重新登录",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -285,31 +287,31 @@ fun ReLoginOverlay(
             Text(
                 text = "重新登录",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "教务会话已超时，重新登录后将恢复在线同步",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             if (errorMessage != null) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShapes.Card,
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp)
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Username
@@ -378,13 +380,15 @@ fun ReLoginOverlay(
 
                 Box(
                     modifier = Modifier
-                        .width(110.dp)
+                        .width(112.dp)
                         .height(56.dp)
+                        .clip(AppShapes.InnerCard)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable { refreshCaptcha() },
                     contentAlignment = Alignment.Center
                 ) {
                     if (isCaptchaLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        CircularWavyProgressIndicator(modifier = Modifier.size(24.dp))
                     } else if (captchaBytes != null) {
                         val bitmap = remember(captchaBytes) {
                             BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes!!.size)
@@ -440,19 +444,18 @@ fun ReLoginOverlay(
                 enabled = !isLoading && !isCaptchaLoading && captchaBytes != null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .height(56.dp),
+                shape = AppShapes.Pill
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
+                    CircularWavyProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
+                        modifier = Modifier.size(22.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text("正在重新连接...")
                 } else {
-                    Text("恢复在线登录", fontWeight = FontWeight.Bold)
+                    Text("恢复在线登录", fontWeight = FontWeight.SemiBold)
                 }
             }
         }

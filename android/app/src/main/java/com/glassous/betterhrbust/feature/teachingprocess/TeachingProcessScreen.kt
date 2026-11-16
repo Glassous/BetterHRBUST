@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -29,7 +28,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.PatternGroup
 import com.glassous.betterhrbust.core.model.PersonalInfo
@@ -44,6 +42,7 @@ import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.FixedPageTopBar
 import com.glassous.betterhrbust.core.ui.components.LoadingView
+import com.glassous.betterhrbust.core.ui.components.SegmentedControl
 import com.glassous.betterhrbust.core.ui.components.pageTopBarTopPadding
 import com.glassous.betterhrbust.core.ui.registerInputField
 import com.glassous.betterhrbust.core.ui.theme.AppShapes
@@ -261,18 +260,18 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                 shape = AppShapes.Card,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(20.dp)) {
                     Text(
                         text = "本科教学进程",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = "教务处制 · 按学期、校区与阶段重新整理",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     SemesterSelector(
                         semesters = semesters,
@@ -289,6 +288,7 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                                 FilterChip(
                                     selected = item.name == campus?.name,
                                     onClick = { campusName = item.name },
+                                    shape = AppShapes.Pill,
                                     label = { Text(item.name) }
                                 )
                             }
@@ -299,13 +299,13 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                     val span = remember(semester) { semesterSpan(semester) }
                     Text(
                         text = "$span · $weekCount 周 · ${campuses.size} 校区 / ${campuses.sumOf { it.classes.size }} 个班",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "原站更新 ${data.sourceUpdatedAt.ifBlank { "未标注" }} · 本页整理 ${data.updatedAt.ifBlank { "未标注" }}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -332,24 +332,24 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
 
                 myClassName.isNotEmpty() -> Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = AppShapes.Card,
+                    shape = AppShapes.Hero,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("我的班级", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text("我的班级", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = "本学期的进程表里没有「$myClassName」，可能该学期未收录这个班级，或班级已经调整。",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 pickerQuery = ""
                                 pickerCampusName = myClassCampus.ifEmpty { campus?.name.orEmpty() }
                                 pickerOpen = true
-                            }) { Text("换一个班级") }
+                            }, shape = AppShapes.Pill) { Text("换一个班级") }
                             TextButton(onClick = { clearMyClass() }) { Text("清除") }
                         }
                     }
@@ -383,26 +383,34 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { allOpen = !allOpen }
-                            .padding(16.dp),
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("全部班级的进程", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("全部班级的进程", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "${groups.size} 种进程 · ${classes.size} 个班 · 按进度分组或逐班对照",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Icon(
                             imageVector = if (allOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     AnimatedVisibility(visible = allOpen) {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                        Column(
+                            modifier = Modifier.padding(
+                                start = 20.dp,
+                                end = 20.dp,
+                                top = 2.dp,
+                                bottom = 20.dp
+                            )
+                        ) {
                             OutlinedTextField(
                                 value = query,
                                 onValueChange = { query = it },
@@ -414,17 +422,17 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                                     .registerInputField(),
                                 shape = AppTextFieldShape
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             SegmentedOptions(
                                 options = listOf("按进程", "按班级"),
                                 selected = groupView,
                                 onSelect = { groupView = it }
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "${groups.size} 组 · ${filteredClasses.size} 个班",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -435,11 +443,18 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
         if (allOpen) {
             if (filteredClasses.isEmpty()) {
                 item {
-                    Text(
-                        text = "没有匹配的班级，试试年级数字（如 26）或专业缩写（如 材型）。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    Surface(
+                        shape = AppShapes.InnerCard,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "没有匹配的班级，试试年级数字（如 26）或专业缩写（如 材型）。",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                        )
+                    }
                 }
             } else if (groupView == 0) {
                 items(groups, key = { "group-${it.patternIndex}" }) { group ->
@@ -479,62 +494,69 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { legendOpen = !legendOpen }
-                            .padding(16.dp),
+                            .padding(horizontal = 20.dp, vertical = 18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("符号与阶段", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text("符号与阶段", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "原表用单个字形表示整周安排，这里按含义分组并配色",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Icon(
                             imageVector = if (legendOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     AnimatedVisibility(visible = legendOpen) {
-                        Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(
+                                start = 20.dp,
+                                end = 20.dp,
+                                bottom = 20.dp
+                            )
+                        ) {
                             LegendGroups()
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = "原表只标注军训、实习、考试、假期等特殊安排，其余周次留空并按「常规教学」显示，表示按课表正常上课；" +
                                     "未收录字形（${TeachingProcessSymbols.undocumented.joinToString(" ")}）以中性虚线提示，含义以原表图例为准。",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             val legend = semester?.legend.orEmpty()
                             if (legend.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = "原表图例",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Medium
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 legend.forEach { line ->
                                     Text(
                                         text = line,
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
                             val warnings = data.warnings
                             if (warnings.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
                                     text = "整理时发现 ${warnings.size} 处对不上的地方：",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 warnings.take(5).forEach { warning ->
                                     Text(
                                         text = "· $warning",
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -551,7 +573,7 @@ private fun TeachingProcessContent(data: TeachingProcessData) {
             onDismissRequest = { pickerOpen = false },
             sheetState = sheetState,
             shape = AppShapes.Sheet,
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             ClassPickerSheet(
                 campuses = campuses,
@@ -595,22 +617,22 @@ private fun SemesterSelector(
         Box {
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(AppShapes.Pill)
                     .clickable { menuOpen = true }
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = semester?.label.orEmpty(),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.width(2.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = "选择学期",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.outline
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -674,99 +696,107 @@ private fun HeroCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = AppShapes.Card,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        shape = AppShapes.Hero,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
         Column {
             if (hero.guessed) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "根据学籍档案推测你是 ${hero.item.name}（${hero.campus}）",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
-                    TextButton(onClick = onConfirmGuess) { Text("是我的班级") }
+                    TextButton(
+                        onClick = onConfirmGuess,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) { Text("是我的班级") }
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = hero.item.name,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest
+                                shape = AppShapes.Pill,
+                                color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
                                     text = hero.campus,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
                         }
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "周学时 ${if (hero.item.hours > 0) hero.item.hours.toString() else "—"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     TextButton(onClick = onOpenPicker) { Text("换一个") }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (currentWeek > 0) {
                         Surface(
-                            shape = RoundedCornerShape(50),
+                            shape = AppShapes.Pill,
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
                                 text = "第 $currentWeek / $weekCount 周",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                     }
                     Text(
                         text = semester?.label.orEmpty(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = detail,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (currentWeek > 0) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         MetricTile(
                             label = if (insights.current?.key == "vacation") "假期还剩" else "本阶段还剩",
@@ -792,7 +822,7 @@ private fun HeroCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 StageTimeline(
                     segments = heroSegments,
                     weekCount = weekCount,
@@ -807,21 +837,21 @@ private fun HeroCard(
                 )
 
                 if (heroSegments.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "我这学期的阶段",
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
                             text = "${heroSegments.size} 段 · 共 $weekCount 周",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     StageList(
                         segments = heroSegments,
                         weeks = semester?.weeks.orEmpty(),
@@ -850,11 +880,11 @@ private fun CampusStageCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = AppShapes.Card,
+        shape = AppShapes.Hero,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("现在处于什么阶段？", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("现在处于什么阶段？", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(8.dp))
             if (currentWeek > 0) {
                 Text(
@@ -867,43 +897,43 @@ private fun CampusStageCard(
             Text(
                 text = if (top != null && currentWeek > 0) top.label else "本学期还未开始",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = if (top != null && currentWeek > 0) {
                     "$campusName 有 ${top.count} 个班处于这个安排。指定你的班级，就能看到自己的军训、实习、考试与放假时间。"
                 } else {
                     "指定你的班级后，这里会显示你所在班级的教学阶段。数据来自教务处公开的本科教学进程表，不需要登录。"
                 },
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             if (snapshot.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(snapshot.take(5), key = { it.key }) { entry ->
                         Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(50))
+                                .clip(AppShapes.Pill)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             StageDot(group = entry.group, key = entry.key, size = 8.dp)
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "${entry.label} ${entry.count}",
-                                style = MaterialTheme.typography.labelSmall
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = onOpenPicker) { Text("指定我的班级") }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onOpenPicker, shape = AppShapes.Pill) { Text("指定我的班级") }
         }
     }
 }
@@ -920,24 +950,27 @@ private fun MetricTile(
         shape = AppShapes.InnerCard,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (hint.isNotEmpty()) {
                 Text(
                     text = hint,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -977,7 +1010,7 @@ private fun StageTimeline(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
-                .clip(RoundedCornerShape(6.dp))
+                .clip(AppShapes.Pill)
                 .background(track)
         ) {
             if (weekCount <= 0) return@Canvas
@@ -1012,20 +1045,21 @@ private fun StageTimeline(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     text = if (firstDate.isNotEmpty()) "第 1 周 $firstDate" else "第 1 周",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (currentWeek > 0) {
                     Text(
                         text = "当前第 $currentWeek / $weekCount 周",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = accent
                     )
                 }
                 Text(
                     text = if (lastDate.isNotEmpty()) "第 $weekCount 周 $lastDate" else "第 $weekCount 周",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1038,7 +1072,7 @@ private fun StageList(
     weeks: List<com.glassous.betterhrbust.core.model.ProcessWeek>,
     currentWeek: Int
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         segments.forEach { segment ->
             StageRow(segment = segment, weeks = weeks, currentWeek = currentWeek)
         }
@@ -1055,7 +1089,7 @@ private fun StageRow(
     val dark = LocalDarkTheme.current
     val color = stageColor(segment.group, segment.key, dark)
     val container = if (status == StageStatus.CURRENT) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        MaterialTheme.colorScheme.secondaryContainer
     } else {
         Color.Transparent
     }
@@ -1066,7 +1100,7 @@ private fun StageRow(
             .clip(AppShapes.InnerCard)
             .background(container)
             .height(IntrinsicSize.Min)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top
     ) {
         Box(
@@ -1082,7 +1116,7 @@ private fun StageRow(
                 Text(
                     text = segment.short,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (status == StageStatus.CURRENT) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (status == StageStatus.CURRENT) FontWeight.SemiBold else FontWeight.Medium,
                     color = if (status == StageStatus.PAST) {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     } else {
@@ -1093,22 +1127,22 @@ private fun StageRow(
                 when (status) {
                     StageStatus.CURRENT -> Text(
                         text = "进行中",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
 
                     StageStatus.PAST -> Text(
                         text = "已结束",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     StageStatus.UPCOMING -> if (currentWeek > 0) {
                         Text(
                             text = "${segment.startWeek - currentWeek} 周后开始",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -1125,8 +1159,8 @@ private fun StageRow(
                     weekText.ifEmpty { null },
                     segment.note.ifEmpty { null }
                 ).joinToString(" · "),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -1180,7 +1214,7 @@ private fun PatternGroupCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
                 StageTimeline(
                     segments = group.segments,
@@ -1188,12 +1222,12 @@ private fun PatternGroupCard(
                     currentWeek = currentWeek,
                     compact = true
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = group.summary,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -1201,36 +1235,36 @@ private fun PatternGroupCard(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "${group.classes.size} 个班",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
 
             AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
+                Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
                     StageList(segments = group.segments, weeks = emptyList(), currentWeek = currentWeek)
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "同进度的班级",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     group.classes.chunked(3).forEach { rowItems ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             rowItems.forEach { item ->
                                 val mine = item.name == myClassName && myClassName.isNotEmpty()
                                 Surface(
                                     modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = AppShapes.Pill,
                                     color = if (mine) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
@@ -1239,7 +1273,7 @@ private fun PatternGroupCard(
                                 ) {
                                     Text(
                                         text = item.name,
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontWeight = if (mine) FontWeight.SemiBold else FontWeight.Normal,
                                         color = if (mine) {
                                             MaterialTheme.colorScheme.onPrimaryContainer
@@ -1248,7 +1282,7 @@ private fun PatternGroupCard(
                                         },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
                             }
@@ -1279,12 +1313,12 @@ private fun ClassRow(
         shape = AppShapes.InnerCard,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (isMine) FontWeight.Bold else FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isMine) FontWeight.SemiBold else FontWeight.Medium,
                     color = if (isMine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1292,22 +1326,22 @@ private fun ClassRow(
                 )
                 Text(
                     text = if (item.hours > 0) "${item.hours} 学时" else "— 学时",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             StageTimeline(
                 segments = segments,
                 weekCount = weekCount,
                 currentWeek = currentWeek,
                 compact = true
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = TeachingProcessCalculator.summaryOf(segments),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1339,9 +1373,9 @@ private fun LegendGroups() {
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(AppShapes.Pill)
                                     .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -1353,13 +1387,13 @@ private fun LegendGroups() {
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = symbol.glyph,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                                Spacer(modifier = Modifier.width(2.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = symbol.label,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -1400,8 +1434,8 @@ private fun ClassPickerSheet(
             .padding(horizontal = 20.dp)
             .padding(bottom = 20.dp)
     ) {
-        Text("指定我的班级", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(10.dp))
+        Text("指定我的班级", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
@@ -1423,6 +1457,7 @@ private fun ClassPickerSheet(
                             pickerCampus = item.name
                             onCampusChange(item.name)
                         },
+                        shape = AppShapes.Pill,
                         label = { Text(item.name) }
                     )
                 }
@@ -1436,18 +1471,18 @@ private fun ClassPickerSheet(
                         .fillMaxWidth()
                         .clip(AppShapes.InnerCard)
                         .clickable { onPick(item.name, target?.name.orEmpty()) }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = item.name,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = if (item.hours > 0) "${item.hours} 学时" else "— 学时",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1455,9 +1490,9 @@ private fun ClassPickerSheet(
                 item {
                     Text(
                         text = "没有匹配的班级",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(vertical = 12.dp)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 14.dp)
                     )
                 }
             }
@@ -1474,29 +1509,9 @@ private fun SegmentedOptions(
     selected: Int,
     onSelect: (Int) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .padding(2.dp)
-    ) {
-        options.forEachIndexed { index, label ->
-            val isSelected = index == selected
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onSelect(index) }
-                    .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-        }
-    }
+    SegmentedControl(
+        options = options.mapIndexed { index, label -> index to label },
+        selected = selected,
+        onSelect = onSelect
+    )
 }

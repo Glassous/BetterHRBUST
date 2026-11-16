@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -18,7 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 
 /** 每行展示的周次数量。 */
 private const val WeeksPerRow = 6
@@ -39,7 +38,8 @@ internal fun WeekPickerSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape = AppShapes.Sheet,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(
             modifier = Modifier
@@ -54,19 +54,19 @@ internal fun WeekPickerSheet(
             ) {
                 Text(
                     text = "选择教学周",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = if(calendarKnown) "共 $maxTeachingWeek 周" else "校历待确认 · 暂列 $maxTeachingWeek 周",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.outline
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(16.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 (1..maxTeachingWeek).chunked(WeeksPerRow).forEach { rowWeeks ->
@@ -105,35 +105,34 @@ private fun WeekChip(
     val container by animateColorAsState(
         targetValue = when {
             isSelected -> MaterialTheme.colorScheme.primary
-            isCurrent -> MaterialTheme.colorScheme.primaryContainer
+            isCurrent -> MaterialTheme.colorScheme.secondaryContainer
             else -> MaterialTheme.colorScheme.surfaceContainerHigh
         },
         label = "weekChipContainer"
     )
     val content = when {
         isSelected -> MaterialTheme.colorScheme.onPrimary
-        isCurrent -> MaterialTheme.colorScheme.onPrimaryContainer
+        isCurrent -> MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(AppShapes.Pill)
             .background(container)
             .clickable(onClick = onClick)
-            .padding(vertical = 7.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "$week",
-            fontSize = 15.sp,
-            fontWeight = if (isSelected || isCurrent) FontWeight.Bold else FontWeight.Medium,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = if (isSelected || isCurrent) FontWeight.SemiBold else FontWeight.Medium,
             color = content
         )
         Text(
             text = if (isCurrent) "本周" else "",
-            fontSize = 9.sp,
-            lineHeight = 11.sp,
+            style = MaterialTheme.typography.labelSmall,
             color = if (isCurrent) content else Color.Transparent
         )
     }

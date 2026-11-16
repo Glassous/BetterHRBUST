@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 窗口底色：与 Web 端页面底色一致（Compose 首帧渲染前不出现白屏/异色闪屏） -->
-    <color name="app_window_background">#F6F7F9</color>
+    <!-- 窗口底色：与 MD3E 浅色页面底色一致（Compose 首帧渲染前不出现白屏/异色闪屏） -->
+    <color name="app_window_background">#FCF8FF</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

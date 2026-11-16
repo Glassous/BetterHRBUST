@@ -48,6 +48,7 @@ import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.LoadingView
 import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
+import com.glassous.betterhrbust.core.ui.components.SegmentedControl
 import com.glassous.betterhrbust.core.ui.theme.AppMotion
 import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.pressClickable
@@ -226,8 +227,14 @@ fun NoticesSettingsScreen(
 
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(onClick = onEvaluation) { Text("教学评价助手") }
-                        OutlinedButton(onClick = onResources) { Text("资料查找") }
+                        FilledTonalButton(
+                            onClick = onEvaluation,
+                            shape = AppShapes.Pill
+                        ) { Text("教学评价助手") }
+                        FilledTonalButton(
+                            onClick = onResources,
+                            shape = AppShapes.Pill
+                        ) { Text("资料查找") }
                     }
                 }
                 // Section: Academic Notices
@@ -243,14 +250,14 @@ fun NoticesSettingsScreen(
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.InnerCard,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            shape = AppShapes.Card,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             Text(
                                 text = cacheError.ifEmpty { "暂无新的教务公告" },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.outline,
-                                modifier = Modifier.padding(16.dp)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(20.dp)
                             )
                         }
                     }
@@ -260,32 +267,32 @@ fun NoticesSettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .pressClickable(pressedScale = 0.985f) { selectedNotice = notice },
-                            shape = AppShapes.InnerCard,
+                            shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = notice.title,
-                                        style = MaterialTheme.typography.titleSmall,
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 2
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     // 教务源页面不含发布日期（date 为空时隐藏，不伪造）
                                     if (notice.date.isNotBlank()) {
                                         Text(
                                             text = notice.date,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.outline
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
-                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+                                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -302,39 +309,34 @@ fun NoticesSettingsScreen(
                         shape = AppShapes.Card,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(20.dp)) {
                             Text(
                                 text = "深浅色主题",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                             val currentMode = when (prefs?.darkTheme) {
                                 true -> "深色"
                                 false -> "浅色"
                                 null -> "系统"
                             }
                             val modes = listOf("系统", "浅色", "深色")
-                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                modes.forEachIndexed { index, mode ->
-                                    SegmentedButton(
-                                        selected = currentMode == mode,
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                val saveVal = when (mode) {
-                                                    "深色" -> "dark"
-                                                    "浅色" -> "light"
-                                                    else -> "system"
-                                                }
-                                                prefsManager.setDarkTheme(saveVal)
-                                            }
-                                        },
-                                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size)
-                                    ) {
-                                        Text(mode, style = MaterialTheme.typography.labelSmall)
+                            SegmentedControl(
+                                options = modes.map { it to it },
+                                selected = currentMode,
+                                onSelect = { mode ->
+                                    coroutineScope.launch {
+                                        val saveVal = when (mode) {
+                                            "深色" -> "dark"
+                                            "浅色" -> "light"
+                                            else -> "system"
+                                        }
+                                        prefsManager.setDarkTheme(saveVal)
                                     }
-                                }
-                            }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
                 }
@@ -681,7 +683,7 @@ fun NoticesSettingsScreen(
         if (showClearCacheDialog) {
             AlertDialog(
                 onDismissRequest = { showClearCacheDialog = false },
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 title = { Text("确认清理缓存？") },
                 text = { Text("清理后需联网重新获取数据。") },
                 confirmButton = {
@@ -718,7 +720,7 @@ fun NoticesSettingsScreen(
         if (showLogoutDialog) {
             AlertDialog(
                 onDismissRequest = { showLogoutDialog = false },
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 title = { Text("退出登录") },
                 text = { Text("将清除会话并返回登录页。") },
                 confirmButton = {
@@ -762,41 +764,45 @@ private fun SettingsActionRow(
             .padding(horizontal = 6.dp, vertical = 2.dp)
             .clip(AppShapes.InnerCard)
             .pressClickable(pressedScale = 0.985f, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
+        Surface(
+            shape = AppShapes.Pill,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.size(40.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(18.dp)
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (tint == MaterialTheme.colorScheme.error) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = if (tint == MaterialTheme.colorScheme.error) tint else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.outline,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -807,10 +813,10 @@ private fun SettingsActionRow(
 private fun SettingsSectionLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.outline,
-        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 8.dp, top = 8.dp)
     )
 }
 

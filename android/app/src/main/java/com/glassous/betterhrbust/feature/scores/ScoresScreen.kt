@@ -43,7 +43,9 @@ import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.LoadingView
+import com.glassous.betterhrbust.core.ui.components.PageHeaderTitle
 import com.glassous.betterhrbust.core.ui.components.ResponsiveStatGrid
+import com.glassous.betterhrbust.core.ui.components.SegmentedControl
 import com.glassous.betterhrbust.core.ui.components.StatEntry
 import com.glassous.betterhrbust.core.ui.isTabletDevice
 import com.glassous.betterhrbust.core.ui.registerInputField
@@ -216,40 +218,43 @@ fun ScoresScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(
-                        top = LocalTopContentInset.current + 8.dp,
-                        bottom = LocalBottomContentInset.current + 16.dp
+                        top = LocalTopContentInset.current + 32.dp,
+                        bottom = LocalBottomContentInset.current + 24.dp
                     )
                 ) {
+                    item { PageHeaderTitle("成绩单", emphasized = true) }
+
                     // 学业概览：手机 2×2 / 平板 1×4 自适应
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.Card,
+                            shape = AppShapes.Hero,
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         ) {
-                            Column(modifier = Modifier.padding(18.dp)) {
+                            Column(modifier = Modifier.padding(22.dp)) {
                                 Text(
                                     text = "学业概览",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(18.dp))
                                 ResponsiveStatGrid(
                                     entries = listOf(
                                         StatEntry(
                                             label = "GPA",
                                             value = String.format("%.2f", animatedGpa),
-                                            valueColor = MaterialTheme.colorScheme.primary
+                                            valueColor = MaterialTheme.colorScheme.onSecondaryContainer
                                         ),
                                         StatEntry(
                                             label = "均分",
                                             value = String.format("%.1f", animatedAvg),
-                                            valueColor = MaterialTheme.colorScheme.secondary
+                                            valueColor = MaterialTheme.colorScheme.onSecondaryContainer
                                         ),
                                         StatEntry(
                                             label = "学分",
@@ -261,16 +266,16 @@ fun ScoresScreen(
                                             valueColor = if (animatedFailed > 0) {
                                                 MaterialTheme.colorScheme.error
                                             } else {
-                                                MaterialTheme.colorScheme.onSurface
+                                                MaterialTheme.colorScheme.onSecondaryContainer
                                             }
                                         )
                                     )
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
                                 Text(
                                     text = GpaCalculator.EARNED_CREDITS_NOTE,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -285,19 +290,19 @@ fun ScoresScreen(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer
                             )
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.padding(20.dp)) {
                                 Text(
                                     text = "特色学业算法",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = GpaCalculator.STATS_SCOPE_NOTE,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(18.dp))
                                 FeatureAlgorithmRow(
                                     title = "① 学位证算法",
                                     value = stats?.degree?.gpa?.let { String.format("%.2f", it) } ?: "--",
@@ -360,50 +365,42 @@ fun ScoresScreen(
                                     FilterChip(
                                         selected = selectedSemester == "全部",
                                         onClick = { selectedSemester = "全部" },
-                                        label = { Text("全部学期") }
+                                        label = { Text("全部学期") },
+                                        shape = AppShapes.Pill
                                     )
                                 }
                                 items(semesterOptions) { label ->
                                     FilterChip(
                                         selected = selectedSemester == label,
                                         onClick = { selectedSemester = label },
-                                        label = { Text(label) }
+                                        label = { Text(label) },
+                                        shape = AppShapes.Pill
                                     )
                                 }
                             }
                         }
                     }
 
-                    // Segmented Button Row: Property
+                    // Segmented Row: Property（MD3E 胶囊分段控件，替代已淘汰的 SegmentedButton）
                     item {
                         val propOptions = listOf("全部", "必修", "限选", "任选")
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            propOptions.forEachIndexed { index, prop ->
-                                SegmentedButton(
-                                    selected = selectedProperty == prop,
-                                    onClick = { selectedProperty = prop },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = propOptions.size)
-                                ) {
-                                    Text(prop, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
+                        SegmentedControl(
+                            options = propOptions.map { it to it },
+                            selected = selectedProperty,
+                            onSelect = { selectedProperty = it },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
-                    // Segmented Button Row: Pass Status
+                    // Segmented Row: Pass Status
                     item {
                         val statusOptions = listOf("全部", "仅及格", "未通过")
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            statusOptions.forEachIndexed { index, status ->
-                                SegmentedButton(
-                                    selected = selectedPassStatus == status,
-                                    onClick = { selectedPassStatus = status },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = statusOptions.size)
-                                ) {
-                                    Text(status, style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
+                        SegmentedControl(
+                            options = statusOptions.map { it to it },
+                            selected = selectedPassStatus,
+                            onSelect = { selectedPassStatus = it },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
 
                     // Results count
@@ -419,8 +416,8 @@ fun ScoresScreen(
                         ) { count ->
                             Text(
                                 text = "$count 门课程",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -455,7 +452,7 @@ fun ScoresScreen(
                                             }
                                         }
                                     },
-                                shape = AppShapes.InnerCard,
+                                shape = AppShapes.Card,
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (isSelected) {
                                         MaterialTheme.colorScheme.primaryContainer
@@ -467,7 +464,7 @@ fun ScoresScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
+                                        .padding(horizontal = 18.dp, vertical = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -486,14 +483,14 @@ fun ScoresScreen(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Surface(
-                                                        shape = RoundedCornerShape(6.dp),
+                                                        shape = AppShapes.Pill,
                                                         color = MaterialTheme.colorScheme.errorContainer
                                                     ) {
                                                         Text(
                                                             text = "未通过",
                                                             style = MaterialTheme.typography.labelSmall,
                                                             color = MaterialTheme.colorScheme.onErrorContainer,
-                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                         )
                                                     }
                                                 }
@@ -508,38 +505,39 @@ fun ScoresScreen(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Surface(
-                                                        shape = RoundedCornerShape(6.dp),
+                                                        shape = AppShapes.Pill,
                                                         color = MaterialTheme.colorScheme.secondaryContainer
                                                     ) {
                                                         Text(
                                                             text = "补考/重修已合并",
                                                             style = MaterialTheme.typography.labelSmall,
                                                             color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                                         )
                                                     }
                                                 }
                                             }
                                         }
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
                                         Text(
                                             text = "${GpaCalculator.semesterLabel(item.year, item.term)} • ${item.property} • ${item.credit} 学分",
-                                            style = MaterialTheme.typography.bodySmall,
+                                            style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     // 仅不及格课程标红：60–69 分正常显示，避免把刚及格的成绩误读为风险
                                     Surface(
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = AppShapes.Pill,
                                         color = if (!item.passed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
                                     ) {
                                         Text(
                                             text = item.score,
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.SemiBold,
                                             color = if (!item.passed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                         )
                                     }
                                 }

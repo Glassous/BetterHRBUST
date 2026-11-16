@@ -1,7 +1,9 @@
 package com.glassous.betterhrbust.core.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -15,10 +17,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 val LocalDarkTheme = staticCompositionLocalOf { false }
 
 /**
- * 应用主题：固定使用与 Web 端一致的 zinc 中性色板，不参与系统动态取色（Material You）。
+ * 应用主题：Material 3 Expressive。
  *
- * 之所以关闭动态取色：Web 端没有品牌色 / 壁纸取色概念，桌面端与网页端的观感必须一致，
- * 壁纸取色会让同一份界面在不同机型上变成不同颜色。
+ * - 配色：品牌 indigo 派生的 MD3E 色板（不参与壁纸动态取色，保证与 Web 端观感一致）；
+ * - 动效：`MotionScheme.expressive()`，组件动画统一走弹簧，位置/尺寸用 Spatial、颜色/透明度用 Effects；
+ * - 字体：MD3E 默认 15 档正文 + 15 档 Emphasized 字阶；
+ * - 形状：8 档圆角令牌（含 M3E 新增的 largeIncreased / extraLargeIncreased / extraExtraLarge）。
  */
 @Composable
 fun BetterHRBUSTTheme(
@@ -26,9 +30,11 @@ fun BetterHRBUSTTheme(
     content: @Composable () -> Unit
 ) {
     CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
-        MaterialTheme(
+        MaterialExpressiveTheme(
             colorScheme = betterHrbustColorScheme(darkTheme),
+            motionScheme = MotionScheme.expressive(),
             typography = Typography,
+            shapes = ThemeShapes,
             content = content
         )
     }

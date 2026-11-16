@@ -94,10 +94,10 @@ data class NavigationDockDestination(
  */
 object NavigationDockDefaults {
     /** 胶囊高度。 */
-    val BarHeight = 62.dp
+    val BarHeight = 64.dp
 
     /** 折叠后的胶囊高度：隐藏标签，仅保留图标。 */
-    val CollapsedBarHeight = 42.dp
+    val CollapsedBarHeight = 44.dp
 
     /** 垂直滑动完成折叠 / 展开所需的手指行程。 */
     val CollapseTravel = 44.dp
@@ -126,14 +126,14 @@ object NavigationDockDefaults {
     /** 图标与标签之间的间距。 */
     val LabelGap = 2.dp
 
-    /** 标签字号。 */
-    val LabelSize = 10.sp
+    /** 标签字号（MD3E 导航标签 labelMedium 12sp）。 */
+    val LabelSize = 12.sp
 
     /** 标签因超宽而缩小时的下限字号。 */
-    val MinLabelSize = 9.sp
+    val MinLabelSize = 10.sp
 
     /** 单个目的地的最大宽度。 */
-    val MaxItemExtent = 56.dp
+    val MaxItemExtent = 64.dp
 
     /** 竖排导航坞（平板左侧）展开时的胶囊宽度：图标 + 标签。 */
     val VerticalBarWidth = 96.dp
@@ -190,10 +190,10 @@ object NavigationDockDefaults {
     val TrackSpring = DockSpringSpec(stiffness = 12_000f, dampingRatio = 1f)
 
     /** 落位（柔和回弹）。 */
-    val SettleSpring = DockSpringSpec(stiffness = 420f, dampingRatio = 0.72f)
+    val SettleSpring = DockSpringSpec(stiffness = 380f, dampingRatio = 0.66f)
 
     /** 按压抬起 / 回弹。 */
-    val LiftSpring = DockSpringSpec(stiffness = 1_100f, dampingRatio = 0.82f)
+    val LiftSpring = DockSpringSpec(stiffness = 1_000f, dampingRatio = 0.70f)
 }
 
 /**
@@ -411,8 +411,8 @@ fun NavigationDock(
     }
     val colorScheme = MaterialTheme.colorScheme
 
-    val contentColor = colorScheme.onSurface
-    val tintColor = colorScheme.primary
+    val contentColor = colorScheme.onSurfaceVariant
+    val tintColor = colorScheme.onSecondaryContainer
     val lensColor = colorScheme.secondaryContainer
     val lensLiftColor = colorScheme.onSecondaryContainer
 
@@ -539,7 +539,7 @@ fun NavigationDock(
                     ambientColor = shadowColor.copy(alpha = 0.04f * shadowStrength),
                     spotColor = shadowColor.copy(alpha = 0.04f * shadowStrength),
                 )
-                .background(color = colorScheme.surfaceContainer, shape = shape)
+                .background(color = colorScheme.surfaceContainerHigh, shape = shape)
                 .onGloballyPositioned { coordinates ->
                     dockTopInWindow[0] = coordinates.positionInWindow().y
                 }

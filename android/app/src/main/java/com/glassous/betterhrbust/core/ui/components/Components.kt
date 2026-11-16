@@ -1,9 +1,12 @@
 package com.glassous.betterhrbust.core.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -14,6 +17,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,7 +37,8 @@ import com.glassous.betterhrbust.core.ui.theme.AppShapes
  * 顶部安全距离由列表的 contentPadding 统一提供。
  *
  * @param onBack 传入时在标题左侧显示返回按钮（二级页面用），点击回调用于关闭该页面
- * @param emphasized 顶层主页面（概览 / 考试 / 设置）使用：字号大幅加大
+ * @param emphasized 顶层主页面（概览 / 考试 / 设置）使用 `displaySmall` 大字级，
+ *   二级页面使用 `headlineMedium`，形成 MD3E 的编辑式层级
  */
 @Composable
 fun PageHeaderTitle(
@@ -45,35 +50,37 @@ fun PageHeaderTitle(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 6.dp),
+            .padding(top = 4.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onBack != null) {
-            IconButton(
+            FilledTonalIconButton(
                 onClick = onBack,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(44.dp),
+                shape = AppShapes.Pill
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "返回"
+                    contentDescription = "返回",
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(12.dp))
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = if (emphasized) 34.sp else MaterialTheme.typography.titleLarge.fontSize,
-                lineHeight = if (emphasized) 42.sp else MaterialTheme.typography.titleLarge.lineHeight,
-                letterSpacing = if (emphasized) (-0.4).sp else MaterialTheme.typography.titleLarge.letterSpacing
-            ),
-            fontWeight = FontWeight.Bold
+            style = if (emphasized) {
+                MaterialTheme.typography.displaySmall.copy(letterSpacing = (-0.6).sp)
+            } else {
+                MaterialTheme.typography.headlineMedium.copy(letterSpacing = (-0.2).sp)
+            },
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
 
 /** 固定顶栏内容区高度（不含状态栏安全区）。 */
-val PageTopBarHeight = 52.dp
+val PageTopBarHeight = 56.dp
 
 /**
  * 固定顶栏占用的上边距：给滚动列表的 `contentPadding.top` 用。
@@ -113,20 +120,25 @@ fun FixedPageTopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (onBack != null) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                FilledTonalIconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(44.dp),
+                    shape = AppShapes.Pill
+                ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
+                        contentDescription = "返回",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(2.dp))
+                Spacer(modifier = Modifier.width(10.dp))
             } else {
                 Spacer(modifier = Modifier.width(12.dp))
             }
             Text(
                 text = title,
-                // iOS inline nav 观感：顶栏标题比页面内容标题更克制
-                style = MaterialTheme.typography.titleMedium,
+                // MD3E small app bar：inline 标题克制但保持清晰层级
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -148,8 +160,9 @@ fun LoadingView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
+            // MD3E 多边形形变加载指示器
+            LoadingIndicator(modifier = Modifier.size(48.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
@@ -171,41 +184,50 @@ fun ErrorView(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            ),
-            shape = AppShapes.Card,
+        Surface(
+            shape = AppShapes.Hero,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.ErrorOutline,
-                    contentDescription = "错误",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = AppShapes.Pill,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Outlined.ErrorOutline,
+                            contentDescription = "错误",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(30.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "发生错误",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = onRetry,
+                    shape = AppShapes.Pill,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) {
                     Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null)
@@ -232,16 +254,25 @@ fun EmptyView(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Inbox,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(64.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                shape = AppShapes.Pill,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.size(88.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Inbox,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -308,7 +339,7 @@ private fun StatEntryCell(
         Text(
             text = entry.value,
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             color = if (entry.valueColor == Color.Unspecified) {
                 MaterialTheme.colorScheme.onSurface
             } else {
@@ -318,10 +349,75 @@ private fun StatEntryCell(
         )
         Text(
             text = entry.label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
+    }
+}
+
+/**
+ * MD3E 单选分段控件：胶囊轨道 + 内嵌胶囊滑块。
+ *
+ * 选中项以 `primary` 实心胶囊表达，未选中项在 `surfaceContainerHighest`
+ * 轨道上保持低对比；切换只改变颜色（Effects 动效），不改变布局。
+ */
+@Composable
+fun <T> SegmentedControl(
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = AppShapes.Pill,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            options.forEach { (value, label) ->
+                val isSelected = value == selected
+                val container by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Transparent
+                    },
+                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+                    label = "segmentedContainer"
+                )
+                val content by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+                    label = "segmentedContent"
+                )
+                Box(
+                    modifier = Modifier
+                        // 等分轨道宽度：避免选项在轨道内被挤到左侧、右侧留白
+                        .weight(1f)
+                        .clip(AppShapes.Pill)
+                        .background(container)
+                        .clickable { if (!isSelected) onSelect(value) }
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = content,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -342,7 +438,7 @@ fun AppPullToRefreshBox(
         modifier = modifier,
         state = state,
         indicator = {
-            PullToRefreshDefaults.Indicator(
+            PullToRefreshDefaults.LoadingIndicator(
                 state = state,
                 isRefreshing = isRefreshing,
                 modifier = Modifier

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
@@ -25,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.ui.AppTextFieldShape
 import com.glassous.betterhrbust.core.ui.LocalBottomContentInset
@@ -227,13 +225,13 @@ private fun FeedbackIntroCard() {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(44.dp)
+                    .clip(AppShapes.IconTile)
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
@@ -241,16 +239,15 @@ private fun FeedbackIntroCard() {
                     imageVector = Icons.Outlined.ChatBubbleOutline,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = "提交使用中遇到的问题、功能建议或数据偏差。反馈只保存你写下的文字，" +
                     "系统不会附带学号、成绩、课表或任何其他学生信息。",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 19.sp,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -266,13 +263,13 @@ private fun LoginGateCard(onGoLogin: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(44.dp)
+                    .clip(AppShapes.IconTile)
                     .background(WarningAmber.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -280,30 +277,29 @@ private fun LoginGateCard(onGoLogin: () -> Unit) {
                     imageVector = Icons.Default.Lock,
                     contentDescription = null,
                     tint = WarningAmber,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "请先登录教务在线",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "为了确认反馈来自校内使用者，提交前需要先登录教务在线。" +
                         "登录信息仅保存在你自己的设备中，不会随反馈上传到服务器。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 19.sp
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Button(
                     onClick = onGoLogin,
-                    shape = RoundedCornerShape(14.dp)
+                    shape = AppShapes.Pill
                 ) {
-                    Text("前往登录")
+                    Text("前往登录", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -324,45 +320,44 @@ private fun SubmittedCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SuccessGreen.copy(alpha = 0.14f)),
+                    .size(44.dp)
+                    .clip(AppShapes.IconTile)
+                    .background(SuccessGreen.copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = null,
                     tint = SuccessGreen,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "反馈已收到，感谢你的反馈",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "提交时间 $submittedAt。已保存的字段：反馈正文、提交时间与阅读状态" +
                         "$submittedSummary。服务器不保存任何可以定位到你本人的身份信息。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 19.sp
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onWriteAgain, shape = RoundedCornerShape(14.dp)) {
-                        Text("再写一条")
+                    Button(onClick = onWriteAgain, shape = AppShapes.Pill) {
+                        Text("再写一条", fontWeight = FontWeight.SemiBold)
                     }
-                    TextButton(onClick = onBack) {
-                        Text("返回")
+                    FilledTonalButton(onClick = onBack, shape = AppShapes.Pill) {
+                        Text("返回", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -395,13 +390,13 @@ private fun FeedbackFormCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "写下你的反馈",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
 
             // 反馈内容
@@ -449,34 +444,33 @@ private fun FeedbackFormCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = AppShapes.InnerCard,
                 color = if (realNameEnabled) {
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    MaterialTheme.colorScheme.surfaceContainerHigh
                 } else {
-                    Color.Transparent
+                    MaterialTheme.colorScheme.surfaceContainerLow
                 },
                 border = BorderStroke(
                     width = 1.dp,
                     color = if (realNameEnabled) {
-                        MaterialTheme.colorScheme.outline
+                        MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.outlineVariant
                     }
                 )
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "实名发布",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "默认关闭。开启后本条反馈会带上你的姓名，便于必要时与你核对问题；" +
                                     "每次进入本页都需要重新手动开启。",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 18.sp
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -521,16 +515,15 @@ private fun FeedbackFormCard(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (loadedRealName.isNotBlank()) {
                                 "姓名取自当前教务登录缓存，仅随本条反馈一并提交，不会写入任何账号档案。"
                             } else {
                                 "暂时无法从教务缓存读取姓名，可手动填写；留空将按匿名提交。"
                             },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline,
-                            lineHeight = 16.sp
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -556,25 +549,24 @@ private fun FeedbackFormCard(
             if (errorMessage.isNotBlank()) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = AppShapes.InnerCard,
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(14.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.ErrorOutline,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = errorMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            lineHeight = 18.sp
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
@@ -583,25 +575,24 @@ private fun FeedbackFormCard(
             // 提交
             Text(
                 text = "提交即表示你同意我们保存上述文本用于改进产品。",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Button(
                 onClick = onSubmit,
                 enabled = canSubmit,
-                shape = RoundedCornerShape(14.dp),
+                shape = AppShapes.Pill,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
                 if (submitting) {
-                    CircularProgressIndicator(
+                    CircularWavyProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("正在提交…")
+                    Text("正在提交…", fontWeight = FontWeight.SemiBold)
                 } else {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
@@ -609,7 +600,7 @@ private fun FeedbackFormCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("提交反馈", fontWeight = FontWeight.Bold)
+                    Text("提交反馈", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -624,25 +615,25 @@ private fun PrivacyCard() {
         shape = AppShapes.Card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = "关于隐私",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             PrivacyLine(
                 dotColor = SuccessGreen,
                 text = "服务器只保存：反馈正文、你选填的联系方式、实名时随反馈提交的姓名文本、提交时间与阅读状态。"
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             PrivacyLine(
                 dotColor = DangerRed,
                 text = "服务器不保存：学号、教务内部 ID、成绩、课表、Cookie 等任何教务数据，也不记录来源 IP 与设备信息。"
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             PrivacyLine(
-                dotColor = MaterialTheme.colorScheme.outline,
+                dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 text = "反馈不会与你的教务账号建立任何关联，管理端只能阅读文本内容。"
             )
         }
@@ -662,9 +653,8 @@ private fun PrivacyLine(dotColor: Color, text: String) {
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            lineHeight = 18.sp,
             modifier = Modifier.weight(1f)
         )
     }

@@ -52,6 +52,7 @@ import com.glassous.betterhrbust.core.ui.LocalTopContentInset
 import com.glassous.betterhrbust.core.ui.components.AppPullToRefreshBox
 import com.glassous.betterhrbust.core.ui.components.EmptyView
 import com.glassous.betterhrbust.core.ui.components.LoadingView
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.CourseCardColors
 import com.glassous.betterhrbust.core.ui.theme.CourseColorPalette
 import com.glassous.betterhrbust.core.ui.theme.LocalDarkTheme
@@ -479,22 +480,22 @@ private fun TimetableControlBar(
                     }
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(AppShapes.Pill)
                             .clickable(onClick = onPickWeek)
-                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "第 $selectedWeek 周",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.ExpandMore,
                             contentDescription = "选择教学周",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.outline
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = { onWeekStep(1) }) {
@@ -509,15 +510,23 @@ private fun TimetableControlBar(
                 val isDayView = viewMode == TimetableViewMode.DAY
                 // 周视图回归目标是「本周」，日视图回归目标是「今天」（含当前周与今天所在日）
                 val atNow = selectedWeek == currentWeek && (!isDayView || selectedDay == todayDay)
-                // 中性主题色：当前周 / 今天标识与「回到…」按钮同款，不再使用绿色强调
-                val chipColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                val chipContent = MaterialTheme.colorScheme.onSurfaceVariant
+                // 当前周 / 今天标识走 secondaryContainer，可点击的回归入口走中性轨道色
+                val chipColor = if (atNow) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                }
+                val chipContent = if (atNow) {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
                 if (atNow) {
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(AppShapes.Pill)
                             .background(chipColor)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -526,10 +535,10 @@ private fun TimetableControlBar(
                                 .clip(CircleShape)
                                 .background(chipContent)
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isDayView) "今天" else "当前周",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
                             color = chipContent
                         )
@@ -537,22 +546,22 @@ private fun TimetableControlBar(
                 } else {
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(AppShapes.Pill)
                             .background(chipColor)
                             .clickable(onClick = onBackToNow)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = if (isDayView) Icons.Default.Today else Icons.Default.Refresh,
                             contentDescription = null,
-                            modifier = Modifier.size(13.dp),
+                            modifier = Modifier.size(14.dp),
                             tint = chipContent
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isDayView) "回到今天" else "回到本周",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
                             color = chipContent
                         )
@@ -572,25 +581,25 @@ private fun TimetableControlBar(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(AppShapes.Pill)
                                 .background(
                                     when {
                                         isSelected -> MaterialTheme.colorScheme.primary
-                                        isToday -> MaterialTheme.colorScheme.primaryContainer
+                                        isToday -> MaterialTheme.colorScheme.secondaryContainer
                                         else -> Color.Transparent
                                     }
                                 )
                                 .clickable { onSelectDay(day) }
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 text = DayShortNames[day - 1],
-                                fontSize = 13.sp,
-                                fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (isSelected || isToday) FontWeight.SemiBold else FontWeight.Normal,
                                 color = when {
                                     isSelected -> MaterialTheme.colorScheme.onPrimary
-                                    isToday -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    isToday -> MaterialTheme.colorScheme.onSecondaryContainer
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 }
                             )
@@ -623,7 +632,7 @@ private fun TimetableControlBar(
     }
 }
 
-/** 轻量分段切换：扁平、小尺寸，无按钮边框，仅以滑块底色区分选中项。 */
+/** 轻量分段切换：MD3E 胶囊轨道 + 实心主色滑块。 */
 @Composable
 private fun <T> SegmentedToggle(
     options: List<Pair<T, String>>,
@@ -633,28 +642,28 @@ private fun <T> SegmentedToggle(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(AppShapes.Pill)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .padding(2.dp)
+            .padding(3.dp)
     ) {
         options.forEach { (value, label) ->
             val isSelected = value == selected
             Text(
                 text = label,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (isSelected) {
-                    MaterialTheme.colorScheme.onSurface
+                    MaterialTheme.colorScheme.onPrimary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(AppShapes.Pill)
                     .clickable { onSelect(value) }
                     .background(
-                        if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent
+                        if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
                     )
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
             )
         }
     }
@@ -667,26 +676,26 @@ private fun OnlyCurrentWeekToggle(
     onToggle: () -> Unit
 ) {
     val container = if (onlyCurrentWeek) {
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.secondaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val content = if (onlyCurrentWeek) {
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.colorScheme.onSecondaryContainer
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(AppShapes.Pill)
             .background(container)
             .clickable(onClick = onToggle)
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "仅看本周",
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = if (onlyCurrentWeek) FontWeight.SemiBold else FontWeight.Normal,
             color = content
         )

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 窗口底色（深色）：与 Web 端 `dark:bg-[#14161a]` 一致 -->
-    <color name="app_window_background">#14161A</color>
+    <!-- 深色窗口底色：与 MD3E 深色页面底色一致，避免首帧白闪 -->
+    <color name="app_window_background">#12121C</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
 </resources>

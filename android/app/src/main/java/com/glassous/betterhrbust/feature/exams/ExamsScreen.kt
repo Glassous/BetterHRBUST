@@ -127,27 +127,28 @@ fun ExamsScreen(
                         item {
                             Text(
                                 text = "近期考试倒计时",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             val carouselState = rememberCarouselState { upcomingExams.size }
                             HorizontalMultiBrowseCarousel(
                                 state = carouselState,
                                 preferredItemWidth = 280.dp,
                                 itemSpacing = 12.dp,
-                                modifier = Modifier.fillMaxWidth().height(160.dp)
+                                modifier = Modifier.fillMaxWidth().height(168.dp)
                             ) { index ->
                                 val exam = upcomingExams[index]
                                 Card(
                                     modifier = Modifier.fillMaxSize(),
-                                    shape = AppShapes.Card,
+                                    shape = AppShapes.Hero,
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 ) {
                                     Column(
-                                        modifier = Modifier.padding(16.dp).fillMaxSize(),
+                                        modifier = Modifier.padding(20.dp).fillMaxSize(),
                                         verticalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Row(
@@ -157,45 +158,46 @@ fun ExamsScreen(
                                         ) {
                                             Text(
                                                 text = exam.courseName,
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                style = MaterialTheme.typography.titleLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                                 // 允许折行完整显示科目名，超长时省略号收尾，避免硬截断
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f)
                                             )
+                                            Spacer(modifier = Modifier.width(8.dp))
                                             Surface(
-                                                shape = RoundedCornerShape(8.dp),
+                                                shape = AppShapes.Pill,
                                                 color = MaterialTheme.colorScheme.primary
                                             ) {
                                                 Text(
                                                     text = "还有 ${exam.countdownDays} 天",
-                                                    style = MaterialTheme.typography.labelMedium,
+                                                    style = MaterialTheme.typography.labelLarge,
                                                     color = MaterialTheme.colorScheme.onPrimary,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                                                 )
                                             }
                                         }
 
                                         Column {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
                                                     text = exam.time,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                                                 )
                                             }
-                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Spacer(modifier = Modifier.height(6.dp))
                                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
                                                     text = exam.location,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
                                                 )
                                             }
                                         }
@@ -209,8 +211,8 @@ fun ExamsScreen(
                     item {
                         Text(
                             text = "全部考试 (${examList.size} 门)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
 
@@ -219,12 +221,12 @@ fun ExamsScreen(
                         val isFinished = (exam.countdownDays ?: 0) < 0
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = AppShapes.InnerCard,
+                            shape = AppShapes.Card,
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isFinished) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainer
+                                containerColor = if (isFinished) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainer
                             )
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.padding(20.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -232,14 +234,15 @@ fun ExamsScreen(
                                 ) {
                                     Text(
                                         text = exam.courseName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier.weight(1f)
                                     )
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Surface(
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = AppShapes.Pill,
                                         color = when {
-                                            isFinished -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                            isFinished -> MaterialTheme.colorScheme.surfaceContainerHighest
                                             (exam.countdownDays ?: 0) <= 3 -> MaterialTheme.colorScheme.errorContainer
                                             else -> MaterialTheme.colorScheme.secondaryContainer
                                         }
@@ -250,45 +253,45 @@ fun ExamsScreen(
                                                 exam.countdownDays != null -> "还有 ${exam.countdownDays} 天"
                                                 else -> exam.property
                                             },
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             color = when {
-                                                isFinished -> MaterialTheme.colorScheme.outline
-                                                (exam.countdownDays ?: 0) <= 3 -> MaterialTheme.colorScheme.error
+                                                isFinished -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                (exam.countdownDays ?: 0) <= 3 -> MaterialTheme.colorScheme.onErrorContainer
                                                 else -> MaterialTheme.colorScheme.onSecondaryContainer
                                             },
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                                         )
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = exam.time, style = MaterialTheme.typography.bodySmall)
+                                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = exam.time, style = MaterialTheme.typography.bodyMedium)
                                 }
 
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = exam.location, style = MaterialTheme.typography.bodySmall)
+                                    Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(text = exam.location, style = MaterialTheme.typography.bodyMedium)
                                 }
 
                                 if (exam.property.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = "${exam.property} · ${exam.courseId}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.outline
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }

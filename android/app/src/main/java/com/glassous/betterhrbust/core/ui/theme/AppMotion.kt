@@ -15,18 +15,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 /**
  * 全应用统一动效令牌：时长、弹簧与错峰延迟。
  *
- * 交互反馈（按压 / 选中 / 回弹）用弹簧，页面与内容入场用短时长缓动，
- * 避免同类动效在各页面快慢不一。
+ * 交互反馈（按压 / 选中 / 回弹）用 MD3E 风格的弹簧（轻微过冲后稳定），
+ * 页面与内容入场用短时长缓动，避免同类动效在各页面快慢不一。
  */
 object AppMotion {
     /** 整块内容 / 面板滑入时长（毫秒）。 */
-    const val ScreenMillis = 320
+    const val ScreenMillis = 360
 
     /** 内容淡入淡出 / 颜色切换时长（毫秒）。 */
     const val SmoothMillis = 280
 
-    /** 按压、选中、回弹：轻微过冲后稳定。 */
-    val springSnappy = spring<Float>(dampingRatio = 0.78f, stiffness = 420f)
+    /** 按压、选中、回弹：带明显过冲的 Expressive 弹簧。 */
+    val springSnappy = spring<Float>(dampingRatio = 0.62f, stiffness = 520f)
+
+    /** 大面积容器的展开 / 收起：比 [springSnappy] 更柔和。 */
+    val springGentle = spring<Float>(dampingRatio = 0.78f, stiffness = 320f)
 
     /** 错峰入场延迟（毫秒），最多 200ms。 */
     fun stagger(index: Int): Int = (index * 40).coerceAtMost(200)
