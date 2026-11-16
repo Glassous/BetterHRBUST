@@ -38,6 +38,13 @@
       <path d="M6 12v5c3 3 9 3 12 0v-5" />
     </g>
 
+    <g v-else-if="name === 'process'">
+      <path d="M3 7h5M14 7h7" />
+      <circle cx="11" cy="7" r="2.2" />
+      <path d="M3 16h9M18 16h3" />
+      <circle cx="15" cy="16" r="2.2" />
+    </g>
+
     <g v-else-if="name === 'classroom'">
       <path d="M3 21h18M5 21V7.5L13 3v18M19 21V11.5l-6-3" />
       <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01" />

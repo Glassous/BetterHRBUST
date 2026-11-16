@@ -118,6 +118,7 @@
               :key="tool.label"
               type="button"
               class="p-3 rounded-[var(--radius-panel)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/55 hover:bg-[var(--bg-subtle)] hover:border-[var(--border-strong)] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-150 ease-out text-left cursor-pointer flex items-center gap-2.5 min-h-[54px] group"
+              :class="tool.wide ? 'col-span-2' : ''"
               @click="$emit('navigate', tool.target)"
             >
               <div class="w-9 h-9 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] flex items-center justify-center text-[var(--accent)] shrink-0 transition-transform duration-150 group-hover:scale-105">
@@ -427,6 +428,7 @@ const quickTools = [
   { label: '自习空教室', desc: '校区与楼宇索引', icon: 'classroom', target: 'classroom' },
   { label: '成绩与GPA', desc: '历年成绩分析', icon: 'score', target: 'score' },
   { label: '导出课表', desc: '生成 ICS 日历', icon: 'download', target: 'timetable' },
-  { label: '培养方案', desc: '毕业学分核对', icon: 'program', target: 'program' }
+  { label: '培养方案', desc: '毕业学分核对', icon: 'program', target: 'program' },
+  { label: '教学进程', desc: '军训、实习、考试与放假安排', icon: 'process', target: 'process', wide: true }
 ];
 </script>
