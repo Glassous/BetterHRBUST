@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = "http://jwzx.hrbust.edu.cn/homepage/downloads/"
 SOURCE = BASE + "jincheng.htm"
 TARGET = ROOT / "shared" / "teaching-process.json"
+# Android 页面离线读取 assets 内的同一份快照（与 resources.json 的做法一致）
+ANDROID_TARGET = ROOT / "android" / "app" / "src" / "main" / "assets" / "teaching-process.json"
 OPENER = build_opener(ProxyHandler({}))
 USER_AGENT = "BetterHRBUST-TeachingProcess/1.0"
 TITLE_MARK = "本科教学进程表"
@@ -413,16 +415,18 @@ def crawl(limit):
 
 
 def write_if_changed(data):
-    target = TARGET
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        previous = json.loads(target.read_text(encoding="utf-8"))
-        if {**previous, "updatedAt": ""} == {**data, "updatedAt": ""}:
-            print(f"内容无变化，保留既有快照：{target.relative_to(ROOT)}", flush=True)
-            return False
     content = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-    target.write_text(content, encoding="utf-8")
-    return True
+    changed = False
+    for target in (TARGET, ANDROID_TARGET):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            previous = json.loads(target.read_text(encoding="utf-8"))
+            if {**previous, "updatedAt": ""} == {**data, "updatedAt": ""}:
+                print(f"内容无变化，保留既有快照：{target.relative_to(ROOT)}", flush=True)
+                continue
+        target.write_text(content, encoding="utf-8")
+        changed = True
+    return changed
 
 
 def main():

@@ -48,6 +48,10 @@ data object ResourcesRoute
 @Serializable
 data object FeedbackRoute
 
+/** 本科教学进程（二级页面，数据来自随包内置的教务处公开快照） */
+@Serializable
+data object TeachingProcessRoute
+
 enum class TopLevelDestination(
     val route: Any,
     val selectedIcon: ImageVector,

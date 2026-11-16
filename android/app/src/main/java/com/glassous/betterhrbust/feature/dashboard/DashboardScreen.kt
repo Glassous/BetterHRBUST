@@ -156,7 +156,7 @@ fun DashboardScreen(
         QuickNavGridItem("空教室", Icons.Default.MeetingRoom, com.glassous.betterhrbust.navigation.ClassroomsRoute),
         QuickNavGridItem("我的课程名录", Icons.Default.Search, com.glassous.betterhrbust.navigation.CoursesRoute),
         QuickNavGridItem("学籍档案", Icons.Default.Badge, com.glassous.betterhrbust.navigation.ProfileRoute),
-        QuickNavGridItem("通知与设置", Icons.Default.Settings, com.glassous.betterhrbust.navigation.SettingsRoute)
+        QuickNavGridItem("教学进程", Icons.Default.EventNote, com.glassous.betterhrbust.navigation.TeachingProcessRoute)
     )
 
     Box(modifier = modifier.fillMaxSize()) {

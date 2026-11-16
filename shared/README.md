@@ -10,7 +10,7 @@
 
 `teaching-process.json` 把教务处「本科教学进程表」（`homepage/downloads/jincheng.htm`）整理成结构化数据：每个学期一张「班级 × 教学周」的符号网格，按校区拆开。网页构建时内联，离线可用，不登录、不访问教务。
 
-从仓库根目录运行 `python3 tools/crawl-jincheng.py` 更新，默认只保留最近 8 个学期；需要全量（33 个学期，约 450KB）时加 `--all`。脚本用 Python 标准库解析 WPS 导出的表格，结构不符合预期时直接失败且不会覆盖旧文件。
+从仓库根目录运行 `python3 tools/crawl-jincheng.py` 更新，默认只保留最近 8 个学期；需要全量（33 个学期，约 450KB）时加 `--all`。脚本用 Python 标准库解析 WPS 导出的表格，结构不符合预期时直接失败且不会覆盖旧文件。生成文件同步写入 `shared/teaching-process.json` 与 `android/app/src/main/assets/teaching-process.json`，Android 端离线读取同一份快照。
 
 字段约定：
 

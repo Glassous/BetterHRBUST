@@ -14,6 +14,7 @@ import com.glassous.betterhrbust.core.network.AcademicHttpClient
 import com.glassous.betterhrbust.data.repository.AcademicRepository
 import com.glassous.betterhrbust.data.repository.AuthRepository
 import com.glassous.betterhrbust.data.repository.FeedbackRepository
+import com.glassous.betterhrbust.data.repository.TeachingProcessRepository
 import com.glassous.betterhrbust.data.repository.UpdateRepository
 import com.glassous.betterhrbust.data.sync.AcademicSyncManager
 
@@ -43,6 +44,9 @@ class BetterHrbustApp : Application() {
         private set
 
     lateinit var feedbackRepository: FeedbackRepository
+        private set
+
+    lateinit var teachingProcessRepository: TeachingProcessRepository
         private set
 
     override fun onCreate() {
@@ -81,6 +85,7 @@ class BetterHrbustApp : Application() {
             prefs = preferencesManager
         )
         feedbackRepository = FeedbackRepository()
+        teachingProcessRepository = TeachingProcessRepository(this)
         // 上课提示：全设备启动调度，通知通道按需创建，形态由系统能力决定（超级岛 / 实况通知 / 普通通知）
         com.glassous.betterhrbust.core.notify.ClassReminderTicker.start(this)
     }

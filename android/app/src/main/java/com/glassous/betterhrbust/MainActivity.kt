@@ -74,6 +74,7 @@ import com.glassous.betterhrbust.feature.profile.ProfileScreen
 import com.glassous.betterhrbust.feature.program.ProgramScreen
 import com.glassous.betterhrbust.feature.scores.ScoresScreen
 import com.glassous.betterhrbust.feature.settings.NoticesSettingsScreen
+import com.glassous.betterhrbust.feature.teachingprocess.TeachingProcessScreen
 import com.glassous.betterhrbust.feature.timetable.TimetableScreen
 import com.glassous.betterhrbust.navigation.*
 import com.glassous.betterhrbust.widget.TimetableWidgetUpdater
@@ -406,6 +407,12 @@ fun MainAppScaffold(
                     // 二级页面：作为 NavHost 目的地承载，
                     // 返回手势由 Navigation 组件接入系统原生预测性返回动画；
                     // 统一套 SecondaryPageSurface，返回时整页不透明滑出并带圆角
+                    // 本科教学进程（入口：首页「功能导航」宫格）
+                    composable<TeachingProcessRoute> {
+                        SecondaryPageSurface {
+                            TeachingProcessScreen(onBack = { navController.popBackStack() })
+                        }
+                    }
                     composable<ProgramRoute> {
                         SecondaryPageSurface {
                             ProgramScreen(onBack = { navController.popBackStack() })
@@ -532,7 +539,10 @@ fun MainPagerScreen(
     val coroutineScope = rememberCoroutineScope()
     val preferencesManager = remember { BetterHrbustApp.instance.preferencesManager }
     val initialPage = (pendingTab ?: 0).coerceIn(0, TopLevelDestination.entries.lastIndex)
-    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { 5 })
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { TopLevelDestination.entries.size }
+    )
     var tabIndex by rememberSaveable { mutableStateOf(initialPage) }
     var timetableOpenRequest by remember { mutableStateOf(0) }
     val currentTab = tabIndex

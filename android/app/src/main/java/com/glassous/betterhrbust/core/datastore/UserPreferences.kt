@@ -25,6 +25,10 @@ data class AppPreferences(
     val timetableSectionMode: String = "COMBINE",
     /** 课表是否只显示所选周次实际开设的课程（隐藏「非本周」课程） */
     val timetableOnlyCurrentWeek: Boolean = false,
+    /** 教学进程页「我的班级」（教学进程表里的班级名，空串表示未指定） */
+    val teachingProcessClass: String = "",
+    /** 「我的班级」所在校区（用于确认来源，空串表示未记录） */
+    val teachingProcessCampus: String = "",
     val darkTheme: Boolean? = null,
     val offlineMode: Boolean = false,
     /** 上次成功登录时间（毫秒时间戳），用于会话失效提示的"一周节流"判定 */
@@ -82,6 +86,8 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
         private val KEY_TIMETABLE_VIEW_MODE = stringPreferencesKey("timetable_view_mode")
         private val KEY_TIMETABLE_SECTION_MODE = stringPreferencesKey("timetable_section_mode")
         private val KEY_TIMETABLE_ONLY_CURRENT_WEEK = booleanPreferencesKey("timetable_only_current_week")
+        private val KEY_TEACHING_PROCESS_CLASS = stringPreferencesKey("teaching_process_class")
+        private val KEY_TEACHING_PROCESS_CAMPUS = stringPreferencesKey("teaching_process_campus")
         private val KEY_DARK_THEME = stringPreferencesKey("dark_theme") // "system", "dark", "light"
         private val KEY_OFFLINE_MODE = booleanPreferencesKey("offline_mode")
         private val KEY_LAST_LOGIN_AT = longPreferencesKey("last_login_at")
@@ -139,6 +145,8 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
             timetableViewMode = prefs[KEY_TIMETABLE_VIEW_MODE] ?: "WEEK",
             timetableSectionMode = prefs[KEY_TIMETABLE_SECTION_MODE] ?: "COMBINE",
             timetableOnlyCurrentWeek = prefs[KEY_TIMETABLE_ONLY_CURRENT_WEEK] ?: false,
+            teachingProcessClass = prefs[KEY_TEACHING_PROCESS_CLASS] ?: "",
+            teachingProcessCampus = prefs[KEY_TEACHING_PROCESS_CAMPUS] ?: "",
             darkTheme = darkThemeBool,
             offlineMode = prefs[KEY_OFFLINE_MODE] ?: false,
             lastLoginAt = prefs[KEY_LAST_LOGIN_AT] ?: 0L,
@@ -306,6 +314,19 @@ class UserPreferencesManager(context: Context, private val store: DataStore<Pref
     suspend fun setTimetableOnlyCurrentWeek(enabled: Boolean) {
         store.edit { prefs ->
             prefs[KEY_TIMETABLE_ONLY_CURRENT_WEEK] = enabled
+        }
+    }
+
+    /** 记忆教学进程页选定的班级（班级名 + 校区），跨学期按名字重新定位 */
+    suspend fun setTeachingProcessClass(name: String, campus: String) {
+        store.edit { prefs ->
+            if (name.isBlank()) {
+                prefs.remove(KEY_TEACHING_PROCESS_CLASS)
+                prefs.remove(KEY_TEACHING_PROCESS_CAMPUS)
+            } else {
+                prefs[KEY_TEACHING_PROCESS_CLASS] = name
+                prefs[KEY_TEACHING_PROCESS_CAMPUS] = campus
+            }
         }
     }
 
