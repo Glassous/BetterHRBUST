@@ -159,6 +159,32 @@
           </div>
         </div>
 
+        <!-- 教务阶段：所选周次在本科教学进程表里的安排 -->
+        <button
+          v-if="stageHint"
+          type="button"
+          class="mt-2.5 flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 rounded-[var(--radius-panel)] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-2 text-left text-[12px] transition-colors hover:brightness-[0.98]"
+          @click="$emit('navigate', 'process')"
+        >
+          <span class="flex flex-wrap items-center gap-2 text-[var(--ink-secondary)]">
+            <Icon name="process" customClass="w-3.5 h-3.5 text-[var(--accent)]" />
+            <span>第 {{ selectedWeek }} 周教学阶段</span>
+            <span class="inline-flex items-center gap-1.5 font-medium text-[var(--ink-primary)]">
+              <span
+                v-for="part in stageHint.parts"
+                :key="part.key"
+                :class="['h-2 w-2 rounded-full', stageDotClass(part.group)]"
+                :style="stageDotStyle(part.group, part.key)"
+              ></span>
+              {{ stageHint.text }}
+            </span>
+          </span>
+          <span class="inline-flex items-center gap-1 font-medium text-[var(--accent)]">
+            查看教学进程
+            <Icon name="chevron-right" customClass="w-3.5 h-3.5" />
+          </span>
+        </button>
+
         <div class="mt-2.5 pt-2.5 border-t border-[var(--border-hairline)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-muted)]">
           <span>上次同步：<span class="num-tabular">{{ lastSyncText }}</span></span>
           <span>点击任意课程块查看任课教师与周次详情</span>
@@ -350,20 +376,43 @@ import TimetableCourseCard from '@/components/timetable/TimetableCourseCard.vue'
 import Icon from '@/components/icons/Icon.vue';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
+import { useTeachingProcess } from '@/composables/useTeachingProcess.js';
 import { useToast } from '@/composables/useToast.js';
 import { BASE_SLOT_TIMES, COMBINE_SLOT_TIMES } from '@/utils/periodTimes.js';
 
 import { timetableDayDate } from '@/utils/timetableDates.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
 import { buildIcsCalendar, downloadIcs } from '@/utils/ics.js';
+import { stageDotClass, stageDotStyle } from '@/utils/teachingProcessSymbols.js';
+
+defineEmits(['navigate']);
 
 const { isLoggedIn, isSessionExpired, currentWeek, semesterTeachingWeeks, calendarWeekCountKnown, isSchoolHoliday, openLoginModal } = useSession();
 const { timetableCombine, timetableBase, syncing, lastSyncText } = useAcademicData();
+const { stagesOfWeek, isCurrentSemester: processIsCurrentSemester, myClassEntry: processMyClass } = useTeachingProcess();
 const { showToast } = useToast();
 
 const showLoginPrompt = computed(() => !isLoggedIn.value && !isSessionExpired.value);
 
 const selectedWeek = ref(currentWeek.value);
+
+/**
+ * 所选周次的教务阶段；进程表与当前学期不一致时不展示，避免误导。
+ * 指定了「我的班级」就显示本班安排，否则退回本周班级分布里最主要的安排。
+ */
+const stageHint = computed(() => {
+  if (!processIsCurrentSemester.value) return null;
+  const parts = stagesOfWeek(selectedWeek.value);
+  if (!parts.length) return null;
+  const meaningful = parts.filter(part => part.group !== 'idle');
+  if (!meaningful.length) return { text: '按课表正常上课', parts: [] };
+  if (processMyClass.value) {
+    return { text: meaningful.map(part => part.short || part.label).join(' / '), parts: meaningful };
+  }
+  const top = meaningful[0];
+  return { text: `${top.short || top.label} ${top.count} 个班`, parts: [top] };
+});
+
 const onlyCurrentWeek = ref(false);
 const viewMode = ref('combine'); // 'combine' | 'base'
 const currentDayIndex = ref(new Date().getDay() || 7);

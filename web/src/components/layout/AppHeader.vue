@@ -118,6 +118,7 @@ const TAB_TITLES = {
   evaluation: '教学评价助手',
   exam: '考试日程与倒计时',
   program: '培养方案与学分',
+  process: '教学进程与阶段',
   classroom: '空教室与自习',
   course: '我的课程名录',
   resources: '资料查找',
