@@ -51,13 +51,13 @@
         :key="group.title"
         :class="[
           'transition-[margin-top] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
-          isCollapsedState ? 'mt-0' : 'mt-5 first:mt-0'
+          isCollapsedState ? 'mt-0' : 'mt-2.5 first:mt-0'
         ]"
       >
         <div
           :class="[
             'flex items-center px-3 overflow-hidden select-none transition-[height,margin-bottom,opacity] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
-            isCollapsedState ? 'h-0 mb-0 opacity-0' : 'h-7 mb-1 opacity-100'
+            isCollapsedState ? 'h-0 mb-0 opacity-0' : 'h-6 mb-0.5 opacity-100'
           ]"
         >
           <span
@@ -66,12 +66,7 @@
             {{ group.title }}
           </span>
         </div>
-        <div
-          :class="[
-            'flex flex-col transition-[gap] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
-            isCollapsedState ? 'gap-0' : 'gap-0.5'
-          ]"
-        >
+        <div class="flex flex-col">
           <button
             v-for="item in group.items"
             :key="item.id"

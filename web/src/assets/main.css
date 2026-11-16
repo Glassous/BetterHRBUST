@@ -364,6 +364,32 @@ details[open] > div {
   animation: chartAreaReveal 450ms ease-out 150ms both;
 }
 
+/* ---------------- 深浅色切换：右上角 → 左下角圆形扩散 ----------------
+   默认的整页交叉淡入关闭，只保留新主题快照；具体半径由
+   useTheme.js 通过 Web Animations 写在 ::view-transition-new(root) 上。 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* View Transition 期间禁用元素级颜色过渡：
+   否则新主题快照会截到「过渡中间」的颜色，扩散出来仍是旧主题。 */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 /* ---------------- 课程动态配色 ----------------
    色相由 courseColors.js 通过 CSS 变量 --course-h（0~360 无单位数字）注入，
    每门课独占一个色相，颜色数量随课程数量增长，互不重复；
