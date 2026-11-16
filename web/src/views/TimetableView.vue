@@ -246,6 +246,7 @@
                     v-for="course in getVisibleCoursesForSlot(mobileSelectedDay, slot.period)"
                     :key="course.courseName + course.id"
                     :course="course"
+                    :credit="creditOf(course)"
                     :active="isCourseActiveThisWeek(course)"
                     :expanded="expandedLayout === 'mobile-day' && expandedCourseKey === courseKey(course)"
                     :view-mode="viewMode"
@@ -331,6 +332,7 @@
                   v-for="course in getVisibleCoursesForSlot(dayNum, slot.period)"
                   :key="course.courseName + course.id"
                   :course="course"
+                  :credit="creditOf(course)"
                   :active="isCourseActiveThisWeek(course)"
                   :expanded="expandedLayout === 'desktop-grid' && expandedCourseKey === courseKey(course)"
                   :view-mode="viewMode"
@@ -388,7 +390,7 @@ import { stageDotClass, stageDotStyle } from '@/utils/teachingProcessSymbols.js'
 defineEmits(['navigate']);
 
 const { isLoggedIn, isSessionExpired, currentWeek, semesterTeachingWeeks, calendarWeekCountKnown, isSchoolHoliday, openLoginModal } = useSession();
-const { timetableCombine, timetableBase, syncing, lastSyncText } = useAcademicData();
+const { timetableCombine, timetableBase, syncing, lastSyncText, currentCourses } = useAcademicData();
 const { stagesOfWeek, isCurrentSemester: processIsCurrentSemester, myClassEntry: processMyClass } = useTeachingProcess();
 const { showToast } = useToast();
 
@@ -426,6 +428,36 @@ const activeTimetable = computed(() =>
 );
 const courses = computed(() => activeTimetable.value.cells || []);
 const unarrangedCourses = computed(() => activeTimetable.value.unarranged || []);
+
+/**
+ * 课表单元格不含学分：用「课程名 + 课序号」关联本学期课程列表（currcourse.jsdo）。
+ * 课序号缺失时，仅在同名课程学分唯一时按课程名回退，避免串到其他教学班。
+ */
+const courseCreditIndex = computed(() => {
+  const byKey = new Map();
+  const byName = new Map();
+  for (const c of currentCourses.value || []) {
+    const name = String(c.courseName || '').trim();
+    const credit = Number(c.credit);
+    if (!name || !Number.isFinite(credit)) continue;
+    const key = `${name}#${String(c.courseSeq || '').trim()}`;
+    if (!byKey.has(key)) byKey.set(key, new Set());
+    byKey.get(key).add(credit);
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name).add(credit);
+  }
+  return { byKey, byName };
+});
+
+function creditOf(course) {
+  if (!course) return null;
+  const name = String(course.courseName || '').trim();
+  const seq = String(course.courseSeq || '').trim();
+  const keyCredits = courseCreditIndex.value.byKey.get(`${name}#${seq}`);
+  if (keyCredits && keyCredits.size === 1) return [...keyCredits][0];
+  const nameCredits = seq ? null : courseCreditIndex.value.byName.get(name);
+  return nameCredits && nameCredits.size === 1 ? [...nameCredits][0] : null;
+}
 
 /** 当前展开为详情大卡的课程（过渡与关闭动作由卡片自身完成） */
 const selectedCourse = ref(null);

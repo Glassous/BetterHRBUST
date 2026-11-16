@@ -93,6 +93,8 @@ data class TimetableCell(
     val teacher: String,
     val weeks: String,
     val hoursType: String,
+    /** 学分：课表页不提供，联网同步时用本学期课程列表（currcourse.jsdo）补齐；旧缓存为 null */
+    val credit: Double? = null,
     val rawLines: List<String> = emptyList()
 )
 

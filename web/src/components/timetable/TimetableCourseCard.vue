@@ -82,7 +82,9 @@ const props = defineProps({
   /** 是否处于展开（大卡）态，由父组件以「当前选中的课程」驱动 */
   expanded: { type: Boolean, default: false },
   /** 大节 / 小节模式，决定「节次安排」文案 */
-  viewMode: { type: String, default: 'combine' }
+  viewMode: { type: String, default: 'combine' },
+  /** 学分：课表页不提供，由父组件从本学期课程列表关联；null 表示未关联到 */
+  credit: { type: Number, default: null }
 });
 
 const emit = defineEmits(['open', 'close']);
@@ -159,7 +161,8 @@ const rows = computed(() => {
   const course = props.course;
   const list = [
     { label: '上课周次', value: course.weeks || '—' },
-    { label: '节次安排', value: sectionText.value || '—' }
+    { label: '节次安排', value: sectionText.value || '—' },
+    { label: '学分', value: Number.isFinite(props.credit) ? String(props.credit) : '—' }
   ];
   if (course.hoursType) list.push({ label: '学时类型', value: course.hoursType });
   if (course.courseSeq) list.push({ label: '课程序号', value: course.courseSeq });

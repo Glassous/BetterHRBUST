@@ -929,10 +929,18 @@ private fun CourseDetailCard(
                 },
                 content = colors.content
             )
+            CardDetailRow("学分", formatCredit(cell.credit), colors.content)
             if (cell.hoursType.isNotEmpty()) CardDetailRow("学时类型", cell.hoursType, colors.content)
         }
     }
     }
+}
+
+/** 学分展示：整数不带小数尾巴；尚未同步到学分时显示破折号。 */
+private fun formatCredit(credit: Double?): String {
+    if (credit == null) return "—"
+    val text = credit.toString()
+    return if (text.endsWith(".0")) text.dropLast(2) else text
 }
 
 /** 卡片内的信息行：标签 + 值，均使用课程色系保证在色块上可读。 */

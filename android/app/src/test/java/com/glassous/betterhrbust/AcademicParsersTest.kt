@@ -1,6 +1,7 @@
 package com.glassous.betterhrbust
 
 import com.glassous.betterhrbust.core.model.ClassroomOccupancy
+import com.glassous.betterhrbust.core.model.CurrentCourseItem
 import com.glassous.betterhrbust.core.model.ExamItem
 import com.glassous.betterhrbust.core.model.ScoreItem
 import com.glassous.betterhrbust.core.model.TimetableCell
@@ -116,6 +117,46 @@ class AcademicParsersTest {
             assertTrue("Section index must be between 1 and 6", cell.sectionIndex in 1..6)
             assertTrue("Course name must not be blank", cell.courseName.isNotBlank())
         }
+    }
+
+    /** 课表页没有学分：按「课程名 + 课序号」关联本学期课程列表补齐 */
+    @Test
+    fun timetableCreditsAreEnrichedFromCurrentCourses() {
+        fun cell(name: String, seq: String) = TimetableCell(
+            id = "1-1",
+            courseId = "1",
+            day = 1,
+            sectionIndex = 1,
+            sectionLabel = "第一大节",
+            courseName = name,
+            courseSeq = seq,
+            location = "",
+            teacher = "",
+            weeks = "1-16周",
+            hoursType = ""
+        )
+        fun course(name: String, seq: String, credit: Double) = CurrentCourseItem(
+            courseId = "C-$name",
+            courseSeq = seq,
+            courseName = name,
+            teacher = "",
+            credit = credit,
+            property = "必修",
+            examWay = "",
+            examType = "",
+            timeAndPlace = ""
+        )
+
+        val cells = listOf(cell("算法设计与分析", "2"), cell("军事技能训练", ""))
+        val courses = listOf(
+            course("算法设计与分析", "2", 3.5),
+            course("军事技能训练", "", 1.0)
+        )
+
+        val enriched = AcademicParsers.enrichTimetableCredits(cells, courses)
+
+        assertEquals(3.5, enriched[0].credit!!, 0.001)
+        assertEquals(1.0, enriched[1].credit!!, 0.001)
     }
 
     /**

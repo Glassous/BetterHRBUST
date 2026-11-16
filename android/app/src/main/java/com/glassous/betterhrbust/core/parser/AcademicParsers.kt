@@ -316,6 +316,39 @@ object AcademicParsers {
     }
 
     /**
+     * 用本学期课程列表补齐课表单元格的学分。
+     *
+     * 课表页（showTimetable.do）的单元格只有课程名与课序号，学分来自 currcourse.jsdo。
+     * 关联键与教务口径一致为「课程名 + 课序号」；课序号缺失时，仅在同名课程唯一时按课程名回退。
+     */
+    fun enrichTimetableCredits(
+        cells: List<TimetableCell>,
+        courses: List<CurrentCourseItem>
+    ): List<TimetableCell> {
+        if (cells.isEmpty() || courses.isEmpty()) return cells
+        val byKey = courses.groupBy { courseKey(it.courseName, it.courseSeq) }
+        val byName = courses.groupBy { it.courseName.trim() }
+        return cells.map { cell ->
+            if (cell.credit != null) return@map cell
+            val keyCredits = byKey[courseKey(cell.courseName, cell.courseSeq)]
+                ?.map { it.credit }
+                ?.distinct()
+            val credit = when {
+                keyCredits?.size == 1 -> keyCredits.single()
+                cell.courseSeq.isBlank() -> byName[cell.courseName.trim()]
+                    ?.map { it.credit }
+                    ?.distinct()
+                    ?.singleOrNull()
+                else -> null
+            }
+            if (credit != null) cell.copy(credit = credit) else cell
+        }
+    }
+
+    private fun courseKey(courseName: String, courseSeq: String): String =
+        "${courseName.trim()}#${courseSeq.trim()}"
+
+    /**
      * 从单元格各行拆出地点 / 教师 / 周次 / 学时类型。
      *
      * 教务单元格的常规格式是「课程名 / 地点 / 教师 / 周次 / 学时类型」五行，但行数并不固定：

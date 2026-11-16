@@ -37,6 +37,24 @@ class AcademicRepository(
         }
     }
 
+    /**
+     * 本学期课程列表（仅用于补齐课表学分）。
+     *
+     * 该请求失败不应拖垮课表本身，因此除协程取消外一律退化为空列表；
+     * 会话失效仍由 Http 客户端的回调统一上报。
+     */
+    private suspend fun fetchCurrentCourses(): List<CurrentCourseItem> {
+        return try {
+            val html = client.get("student/currcourse/currcourse.jsdo", preferredCharset = CharsetDecoderHelper.GBK)
+            if (AcademicParsers.isLoginPage(html)) emptyList()
+            else AcademicParsers.parseStudentContext(html).courses
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     fun getTimetable(
         studentId: String,
         year: String,
@@ -86,13 +104,18 @@ class AcademicRepository(
                 }
             }
 
+            // 课表页不提供学分，落缓存前用本学期课程列表补齐（请求失败时保持原样）
+            val courses = fetchCurrentCourses()
+            val enriched = if (courses.isEmpty()) parsed
+            else parsed.copy(cells = AcademicParsers.enrichTimetableCredits(parsed.cells, courses))
+
             // Cache to database
-            val encoded = json.encodeToString(parsed)
+            val encoded = json.encodeToString(enriched)
             requireCurrentSession(session)
             database.timetableDao().insert(TimetableEntity(studentId = studentId, json = encoded))
 
             requireCurrentSession(session)
-            emit(Resource.Success(parsed, isOfflineCache = false))
+            emit(Resource.Success(enriched, isOfflineCache = false))
         } catch (switched: AccountSwitchedException) {
             throw switched
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
