@@ -6,9 +6,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import com.glassous.betterhrbust.MainActivity
+import com.glassous.betterhrbust.R
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -28,6 +32,10 @@ object ClassIslandNotifier {
     private const val CHANNEL_DESC = "课前 20 分钟提醒课程与教室"
     const val NOTIFICATION_ID = 20261109
     private const val CONTENT_INTENT_REQUEST = 20261110
+    private const val LARGE_ICON_PX = 192
+
+    @Volatile
+    private var cachedAppLargeIcon: Bitmap? = null
 
     /** 通道幂等创建：重复调用无副作用；已存在时仅在名称 / 描述变化时同步一次。 */
     fun ensureChannel(context: Context) {
@@ -100,8 +108,10 @@ object ClassIslandNotifier {
         val timeoutAfter = (Duration.between(now, upcoming.start).toMillis() + 60_000L).coerceAtLeast(60_000L)
 
         val builder = Notification.Builder(context, CHANNEL_ID)
-            // 超级岛摄像头左侧槽位固定读取 smallIcon：传入透明底纯白单行「X分」动态图标
+            // 超级岛折叠态胶囊左侧槽位固定读取 smallIcon：传入透明底纯白单行「X分」动态图标
             .setSmallIcon(CountdownIconRenderer.create(minutes))
+            // 展开态卡片与通知面板左侧圆圈使用应用桌面图标（不复用 smallIcon 的倒计时文字）
+            .setLargeIcon(appLargeIcon(context))
             .setContentTitle(title)
             .setContentText(fullRoom)
             // 展开通知：完整教室单独一行，课程与教师另起一行；BigTextStyle 同时满足实况通知样式要求
@@ -156,6 +166,20 @@ object ClassIslandNotifier {
 
     fun cancel(context: Context) {
         runCatching { NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
+    }
+
+    /** 将自适应应用图标渲染为平铺 ARGB_8888 位图，供展开卡片左侧圆圈稳定展示。 */
+    private fun appLargeIcon(context: Context): Bitmap? {
+        cachedAppLargeIcon?.let { return it }
+        val drawable = ContextCompat.getDrawable(context, R.mipmap.ic_launcher_round)
+            ?: ContextCompat.getDrawable(context, R.mipmap.ic_launcher)
+            ?: return null
+        val bitmap = Bitmap.createBitmap(LARGE_ICON_PX, LARGE_ICON_PX, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, LARGE_ICON_PX, LARGE_ICON_PX)
+        drawable.draw(canvas)
+        cachedAppLargeIcon = bitmap
+        return bitmap
     }
 
     /** 点击通知回到课表页（复用小部件已有的 Tab 跳转约定）。 */
