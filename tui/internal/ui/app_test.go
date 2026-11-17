@@ -314,8 +314,8 @@ func TestAppConfirmsBeforeEnablingAI(t *testing.T) {
 	app := boot(t, 120, 44)
 	app.Update(keyPress(","))
 
-	// 设置页第 4 项是「AI 对话」。
-	for index := 0; index < 3; index++ {
+	// 设置页第 6 项是「AI 对话」（教务地址两行在它之前）。
+	for index := 0; index < 5; index++ {
 		app.Update(keyPress("down"))
 	}
 	_, cmd := app.Update(keyPress("enter"))

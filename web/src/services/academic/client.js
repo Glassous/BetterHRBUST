@@ -5,6 +5,75 @@
 
 const BASE_PREFIX = '/academic/';
 
+// 官方教务在线（默认地址）。教务系统仅开放 HTTP，没有 443 端口。
+const OFFICIAL_HOST = 'jwzx.hrbust.edu.cn';
+/** 官方地址（设置页展示与三端共用口径，避免多份字面量漂移） */
+export const OFFICIAL_BASE = 'http://jwzx.hrbust.edu.cn/academic/';
+
+/**
+ * 当前生效的自定义教务地址（'' 表示官方默认）。
+ *
+ * 只由 setAcademicBase() 写入：本模块刻意保持零 import，
+ * 既有测试直接用 vm 沙箱执行源码（见 scripts/test-http-transport.mjs）。
+ * 桌面端即使配置了自定义地址也继续请求相对 `/academic/`，由 Rust 反代决定上游：
+ * WebView 直连第三方域名会同时踩 CSP 白名单与 Cookie 归属两个坑。
+ */
+let ACADEMIC_BASE = '';
+
+/**
+ * 归一化自定义教务地址：统一为 `协议://主机[:端口]/academic/`。
+ *
+ * 容错规则：可直接粘贴主页链接（如 https://jwzx.example.edu.cn/homepage/index.do）
+ * 或裸域名；路径、查询串、锚点一律丢弃。空值返回 ''（官方默认）。
+ * 非法输入抛中文提示，供设置页原样展示。
+ */
+export function normalizeAcademicBase(raw) {
+  const text = String(raw == null ? '' : raw).trim();
+  if (!text) return '';
+  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text);
+  if (hasScheme && !/^https?:\/\//i.test(text)) {
+    throw new Error('教务地址只支持 http:// 或 https:// 开头');
+  }
+  let parsed;
+  try {
+    parsed = new URL(hasScheme ? text : `http://${text}`);
+  } catch {
+    throw new Error('教务地址格式不正确，请填写形如 https://jwzx.example.edu.cn 的地址');
+  }
+  if (parsed.username || parsed.password) throw new Error('教务地址不能包含用户名或密码');
+  if (!parsed.hostname) throw new Error('教务地址缺少主机名');
+  // 未显式声明协议时：官方域名沿用 HTTP（官方无 443），其他部署默认 HTTPS
+  const scheme = hasScheme
+    ? parsed.protocol.slice(0, -1).toLowerCase()
+    : (parsed.hostname.toLowerCase() === OFFICIAL_HOST ? 'http' : 'https');
+  return `${scheme}://${parsed.host}/academic/`;
+}
+
+/** 写入生效地址；非法输入回退官方默认，保证请求链路永远可用 */
+export function setAcademicBase(raw) {
+  try {
+    ACADEMIC_BASE = normalizeAcademicBase(raw);
+  } catch {
+    ACADEMIC_BASE = '';
+  }
+  // 换地址后重新给直连一次机会（上一个站点被拦不代表新站点也被拦）
+  DIRECT_BLOCKED = false;
+  return ACADEMIC_BASE;
+}
+
+/** 当前自定义地址；'' 表示官方默认 */
+export function getAcademicBase() {
+  return ACADEMIC_BASE;
+}
+
+/**
+ * 是否必须走同源 `/academic/` 代理：
+ * 官方默认（Vite/自托管反代、油猴同源页面）与桌面端（Rust 反代）都是。
+ */
+export function usesAcademicProxy() {
+  return !ACADEMIC_BASE || (typeof window !== 'undefined' && !!window.desktopWindow);
+}
+
 // HTTP 教务页面优先使用页面自身的同源 fetch，与验证码共享会话 Cookie。
 // 扩展后台请求可能被浏览器升级至 HTTPS，不能作为 HTTP 页面上的首选。
 // Web / 本地反代继续使用页面 fetch；其他油猴场景保留扩展通道。
@@ -97,6 +166,53 @@ function executeRequest(url, { method = 'GET', headers = {}, body = null, referr
       GM_xmlhttpRequest(details);
     });
   }
+  // 纯浏览器（含油猴未提供扩展通道的兜底）：直连自定义地址，被浏览器拦下时自动改走同源代理
+  return fetchDirectOrProxied(url, { method, headers, body, referrer });
+}
+
+/** 同源代理读取的自定义目标提示头（vite dev/preview 的 academic 中间件认识它） */
+const PROXY_BASE_HEADER = 'x-betterhrbust-academic-base';
+
+/**
+ * 浏览器直连是否已被跨域策略拦下。
+ *
+ * 只用来避免每个请求都白试一次：一旦被拦下，本页后续请求直接走同源代理。
+ * 切换地址（setAcademicBase）会重置。
+ */
+let DIRECT_BLOCKED = false;
+
+/** 直连是否已被浏览器拦下（false 表示仍走直连） */
+export function academicDirectBlocked() {
+  return DIRECT_BLOCKED;
+}
+
+function readResponse(response) {
+  return response.arrayBuffer().then((buffer) => ({
+    ok: response.ok,
+    status: response.status,
+    contentType: response.headers.get('content-type') || '',
+    buffer,
+    finalUrl: response.url
+  }));
+}
+
+/** 跨域被拦在浏览器里只表现为 TypeError/Failed to fetch，这里只区分"网络层失败" */
+function isNetworkFailure(err) {
+  if (err instanceof TypeError) return true;
+  const message = String((err && err.message) || err || '');
+  return /failed to fetch|network ?error|load failed|网络连接失败/i.test(message);
+}
+
+/**
+ * 直连 → 同源代理 的回退链。
+ *
+ * 教务站点很少返回 CORS 头，浏览器会直接拦下跨域响应；此时把绝对地址折回同源的
+ * `/academic/...` 并附上目标提示头，由本地代理（vite dev/preview 的 academic 中间件）
+ * 转发。Cookie 与 302 都落在本地，登录流程照常可用。
+ */
+function fetchDirectOrProxied(url, options) {
+  if (usesAcademicProxy() || DIRECT_BLOCKED) return fetchThroughProxy(url, options);
+  const { method, headers, body, referrer } = options;
   return PAGE_FETCH(url, {
     method,
     headers,
@@ -104,13 +220,69 @@ function executeRequest(url, { method = 'GET', headers = {}, body = null, referr
     credentials: 'include', cache: 'no-store', // 私有数据不能复用旧账号的 HTTP 缓存
     ...(referrer ? { referrer } : {}),
     redirect: 'follow'
-  }).then(async (response) => ({
-    ok: response.ok,
-    status: response.status,
-    contentType: response.headers.get('content-type') || '',
-    buffer: await response.arrayBuffer(),
-    finalUrl: response.url
-  }));
+  }).then(readResponse).catch((err) => {
+    if (!isNetworkFailure(err) || !canUseSameOriginProxy()) throw err;
+    DIRECT_BLOCKED = true;
+    return fetchThroughProxy(url, options);
+  });
+}
+
+/**
+ * 同源代理只存在于本应用自己的站点（浏览器里）。
+ * 油猴脚本运行在教务页面内，回退到同源 `/academic/` 会打到官方站点——宁可直接报错。
+ */
+function canUseSameOriginProxy() {
+  return typeof unsafeWindow === 'undefined';
+}
+
+/**
+ * 同源代理请求：自定义地址折回 `/academic/...` 并带上目标头；
+ * 官方默认 / 桌面端保持原绝对地址（与改造前一致）。
+ */
+function fetchThroughProxy(url, { method, headers, body, referrer }) {
+  const absolute = new URL(url, location.href);
+  const proxied = !usesAcademicProxy();
+  const target = proxied
+    ? BASE_PREFIX + absolute.pathname.replace(/^\/academic\//i, '') + absolute.search
+    : absolute.href;
+  const requestHeaders = proxied ? { ...headers, [PROXY_BASE_HEADER]: ACADEMIC_BASE } : headers;
+  return PAGE_FETCH(target, {
+    method,
+    headers: requestHeaders,
+    body,
+    credentials: 'include',
+    cache: 'no-store',
+    ...(referrer ? { referrer } : {}),
+    redirect: 'follow'
+  }).then(async (response) => {
+    const result = await readResponse(response);
+    // 静态部署没有 /academic 转发时，SPA 回退会把首页当成教务页面返回；
+    // 直接解析会变成莫名其妙的"页面结构不符"，这里给出准确原因。
+    if (proxied && looksLikeAppShell(result.contentType, result.buffer)) {
+      throw new Error(
+        '教务请求未到达目标站点：浏览器拦截了跨域直连，当前站点也没有 /academic 转发。' +
+        '本地可用 npm run dev / npm run preview 启动（内置转发），或让部署端转发 /academic。'
+      );
+    }
+    return result;
+  }).catch((err) => {
+    if (!proxied || /教务请求未到达目标站点/.test(String(err && err.message))) throw err;
+    throw new Error(
+      '网络连接失败：目标教务地址不可达，或浏览器与本地代理都未能取到响应',
+      { cause: err }
+    );
+  });
+}
+
+/** 响应是否是本应用自己的 SPA 首页（说明 /academic 没有转发而是走了 history 回退） */
+function looksLikeAppShell(contentType, buffer) {
+  if (!/text\/html/i.test(String(contentType || ''))) return false;
+  try {
+    const head = new TextDecoder('utf-8').decode(buffer.slice(0, 4096)).toLowerCase();
+    return head.includes('id="app"') && head.includes('better_hrbust');
+  } catch {
+    return false;
+  }
 }
 
 function visibleLoginText(html) {
@@ -191,18 +363,34 @@ async function decodeResponse(buffer, contentType, preferredEncoding) {
 }
 
 /**
- * 格式化相对路径为完整请求路径
+ * 剥离已知教务 origin（官方域名 + 当前自定义地址）。
+ *
+ * 关键防线：教务系统仅支持 HTTP。若直接请求或跟随绝对域名，浏览器可能自动升级
+ * HTTPS 导致 ERR_CONNECTION_CLOSED，因此带域名的绝对地址一律改写为 path。
+ */
+function stripKnownOrigin(path) {
+  let clean = String(path);
+  clean = clean.replace(/^https?:\/\/jwzx\.hrbust\.edu\.cn(?::\d+)?\/?/i, '');
+  if (ACADEMIC_BASE) {
+    const origin = ACADEMIC_BASE.replace(/\/academic\/?$/i, '');
+    const escaped = origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    clean = clean.replace(new RegExp(`^${escaped}/?`, 'i'), '');
+  }
+  return clean;
+}
+
+/**
+ * 格式化相对路径为完整请求路径。
+ *
+ * - 官方默认 / 桌面端：`/academic/...`（同源代理，Cookie 与 302 都收敛在本地）
+ * - 自定义地址（油猴 / 纯浏览器）：`协议://主机/academic/...` 绝对地址
  */
 function resolveUrl(path) {
-  if (!path) return BASE_PREFIX;
-  // 关键防线：教务系统仅支持 HTTP (不支持 HTTPS)。若直接请求或跟随绝对域名，浏览器可能自动升级 HTTPS 导致 ERR_CONNECTION_CLOSED
-  // 因此无论传入何种格式（包括含域名的绝对 URL），一律剥离域名，强制通过本地 /academic/ 代理
-  let clean = String(path).replace(/^https?:\/\/jwzx\.hrbust\.edu\.cn(?::\d+)?\/?/i, '');
-  clean = clean.replace(/^\/+/g, '');
-  if (clean.startsWith('academic/')) {
-    return '/' + clean;
-  }
-  return BASE_PREFIX + clean;
+  const clean = stripKnownOrigin(path || '')
+    .replace(/^\/+/g, '')
+    .replace(/^academic\//i, '');
+  if (usesAcademicProxy()) return BASE_PREFIX + clean;
+  return ACADEMIC_BASE + clean;
 }
 
 /**
@@ -273,7 +461,33 @@ export async function request(path, options = {}) {
  * 获取验证码图片完整 URL
  */
 export function getCaptchaUrl() {
-  return `${BASE_PREFIX}getCaptcha.do?_t=${Date.now()}`;
+  return `${resolveUrl('getCaptcha.do')}?_t=${Date.now()}`;
+}
+
+/** 验证码是否可以直接用 <img src> 加载（同源代理 / 桌面端本地反代） */
+export function captchaUsesProxy() {
+  return usesAcademicProxy();
+}
+
+/**
+ * 经同一请求通道抓取验证码图片并转成 Blob URL。
+ *
+ * 自定义地址下 `<img src>` 属于跨站请求：SameSite 会话 Cookie 不会随图片请求发送，
+ * 表现为"验证码永远错误"。改用业务请求通道（油猴 GM 通道会自动携带真实会话），
+ * 与登录、查成绩走同一条连接。调用方负责在替换时 URL.revokeObjectURL。
+ */
+export async function loadCaptchaImage() {
+  const url = absoluteUrl(`getCaptcha.do?_t=${Date.now()}`);
+  const response = await executeRequest(url, {
+    method: 'GET',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  });
+  if (!response.ok) throw new Error(`验证码加载失败（HTTP ${response.status}）`);
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return String(url);
+  }
+  const type = String(response.contentType || '').split(';')[0].trim() || 'image/jpeg';
+  return URL.createObjectURL(new Blob([response.buffer], { type }));
 }
 
 /**

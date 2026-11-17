@@ -31,7 +31,7 @@ func emitJSON(payload any) {
 //
 // 输出结构与退出码与 `BetterHRBUSTCLI` 完全一致：
 // 成功是 Envelope，失败是 {command, ok:false, error:{code,message}}。
-func runJSON(flags Flags, dataDir string, _ config.Config) int {
+func runJSON(flags Flags, dataDir string, settings config.Config) int {
 	snapshot := store.ReadSnapshot(dataDir)
 	clock := query.SystemClock()
 	service := query.New(snapshot, clock, version.String())
@@ -41,7 +41,7 @@ func runJSON(flags Flags, dataDir string, _ config.Config) int {
 	// sync / login 不依赖既有缓存：它们是"把缓存做出来"的那一步
 	switch command {
 	case "sync":
-		return runSyncCommand(service, dataDir)
+		return runSyncCommand(service, dataDir, settings)
 	case "login":
 		emitJSON(map[string]any{
 			"command": "login",

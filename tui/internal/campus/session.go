@@ -39,6 +39,24 @@ type StoredCookie struct {
 	Path  string `json:"path,omitempty"`
 	// ExpiresAt 是毫秒时间戳；0 表示会话 Cookie。
 	ExpiresAt int64 `json:"expiresAt,omitempty"`
+	// Host 是 Cookie 归属的教务站点主机名（空 = 官方站点，兼容旧文件）。
+	// 切换自定义教务地址后，官方站点的 Cookie 不会被发给第三方站点。
+	Host string `json:"host,omitempty"`
+}
+
+// jarHost 归一化 Cookie 归属主机：空值按官方站点处理。
+func jarHost(host string) string {
+	trimmed := strings.ToLower(strings.TrimSpace(host))
+	if trimmed == "" {
+		return OfficialHost
+	}
+	return trimmed
+}
+
+// jarKey 是内存 Cookie 表的键：不同站点的同名 Cookie（都是 JSESSIONID）
+// 必须互不覆盖，否则切回原地址时会串用会话。
+func jarKey(host, name string) string {
+	return jarHost(host) + "\x1f" + name
 }
 
 // sessionFile 是会话文件的磁盘结构。
@@ -135,7 +153,7 @@ func (s *Session) ApplyCookies(cookies []StoredCookie) {
 		if cookie.Name == "" {
 			continue
 		}
-		s.jar[cookie.Name] = cookie
+		s.jar[jarKey(cookie.Host, cookie.Name)] = cookie
 		s.dirty = true
 	}
 	s.mu.Unlock()
@@ -264,7 +282,7 @@ func (s *Session) reload() {
 		if cookie.ExpiresAt > 0 && cookie.ExpiresAt <= expired {
 			continue
 		}
-		jar[cookie.Name] = cookie
+		jar[jarKey(cookie.Host, cookie.Name)] = cookie
 	}
 	s.jar = jar
 }
@@ -283,37 +301,43 @@ func (s *Session) validLocked() bool {
 // ---------- http.CookieJar 实现（只服务单一 origin，不需要完整 RFC 6265） ----------
 
 // SetCookies 实现 http.CookieJar。
-func (s *Session) SetCookies(_ *url.URL, cookies []*http.Cookie) {
+func (s *Session) SetCookies(u *url.URL, cookies []*http.Cookie) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
+	host := jarHost(hostOf(u))
 	for _, cookie := range cookies {
 		if cookie.Name == "" {
 			continue
 		}
+		key := jarKey(host, cookie.Name)
 		// 过期 / 删除语义：MaxAge < 0 或 Expires 已过即移除
 		if cookie.MaxAge < 0 || (!cookie.Expires.IsZero() && cookie.Expires.Before(now)) {
-			delete(s.jar, cookie.Name)
+			delete(s.jar, key)
 			s.dirty = true
 			continue
 		}
-		stored := StoredCookie{Name: cookie.Name, Value: cookie.Value, Path: cookie.Path}
+		stored := StoredCookie{Name: cookie.Name, Value: cookie.Value, Path: cookie.Path, Host: host}
 		if !cookie.Expires.IsZero() {
 			stored.ExpiresAt = cookie.Expires.UnixMilli()
 		}
-		s.jar[cookie.Name] = stored
+		s.jar[key] = stored
 		s.dirty = true
 	}
 }
 
-// Cookies 实现 http.CookieJar。
-func (s *Session) Cookies(_ *url.URL) []*http.Cookie {
+// Cookies 实现 http.CookieJar：只返回归属当前请求站点的 Cookie。
+func (s *Session) Cookies(u *url.URL) []*http.Cookie {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now().UnixMilli()
+	host := jarHost(hostOf(u))
 	out := make([]*http.Cookie, 0, len(s.jar))
 	for _, cookie := range s.jar {
 		if cookie.ExpiresAt > 0 && cookie.ExpiresAt <= now {
+			continue
+		}
+		if jarHost(cookie.Host) != host {
 			continue
 		}
 		item := &http.Cookie{Name: cookie.Name, Value: cookie.Value, Path: cookie.Path}
@@ -323,6 +347,14 @@ func (s *Session) Cookies(_ *url.URL) []*http.Cookie {
 		out = append(out, item)
 	}
 	return out
+}
+
+// hostOf 取 URL 的主机名；u 为 nil 时按官方站点处理。
+func hostOf(u *url.URL) string {
+	if u == nil {
+		return OfficialHost
+	}
+	return u.Hostname()
 }
 
 // CookieHeader 返回可直接用于 Cookie 请求头的文本（为空表示没有会话）。

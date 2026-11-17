@@ -38,6 +38,22 @@
 
 浏览器环境还需 `fetch(url, { credentials: 'include' })`，否则 Cookie 不会随请求发送。
 
+### 1.3 可配置的教务地址
+
+基址中的 **scheme / host / port 可替换**，`/academic/` 路径与全部接口契约不变：
+
+| 端 | 配置位置 | 生效方式 |
+| --- | --- | --- |
+| Web / 油猴 | 设置页「教务地址」，键 `better_hrbust_academic_base` | 留空 = 同源 `/academic/` 代理（官方）；自定义 = 优先直连该 origin，被浏览器拦下时自动改由同源代理转发（请求头带目标） |
+| 桌面端 | 同一键，落在 `storage.json` | Rust 反代逐请求解析 upstream，保存即生效；`Host`/`Referer`/302 `Location` 随上游改写 |
+| Web 开发 / 自托管 | `BETTER_HRBUST_ACADEMIC`（vite dev/preview 代理目标） | 仅影响代理层，不进前端产物 |
+| 终端界面 | 设置页「教务地址」或 `--base-url <地址>` | 写入 `config.json` / 本次运行临时覆盖；未配置时只读复用桌面端保存的值 |
+
+地址归一化规则（三端一致）：可粘贴主页链接（`.../homepage/index.do`）或裸域名，
+路径与查询串丢弃，统一为 `协议://主机[:端口]/academic/`；缺协议时官方域名用 `http`、
+其他部署默认 `https`；拒绝非 http(s)、空主机与带用户名密码的输入。
+切换地址不删除既有会话文件；会话 Cookie 按站点隔离，不会把官方站点的 Cookie 发给第三方站点。
+
 ---
 
 ## 2. 会话与认证
@@ -463,6 +479,28 @@ server: {
 生产环境需要一个后端服务持有会话（浏览器无法直接读取跨域 Cookie）。
 参考 `tools/probe/server.mjs` 的实现——它把会话托管在服务端，
 浏览器只负责展示验证码与提交表单。
+
+需要指向其他 URP 部署时，有两种方式（默认都是官方地址）：
+
+```bash
+# ① 代理默认目标（构建/启动期）
+BETTER_HRBUST_ACADEMIC=https://jwzx.example.edu.cn npm run dev
+```
+
+```js
+// ② 运行期逐请求：前端在设置有自定义地址时给 /academic 请求带上该头，
+//    dev / preview 的内置中间件按请求把同一个代理实例指向该 origin
+fetch('/academic/manager/score/studentOwnScore.do', {
+  headers: { 'x-betterhrbust-academic-base': 'https://jwzx.example.edu.cn/academic/' }
+})
+```
+
+两种方式都会同步改写 `Host`、`Referer` 与 302 `Location`，否则上游会拒绝请求或把浏览器带离本地代理。
+
+浏览器不允许页面读取跨域响应（教务系统普遍不返回 `Access-Control-Allow-Origin`），
+因此前端策略是：**先直连**，被拦下就把绝对地址折回同源的 `/academic/...` 并带上目标头，
+由本地代理转发——Cookie 与 302 都留在本地，登录流程与官方默认地址一致。
+纯静态部署没有这一层转发时，要么由部署端把 `/academic` 反代到目标站点，要么直接用桌面端 / 油猴。
 
 ### 8.2 拿数据的推荐顺序
 

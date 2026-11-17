@@ -37,6 +37,9 @@ pub use hyper::service::service_fn;
 /// 教务系统 origin（仅 HTTP，无 443）
 pub const UPSTREAM_ORIGIN: &str = "http://jwzx.hrbust.edu.cn";
 
+/// 自定义教务地址在 storage.json 中的键（前端设置页写入，TUI 只读复用）
+pub const ACADEMIC_BASE_KEY: &str = "better_hrbust_academic_base";
+
 /// 本地服务端口基值（建校年份），被占用时向后顺延
 pub const PORT_BASE: u16 = 1950;
 pub const PORT_TRIES: u16 = 10;
@@ -104,6 +107,46 @@ impl Upstream {
             None => (authority.to_string(), None),
         };
         Self { scheme: scheme.to_string(), host, port }
+    }
+
+    /// 解析用户在设置页填写的教务地址（可带路径 / 查询串）。
+    ///
+    /// 与前端 `normalizeAcademicBase` 等价：只接受 http/https，丢弃 path 与查询串
+    /// （上游始终按 `/academic/` 前缀拼装），拒绝用户名密码与非法端口。
+    /// 解析失败返回 None，调用方回退官方默认——存储里的坏值不能让代理整体不可用。
+    pub fn from_base_url(raw: &str) -> Option<Self> {
+        let text = raw.trim();
+        if text.is_empty() {
+            return None;
+        }
+        let (scheme, rest) = text.split_once("://")?;
+        let scheme = scheme.to_ascii_lowercase();
+        if scheme != "http" && scheme != "https" {
+            return None;
+        }
+        let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+        if authority.is_empty() || authority.contains('@') {
+            return None;
+        }
+        let (host, port) = match authority.rsplit_once(':') {
+            Some((host, port)) => (host, Some(port.parse::<u16>().ok()?)),
+            None => (authority, None),
+        };
+        // IPv6 字面量（[::1]）不在支持范围：教务站点不会用它，解析歧义不值得
+        if host.is_empty() || host.contains('[') || host.contains(']') {
+            return None;
+        }
+        Some(Self { scheme, host: host.to_ascii_lowercase(), port })
+    }
+
+    /// 上游主机名（Location 重写比对、会话 Cookie 归属都按它判定）
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    /// 上游 origin（写入会话桥接文件的 origin 字段）
+    pub fn origin(&self) -> String {
+        format!("{}://{}", self.scheme, self.host_header())
     }
 
     /// 发给上游的 Host 头（默认端口不显式携带，与 changeOrigin 行为一致）
@@ -277,7 +320,8 @@ async fn handle(state: AppState, req: Request<Incoming>) -> Result<Response<AppB
         if !browser_origin_allowed(req.headers(), state.port) {
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
         }
-        crate::proxy::forward(&state.client, &state.upstream, req, state.session.as_deref()).await
+        let upstream = active_upstream(&state);
+        crate::proxy::forward(&state.client, &upstream, req, state.session.as_deref()).await
     } else if path == "/__app/storage" {
         if !browser_origin_allowed(req.headers(), state.port) {
             return Ok(plain_response(StatusCode::FORBIDDEN, "forbidden origin"));
@@ -304,6 +348,25 @@ async fn handle(state: AppState, req: Request<Incoming>) -> Result<Response<AppB
         }
     } else {
         Ok(static_response(&req))
+    }
+}
+
+/// 当前生效的教务上游：`storage.json` 里配置了合法自定义地址就用它，否则官方默认。
+///
+/// 每个 `/academic` 请求解析一次（纯字符串切分）：设置页保存后立即生效，
+/// 不需要重启应用；坏值只回退默认，不会让代理整体失效。
+fn active_upstream(state: &AppState) -> Upstream {
+    let configured = state
+        .storage
+        .as_deref()
+        .and_then(|storage| storage.get(ACADEMIC_BASE_KEY));
+    match configured.as_deref().map(Upstream::from_base_url) {
+        Some(Some(upstream)) => upstream,
+        Some(None) => {
+            eprintln!("[BetterHRBUST] 已保存的教务地址无法解析，本次请求回退官方默认");
+            state.upstream.clone()
+        }
+        None => state.upstream.clone(),
     }
 }
 

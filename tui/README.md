@@ -183,6 +183,23 @@ BetterHRBUSTTUI --json sync          # 用已保存的会话立即同步一次
 - 对话不落盘，`ctrl+n` 清空。
 - 需要「AI 对话」与「允许数据出网」两个开关同时打开，打开时还会弹一次确认框。
 
+## 教务地址
+
+默认指向官方 `http://jwzx.hrbust.edu.cn/academic/`。在设置页（`,`）修改：
+
+- **教务地址**：填其他 URP 部署地址（可粘贴主页链接如 `https://jwzx.example.edu.cn/homepage/index.do`，
+  或只填域名），统一归一化为 `协议://主机[:端口]/academic/`；留空即官方默认。
+- **恢复默认教务地址**：确认后删除自定义值（同时清掉 `--base-url` 的临时覆盖）。
+
+修改立即写入 `config.json`，本次运行即时生效，不需要重启。只想临时换一次、不动配置文件时：
+
+```bash
+BetterHRBUSTTUI --base-url https://jwzx.example.edu.cn
+```
+
+优先级：`--base-url` > `config.json` 的 `academic.base_url` > 图形端 `storage.json` 同键（只读复用）> 官方默认。
+切换站点不删除已有会话文件；会话 Cookie 按 host 隔离，官方站点的会话不会被发给第三方站点。
+
 ## 数据与配置
 
 | 内容 | 位置 | 读写 |

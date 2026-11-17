@@ -102,6 +102,7 @@ async fn forward_inner(
 
     // 会话桥接（导入方向）：WebView2 的 Cookie 里缺哪个，就从共享会话文件补哪个。
     // 终端登录过之后，图形界面第一次请求就已经是登录态，用户不需要再登一次。
+    // 只补当前上游站点的 Cookie：切换自定义教务地址后，官方站点的会话不应该被发给第三方。
     if let Some(bridge) = session {
         let existing = headers
             .get(header::COOKIE)
@@ -109,7 +110,7 @@ async fn forward_inner(
             .unwrap_or("")
             .to_string();
         let extra: Vec<String> = bridge
-            .cookies()
+            .cookies_for(upstream.host())
             .into_iter()
             .filter(|cookie| {
                 !existing.split(';').any(|part| {
@@ -154,15 +155,15 @@ async fn forward_inner(
             .filter_map(|value| value.to_str().ok().map(str::to_string))
             .collect();
         if !cookies.is_empty() {
-            bridge.export(cookies.iter().map(String::as_str));
+            bridge.export_at(cookies.iter().map(String::as_str), upstream.host(), &upstream.origin());
         }
     }
 
-    Ok(rewrite_response(response))
+    Ok(rewrite_response(response, upstream))
 }
 
 /// 响应侧改写：剥离逐跳头、Set-Cookie 去掉 Domain 属性、3xx Location 重写为相对路径
-fn rewrite_response(mut res: Response<Incoming>) -> Response<AppBody> {
+fn rewrite_response(mut res: Response<Incoming>, upstream: &Upstream) -> Response<AppBody> {
     let headers = res.headers_mut();
 
     for name in HOP_BY_HOP {
@@ -189,9 +190,9 @@ fn rewrite_response(mut res: Response<Incoming>) -> Response<AppBody> {
         }
     }
 
-    // 3xx Location: 绝对地址 http://jwzx.hrbust.edu.cn/academic/... → /academic/...
+    // 3xx Location: 绝对地址 <当前上游>/academic/... → /academic/...
     if let Some(location) = headers.get(header::LOCATION).and_then(|v| v.to_str().ok()) {
-        if let Some(rewritten) = rewrite_location(location) {
+        if let Some(rewritten) = rewrite_location(location, upstream) {
             if let Ok(value) = HeaderValue::from_str(&rewritten) {
                 headers.insert(header::LOCATION, value);
             }
@@ -292,16 +293,16 @@ fn rewrite_cookie(cookie: &str) -> String {
 }
 
 /// 判断绝对地址是否指向教务系统的 /academic 路径，是则改写为相对路径。
-/// 匹配 `http(s)://jwzx.hrbust.edu.cn[:port]/academic[/...]`（域名大小写不敏感），
-/// 对应 vite.config.mjs 的正则 `^https?://jwzx\.hrbust\.edu\.cn(?::\d+)?/academic/?`。
-fn rewrite_location(location: &str) -> Option<String> {
+/// 匹配 `http(s)://<当前上游 host>[:port]/academic[/...]`（域名大小写不敏感），
+/// 对应 vite.config.mjs 的正则；host 取自当前生效上游，因此自定义地址同样收敛回本地。
+fn rewrite_location(location: &str, upstream: &Upstream) -> Option<String> {
     let scheme_end = location.find("://")?;
     let rest = &location[scheme_end + 3..];
     let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     let authority = &rest[..authority_end];
-    // 去掉可选端口后与教务域名比对
+    // 去掉可选端口后与当前上游 host 比对
     let host = authority.rsplit_once(':').map_or(authority, |(h, _)| h);
-    if !host.eq_ignore_ascii_case("jwzx.hrbust.edu.cn") {
+    if !host.eq_ignore_ascii_case(upstream.host()) {
         return None;
     }
     // authority 之后必须是 /academic 路径（紧跟 ?/# 或为空都不改写）
@@ -361,27 +362,49 @@ mod tests {
         );
     }
 
+    fn official() -> Upstream {
+        Upstream::parse("http://jwzx.hrbust.edu.cn")
+    }
+
+    fn custom() -> Upstream {
+        Upstream::from_base_url("https://jwzx.fiacloud.top/homepage/index.do").unwrap()
+    }
+
     #[test]
     fn location_rewritten_to_relative() {
+        let upstream = official();
         assert_eq!(
-            rewrite_location("http://jwzx.hrbust.edu.cn/academic/index.jsp").as_deref(),
+            rewrite_location("http://jwzx.hrbust.edu.cn/academic/index.jsp", &upstream).as_deref(),
             Some("/academic/index.jsp")
         );
         assert_eq!(
-            rewrite_location("http://JWZX.hrbust.edu.cn:80/academic/").as_deref(),
+            rewrite_location("http://JWZX.hrbust.edu.cn:80/academic/", &upstream).as_deref(),
             Some("/academic/")
         );
         assert_eq!(
-            rewrite_location("https://jwzx.hrbust.edu.cn/academic/index.jsp?x=1").as_deref(),
+            rewrite_location("https://jwzx.hrbust.edu.cn/academic/index.jsp?x=1", &upstream)
+                .as_deref(),
             Some("/academic/index.jsp?x=1")
         );
     }
 
     #[test]
+    fn location_rewritten_for_custom_upstream() {
+        let upstream = custom();
+        assert_eq!(
+            rewrite_location("https://jwzx.fiacloud.top/academic/index.jsp", &upstream).as_deref(),
+            Some("/academic/index.jsp")
+        );
+        // 切换地址后，官方域名的 302 不再属于当前上游，保持原样交给前端
+        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn/academic/x", &upstream), None);
+    }
+
+    #[test]
     fn location_left_alone_when_not_academic() {
-        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn/other/page"), None);
-        assert_eq!(rewrite_location("http://evil.example.com/academic/x"), None);
-        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn/"), None);
-        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn"), None);
+        let upstream = official();
+        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn/other/page", &upstream), None);
+        assert_eq!(rewrite_location("http://evil.example.com/academic/x", &upstream), None);
+        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn/", &upstream), None);
+        assert_eq!(rewrite_location("http://jwzx.hrbust.edu.cn", &upstream), None);
     }
 }

@@ -3,7 +3,15 @@
  * 提供直接调用的异步服务方法
  */
 
-import { request, getCaptchaUrl, checkCaptcha, postLogin, postLogout } from './client.js';
+import {
+  request,
+  getCaptchaUrl,
+  loadCaptchaImage,
+  captchaUsesProxy,
+  checkCaptcha,
+  postLogin,
+  postLogout
+} from './client.js';
 import {
   parseStudentContext,
   parsePersonalInfo,
@@ -52,6 +60,8 @@ async function postClassroomQueryPage(body) {
 
 export const academicApi = {
   getCaptchaUrl,
+  loadCaptchaImage,
+  captchaUsesProxy,
   checkCaptcha,
   login: postLogin,
   logout: postLogout,

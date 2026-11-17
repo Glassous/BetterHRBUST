@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
+	"github.com/Glassous/BetterHRBUST/tui/internal/config"
 	"github.com/Glassous/BetterHRBUST/tui/internal/query"
 	"github.com/Glassous/BetterHRBUST/tui/internal/store"
 )
@@ -19,8 +20,8 @@ const syncTimeout = 120 * time.Second
 // 登录本身需要图片验证码，命令行做不了；但只要会话已经建立
 // （终端或图形界面登过任意一次），这里就能把数据刷到最新，
 // 供脚本与 AI 工具使用。
-func runSyncCommand(service *query.Service, dataDir string) int {
-	syncService := buildSync(dataDir)
+func runSyncCommand(service *query.Service, dataDir string, settings config.Config) int {
+	syncService := buildSync(dataDir, settings)
 	ctx, cancel := context.WithTimeout(context.Background(), syncTimeout)
 	defer cancel()
 

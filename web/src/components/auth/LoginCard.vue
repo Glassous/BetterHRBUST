@@ -5,7 +5,7 @@
         <img :src="logoUrl" alt="HRBUST" class="w-full h-full object-cover rounded-xl" />
       </div>
       <h2 class="text-xl font-semibold text-[var(--ink-primary)] tracking-tight">哈理工教务在线登录</h2>
-      <p class="text-[13px] text-[var(--ink-muted)] mt-1.5">连接 http://jwzx.hrbust.edu.cn/academic · 真实账号数据直达</p>
+      <p class="text-[13px] text-[var(--ink-muted)] mt-1.5">连接 {{ academicBase }} · 真实账号数据直达</p>
     </div>
 
     <!-- Current Session Notice if already logged in -->
@@ -199,20 +199,24 @@
 
     <!-- Footer Security Notice -->
     <div class="mt-6 pt-4 border-t border-[var(--border-hairline)] text-xs text-[var(--ink-muted)] text-center leading-relaxed">
-      登录信息仅通过本地代理发送至哈尔滨理工大学教务系统，会话 Cookie 仅存储于当前浏览器中，无模拟假数据，无云端中转。
+      登录信息仅发送至上方的教务站点（经本地代理或扩展通道），会话 Cookie 仅存储于本机，无模拟假数据，无云端中转。
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, useId, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, useId, watch } from 'vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import Icon from '@/components/icons/Icon.vue';
 import logoUrl from '@/assets/HRBUST.png';
 import { useSession } from '@/composables/useSession.js';
+import { useAcademicBase } from '@/composables/useAcademicBase.js';
 import { academicApi } from '@/services/academic/api.js';
 import { readSavedCredential, clearCredential } from '@/services/savedCredential.js';
+
+// 教务地址可配置：标题下方展示当前实际连接的站点，避免"文案写官方、请求打镜像"的误解
+const { effective: academicBase } = useAcademicBase();
 
 const props = defineProps({
   embedded: {
@@ -242,6 +246,16 @@ const captchaImgUrl = ref('');
 const captchaLoading = ref(false);
 const captchaError = ref(false);
 const errorMessage = ref('');
+// 自定义教务地址下验证码是 Blob URL，替换/卸载时必须回收，否则内存随刷新次数增长
+let captchaObjectUrl = '';
+
+function releaseCaptchaImage() {
+  if (captchaObjectUrl) {
+    try { URL.revokeObjectURL(captchaObjectUrl); } catch { /* 忽略 */ }
+    captchaObjectUrl = '';
+  }
+  captchaImgUrl.value = '';
+}
 
 const form = reactive({
   username: savedCredential?.username || studentNumber.value || '',
@@ -260,17 +274,24 @@ const canSubmit = computed(() => {
 
 async function prepareAccount() {
   try { if (await prepareLoginAccount(form.username)) await refreshCaptcha(); }
-  catch (error) { errorMessage.value = error.message; captchaImgUrl.value = ''; captchaError.value = true; captchaLoading.value = false; }
+  catch (error) { errorMessage.value = error.message; releaseCaptchaImage(); captchaError.value = true; captchaLoading.value = false; }
 }
 
 async function refreshCaptcha() {
   captchaLoading.value = true;
   captchaError.value = false;
-  captchaImgUrl.value = '';
+  releaseCaptchaImage();
   form.captcha = '';
   try {
     await prepareLoginAccount(form.username);
-    captchaImgUrl.value = academicApi.getCaptchaUrl();
+    if (academicApi.captchaUsesProxy()) {
+      captchaImgUrl.value = academicApi.getCaptchaUrl();
+    } else {
+      // 自定义教务地址：图片必须与登录走同一通道，否则 SameSite Cookie 不随 <img> 发送，
+      // 表现为"验证码永远错误"
+      captchaImgUrl.value = await academicApi.loadCaptchaImage();
+      if (captchaImgUrl.value.startsWith('blob:')) captchaObjectUrl = captchaImgUrl.value;
+    }
   } catch (error) {
     errorMessage.value = error.message || '无法准备新账号的验证码，请重试';
     captchaLoading.value = false;
@@ -324,6 +345,8 @@ async function handleLoginSubmit() {
 onMounted(() => {
   refreshCaptcha();
 });
+
+onUnmounted(releaseCaptchaImage);
 </script>
 
 <style scoped>

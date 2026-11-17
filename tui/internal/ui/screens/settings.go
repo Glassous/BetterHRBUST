@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 	"github.com/Glassous/BetterHRBUST/tui/internal/config"
 	"github.com/Glassous/BetterHRBUST/tui/internal/ui"
 	"github.com/Glassous/BetterHRBUST/tui/internal/ui/components"
@@ -96,6 +97,32 @@ func (s *Settings) buildRows() []settingRow {
 			value: func(c config.Config) string { return onOff(c.UI.Sidebar) },
 			apply: func(c config.Config) config.Config { c.UI.Sidebar = !c.UI.Sidebar; return c },
 			hint:  "宽度不足 88 列时自动隐藏",
+		},
+		{
+			label: "教务地址", kind: settingText,
+			value: func(c config.Config) string {
+				if strings.TrimSpace(c.Academic.BaseURLOverride) != "" {
+					return c.EffectiveAcademicBase() + "（--base-url 临时覆盖）"
+				}
+				if strings.TrimSpace(c.Academic.BaseURL) == "" {
+					return "官方默认 " + campus.OfficialBaseURL
+				}
+				return c.EffectiveAcademicBase()
+			},
+			apply: func(c config.Config) config.Config { return c },
+			hint: "可填其他 URP 教务部署地址（如 https://jwzx.example.edu.cn），留空即官方默认；" +
+				"切换后如已登录请重新登录一次",
+		},
+		{
+			label: "恢复默认教务地址", kind: settingConfirm,
+			value: func(c config.Config) string {
+				if strings.TrimSpace(c.Academic.BaseURL) == "" && strings.TrimSpace(c.Academic.BaseURLOverride) == "" {
+					return "已是官方默认"
+				}
+				return "恢复"
+			},
+			apply: func(c config.Config) config.Config { return c },
+			hint:  "删除自定义地址，回到 " + campus.OfficialBaseURL,
 		},
 		{
 			label: "AI 对话", kind: settingConfirm,
@@ -236,9 +263,14 @@ func (s *Settings) activate() (ui.Screen, tea.Cmd) {
 		return s, nil
 	case settingText:
 		s.edit.Open(row.label)
-		s.edit.text = current.LLM.BaseURL
-		if row.label == "模型" {
+		switch row.label {
+		case "模型":
 			s.edit.text = current.LLM.Model
+		case "教务地址":
+			// 预填当前自定义值（官方默认时留空，直接回车即恢复默认）
+			s.edit.text = strings.TrimSpace(current.Academic.BaseURL)
+		default:
+			s.edit.text = current.LLM.BaseURL
 		}
 		return s, nil
 	case settingSecret:
@@ -246,6 +278,9 @@ func (s *Settings) activate() (ui.Screen, tea.Cmd) {
 		s.edit.text = ""
 		return s, nil
 	case settingConfirm:
+		if row.label == "恢复默认教务地址" {
+			return s, s.confirmResetAcademicBase(current)
+		}
 		// 打开 AI 需要显式确认数据会离开本机。
 		if current.LLM.Enabled {
 			updated := current
@@ -272,6 +307,24 @@ func (s *Settings) activate() (ui.Screen, tea.Cmd) {
 	}
 }
 
+// confirmResetAcademicBase 让"恢复默认教务地址"走一次确认，避免误触。
+func (s *Settings) confirmResetAcademicBase(current config.Config) tea.Cmd {
+	text := "将删除自定义教务地址，回到官方默认：\n" + campus.OfficialBaseURL + "\n\n" +
+		"已保存的登录会话不会被删除，但切换站点后可能需要重新登录。确定恢复吗？"
+	return func() tea.Msg {
+		return ui.ConfirmMsg{
+			Text: text,
+			Action: func() tea.Msg {
+				updated := current
+				updated.Academic.BaseURL = ""
+				// --base-url 的临时覆盖也一并清除，否则"恢复默认"看起来没生效
+				updated.Academic.BaseURLOverride = ""
+				return ui.ApplyConfigMsg{Config: updated, Toast: "已恢复官方教务地址"}
+			},
+		}
+	}
+}
+
 // commitText 把文本编辑结果写入配置。
 func (s *Settings) commitText(label, value string) tea.Cmd {
 	updated := s.deps.Config
@@ -282,6 +335,17 @@ func (s *Settings) commitText(label, value string) tea.Cmd {
 		updated.LLM.Model = value
 	case "API Key":
 		updated.LLM.APIKey = value
+	case "教务地址":
+		normalized, err := campus.NormalizeBase(value)
+		if err != nil {
+			// 非法地址不落盘：留一条提示，用户可以直接重试试
+			return func() tea.Msg { return ui.ToastMsg{Text: err.Error(), Level: "fail"} }
+		}
+		if normalized == campus.OfficialBaseURL {
+			updated.Academic.BaseURL = ""
+		} else {
+			updated.Academic.BaseURL = normalized
+		}
 	default:
 		return nil
 	}
@@ -406,6 +470,8 @@ func (s *Settings) renderHelp(th theme.Theme, width, height int) string {
 			th.MutedStyle().Render(components.Truncate(orDefault(cfg.Path, "未确定"), inner-9)),
 		th.SubtleStyle().Render(components.PadRight("服务商", 8))+
 			th.MutedStyle().Render(components.Truncate(cfg.ProviderHost(), inner-9)),
+		th.SubtleStyle().Render(components.PadRight("教务", 8))+
+			th.MutedStyle().Render(components.Truncate(cfg.EffectiveAcademicBase(), inner-9)),
 		th.SubtleStyle().Render(components.PadRight("版本", 8))+
 			th.MutedStyle().Render(s.deps.Version),
 	)

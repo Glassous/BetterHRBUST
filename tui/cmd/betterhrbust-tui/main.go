@@ -57,9 +57,13 @@ func run(argv []string) int {
 	dataDir, source := store.ResolveDataDir(flags.dataDir, env)
 	configPath, _ := store.ResolveConfigPath(env)
 	settings := config.Load(configPath).Normalized()
+	// --base-url 只是本次运行的临时覆盖：EffectiveAcademicBase 里优先级最高，且不落盘
+	settings.Academic.BaseURLOverride = flags.baseURL
 	// 三端共用同一份 AI 配置：桌面端（图形界面）已启用时以其为准，
 	// 在设置页填过一次的地址 / 模型 / API Key 在终端不必再填
 	settings, _ = config.OverlayDesktopAI(settings, dataDir)
+	// 教务地址同理：终端没配过时只读复用桌面端保存的值（图形端改一次，终端不用再抄）
+	settings, _ = config.OverlayDesktopAcademicBase(settings, dataDir)
 
 	if flags.json {
 		return runJSON(flags, dataDir, settings)
@@ -158,7 +162,7 @@ func buildDeps(
 		StaleDays:     staleDays(snapshot),
 		Emit:          emit,
 		NewChat:       screens.ChatFactory(),
-		Sync:          buildSync(dataDir),
+		Sync:          buildSync(dataDir, settings),
 	}
 	deps.SaveConfig = func(updated config.Config) error {
 		return updated.Normalized().Save()
@@ -173,8 +177,12 @@ func buildDeps(
 //
 // 写回走两处：`storage.json`（图形界面启动时水合的唯一来源）以及
 // 运行中图形界面的 `/__app/storage` 端点（避免它用内存镜像覆盖我们的写入）。
-func buildSync(dataDir string) *campus.Service {
+func buildSync(dataDir string, settings config.Config) *campus.Service {
 	syncService := campus.NewService(dataDir, time.Now)
+	// 指向用户配置的教务地址（官方默认时与改造前完全一致）
+	if err := syncService.SetBaseURL(settings.EffectiveAcademicBase()); err != nil {
+		fmt.Fprintln(os.Stderr, "教务地址不可用，已回退官方默认："+err.Error())
+	}
 	writer := store.NewWriter(dataDir)
 	syncService.SetWriter(func(patch campus.Patch) (campus.WriteReport, error) {
 		report, err := writer.Apply(store.Patch{Set: patch.Set, Delete: patch.Delete})

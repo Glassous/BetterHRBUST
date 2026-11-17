@@ -448,6 +448,13 @@ func (a *App) stepData(msg tea.Msg) (bool, tea.Cmd) {
 			}
 		}
 		a.deps.Config = updated
+		// 教务地址可能刚被改过：立即应用到同步服务（无需重启），
+		// 未改时 SetBaseURL 与当前值相同，提前返回。
+		if a.deps.Sync != nil {
+			if err := a.deps.Sync.SetBaseURL(updated.EffectiveAcademicBase()); err != nil {
+				return true, a.showToast("教务地址无效，已保持原地址："+err.Error(), "fail")
+			}
+		}
 		a.theme = resolveTheme(a.deps, "")
 		a.layout()
 		cmd := a.showToast(orDefaultText(typed.Toast, "设置已保存"), "ok")

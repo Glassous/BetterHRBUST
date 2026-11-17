@@ -27,8 +27,10 @@ use serde::{Deserialize, Serialize};
 pub const FILE_NAME: &str = "academic-session.json";
 /// 文件结构版本。
 pub const VERSION: u32 = 1;
-/// 会话所属的教务系统 origin。
+/// 会话所属的教务系统 origin（官方默认；自定义地址由调用方显式传入）。
 pub const ORIGIN: &str = "http://jwzx.hrbust.edu.cn";
+/// 官方教务系统主机名：旧会话文件没有 host 字段时按它归属。
+pub const OFFICIAL_HOST: &str = "jwzx.hrbust.edu.cn";
 
 /// 单个 Cookie。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -41,10 +43,28 @@ pub struct StoredCookie {
     /// 毫秒时间戳；0 表示会话 Cookie。
     #[serde(default, rename = "expiresAt", skip_serializing_if = "is_zero")]
     pub expires_at: i64,
+    /// Cookie 归属的教务站点主机名。空值 = 官方站点（向后兼容旧文件）。
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub host: String,
 }
 
 fn is_zero(value: &i64) -> bool {
     *value == 0
+}
+
+/// Cookie 归属主机名归一化：空值按官方站点处理，其余统一小写。
+fn cookie_host(host: &str) -> String {
+    let host = host.trim();
+    if host.is_empty() {
+        OFFICIAL_HOST.to_string()
+    } else {
+        host.to_ascii_lowercase()
+    }
+}
+
+/// 内存表的键：不同站点的同名 Cookie（都是 JSESSIONID）必须互不覆盖。
+fn cookie_key(host: &str, name: &str) -> String {
+    format!("{}\u{1}{name}", cookie_host(host))
 }
 
 /// 磁盘结构（与 Go 侧 `sessionFile` 一致）。
@@ -86,46 +106,69 @@ impl SessionBridge {
         bridge
     }
 
-    /// 返回当前可用（未过期）的 Cookie 快照。
+    /// 返回当前可用（未过期）的官方站点 Cookie 快照。
     ///
     /// 每次调用先检查文件是否被终端更新过：终端在图形界面运行期间登录时，
     /// 下一次请求就能用上新会话，不需要重启。
     pub fn cookies(&self) -> Vec<StoredCookie> {
+        self.cookies_for(OFFICIAL_HOST)
+    }
+
+    /// 返回指定上游站点的可用 Cookie。
+    ///
+    /// 切换自定义教务地址后，官方站点的 Cookie 不会被发给第三方站点；
+    /// 若终端在自定义站点登录过，这里仍能读到对应的那份会话。
+    pub fn cookies_for(&self, host: &str) -> Vec<StoredCookie> {
         self.refresh();
         let now = now_millis();
+        let wanted = cookie_host(host);
         let guard = self.inner.lock().expect("会话桥接锁中毒");
         guard
             .cookies
             .values()
             .filter(|cookie| cookie.expires_at == 0 || cookie.expires_at > now)
+            .filter(|cookie| cookie_host(&cookie.host) == wanted)
             .cloned()
             .collect()
     }
 
-    /// 批量导出响应头里的 Set-Cookie。
+    /// 批量导出响应头里的 Set-Cookie（官方站点）。
     ///
     /// 空值（教务删除 Cookie / 登出）会从文件里移除，与浏览器语义一致。
     pub fn export<'a, I>(&self, cookies: I)
     where
         I: IntoIterator<Item = &'a str>,
     {
+        self.export_at(cookies, OFFICIAL_HOST, ORIGIN);
+    }
+
+    /// 批量导出指定上游站点的 Set-Cookie。
+    ///
+    /// `host` 来自当前生效上游（可能与官方不同），`origin` 只是文件里的展示字段。
+    pub fn export_at<'a, I>(&self, cookies: I, host: &str, origin: &str)
+    where
+        I: IntoIterator<Item = &'a str>,
+    {
+        let host = cookie_host(host);
         let mut changed = false;
         {
             let mut guard = self.inner.lock().expect("会话桥接锁中毒");
             for raw in cookies {
-                let Some(cookie) = parse_set_cookie(raw) else {
+                let Some(mut cookie) = parse_set_cookie(raw) else {
                     continue;
                 };
+                cookie.host = host.clone();
+                let key = cookie_key(&host, &cookie.name);
                 if cookie.value.is_empty() {
-                    changed |= guard.cookies.remove(&cookie.name).is_some();
+                    changed |= guard.cookies.remove(&key).is_some();
                 } else {
-                    changed |= guard.cookies.get(&cookie.name) != Some(&cookie);
-                    guard.cookies.insert(cookie.name.clone(), cookie);
+                    changed |= guard.cookies.get(&key) != Some(&cookie);
+                    guard.cookies.insert(key, cookie);
                 }
             }
         }
         if changed {
-            if let Err(err) = self.save("gui") {
+            if let Err(err) = self.save("gui", origin) {
                 eprintln!("[BetterHRBUST] 会话桥接写入失败: {err}");
             }
         }
@@ -161,21 +204,24 @@ impl SessionBridge {
         guard.student_number.clear();
         if let Some(file) = parsed {
             guard.student_number = file.student_number;
-            for cookie in file.cookies {
+            for mut cookie in file.cookies {
                 if cookie.name.is_empty() || cookie.value.is_empty() {
                     continue;
                 }
-                guard.cookies.insert(cookie.name.clone(), cookie);
+                // 旧文件没有 host 字段：按官方站点归属
+                cookie.host = cookie_host(&cookie.host);
+                let key = cookie_key(&cookie.host, &cookie.name);
+                guard.cookies.insert(key, cookie);
             }
         }
     }
 
     /// 原子写回文件（临时文件 + 改名，权限 0600）。
-    fn save(&self, source: &str) -> std::io::Result<()> {
+    fn save(&self, source: &str, origin: &str) -> std::io::Result<()> {
         let guard = self.inner.lock().expect("会话桥接锁中毒");
         let payload = SessionFile {
             version: VERSION,
-            origin: ORIGIN.to_string(),
+            origin: origin.to_string(),
             source: source.to_string(),
             updated_at: now_millis(),
             student_number: guard.student_number.clone(),
@@ -254,6 +300,8 @@ fn parse_set_cookie(raw: &str) -> Option<StoredCookie> {
         value: if deleted { String::new() } else { value.trim().to_string() },
         path,
         expires_at: if deleted { 0 } else { expires_at },
+        // 归属由调用方（当前上游 host）在 export_at 中补齐
+        host: String::new(),
     })
 }
 
@@ -380,6 +428,35 @@ mod tests {
         fs::write(dir.path().join(FILE_NAME), b"{ not json").unwrap();
         let bridge = SessionBridge::open(dir.path());
         assert!(bridge.cookies().is_empty());
+    }
+
+    #[test]
+    fn cookies_are_isolated_per_upstream_host() {
+        let dir = tempfile::tempdir().unwrap();
+        let bridge = SessionBridge::open(dir.path());
+        bridge.export(vec!["JSESSIONID=official; Path=/academic"]);
+        bridge.export_at(vec!["JSESSIONID=mirror; Path=/academic"], "JWZX.fiacloud.top", "https://jwzx.fiacloud.top");
+
+        assert_eq!(bridge.cookies_for("jwzx.hrbust.edu.cn")[0].value, "official");
+        assert_eq!(bridge.cookies_for("jwzx.fiacloud.top")[0].value, "mirror");
+        // 同名 Cookie 不互相覆盖，也不会把官方会话发给第三方站点
+        assert_eq!(bridge.cookies()[0].value, "official");
+
+        // 登出只清掉当前站点的 Cookie
+        bridge.export_at(vec!["JSESSIONID=; Max-Age=0; Path=/academic"], "jwzx.fiacloud.top", "https://jwzx.fiacloud.top");
+        assert!(bridge.cookies_for("jwzx.fiacloud.top").is_empty());
+        assert_eq!(bridge.cookies_for("jwzx.hrbust.edu.cn")[0].value, "official");
+    }
+
+    #[test]
+    fn legacy_session_file_without_host_defaults_to_official() {
+        let dir = tempfile::tempdir().unwrap();
+        let legacy = r#"{"version":1,"origin":"http://jwzx.hrbust.edu.cn","source":"tui","updatedAt":1,
+            "cookies":[{"name":"JSESSIONID","value":"legacy","path":"/academic"}]}"#;
+        fs::write(dir.path().join(FILE_NAME), legacy).unwrap();
+        let bridge = SessionBridge::open(dir.path());
+        assert_eq!(bridge.cookies_for("jwzx.hrbust.edu.cn")[0].value, "legacy");
+        assert!(bridge.cookies_for("jwzx.fiacloud.top").is_empty());
     }
 
     #[test]

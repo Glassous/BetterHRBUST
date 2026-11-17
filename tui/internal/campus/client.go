@@ -22,8 +22,52 @@ import (
 //   - 会话失效判定：返回登录页即视为会话失效（`ErrSessionExpired`）；
 //   - 失败原因文案：与图形界面登录页展示的同一批中文提示。
 
-// BaseURL 是教务系统的 /academic 根。
-const BaseURL = "http://jwzx.hrbust.edu.cn/academic/"
+// OfficialBaseURL 是官方教务系统的 /academic 根（默认地址）。
+const OfficialBaseURL = "http://jwzx.hrbust.edu.cn/academic/"
+
+// BaseURL 保留旧名，等价于官方默认地址（既有测试与调用方引用）。
+const BaseURL = OfficialBaseURL
+
+// OfficialHost 是官方教务系统主机名，用于旧会话文件的 Cookie 归属判定。
+const OfficialHost = "jwzx.hrbust.edu.cn"
+
+// NormalizeBase 归一化自定义教务地址：统一为 `协议://主机[:端口]/academic/`。
+//
+// 与前端 normalizeAcademicBase、桌面端 Upstream::from_base_url 等价：
+//   - 空串 → 官方默认；
+//   - 可粘贴主页链接或裸域名，路径 / 查询串一律丢弃；
+//   - 缺协议时官方域名用 http（官方无 443），其他部署默认 https；
+//   - 非 http(s)、空主机、带用户名密码 → 返回中文错误。
+func NormalizeBase(raw string) (string, error) {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return OfficialBaseURL, nil
+	}
+	lower := strings.ToLower(text)
+	hasScheme := false
+	if index := strings.Index(lower, "://"); index >= 0 {
+		hasScheme = true
+		switch lower[:index] {
+		case "http", "https":
+		default:
+			return "", errors.New("教务地址只支持 http:// 或 https:// 开头")
+		}
+	} else {
+		text = "http://" + text
+	}
+	parsed, err := url.Parse(text)
+	if err != nil || parsed.Hostname() == "" {
+		return "", errors.New("教务地址格式不正确，请填写形如 https://jwzx.example.edu.cn 的地址")
+	}
+	if parsed.User != nil {
+		return "", errors.New("教务地址不能包含用户名或密码")
+	}
+	scheme := strings.ToLower(parsed.Scheme)
+	if !hasScheme && !strings.EqualFold(parsed.Hostname(), OfficialHost) {
+		scheme = "https"
+	}
+	return scheme + "://" + strings.ToLower(parsed.Host) + "/academic/", nil
+}
 
 // MaxBodyBytes 是单个响应的读取上限（教务页面最大约数百 KB）。
 const MaxBodyBytes = 8 << 20
@@ -48,11 +92,12 @@ type Client struct {
 // NewClient 构造客户端。所有请求都会带上共享会话的 Cookie。
 func NewClient(session *Session) *Client { return NewClientAt(session, BaseURL) }
 
-// NewClientAt 指定 base（以 /academic/ 结尾）构造客户端，供测试指向本地假服务。
+// NewClientAt 指定 base（以 /academic/ 结尾）构造客户端：
+// 测试指向本地假服务，运行时指向用户自定义的教务地址。
 func NewClientAt(session *Session, baseURL string) *Client {
 	base, err := url.Parse(baseURL)
-	if err != nil {
-		base = &url.URL{Scheme: "http", Host: "jwzx.hrbust.edu.cn", Path: "/academic/"}
+	if err != nil || base.Host == "" {
+		base, _ = url.Parse(OfficialBaseURL)
 	}
 	return &Client{
 		session: session,
@@ -148,8 +193,15 @@ func (c *Client) doWithHeader(
 // 一律剥掉域名后挂到教务 /academic/ 下，避免被浏览器/客户端升级到 HTTPS。
 func (c *Client) resolve(path string) *url.URL {
 	clean := strings.TrimSpace(path)
+	// 剥离当前教务地址与官方域名的 origin：教务常返回带域名的绝对地址，
+	// 而真正的目标 origin 由 c.base 决定，保留域名会把请求打到别的站点。
 	lower := strings.ToLower(clean)
-	for _, prefix := range []string{"https://jwzx.hrbust.edu.cn", "http://jwzx.hrbust.edu.cn"} {
+	prefixes := []string{
+		strings.ToLower(c.base.Scheme + "://" + c.base.Host),
+		"https://jwzx.hrbust.edu.cn",
+		"http://jwzx.hrbust.edu.cn",
+	}
+	for _, prefix := range prefixes {
 		if strings.HasPrefix(lower, prefix) {
 			clean = clean[len(prefix):]
 			lower = strings.ToLower(clean)

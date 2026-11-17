@@ -79,14 +79,13 @@ async fn spawn_mock_upstream() -> (String, Arc<Mutex<SeenHeaders>>) {
                                 .map(String::from);
                         }
                         if req.uri().path() == "/academic/redirect" {
-                            // 模拟教务系统 302：绝对 Location + 带 Domain 的会话 Cookie
+                            // 模拟教务系统 302：绝对 Location（指向自己的 origin，
+                            // 与真实教务返回自身域名等价）+ 带 Domain 的会话 Cookie
+                            let location = format!("http://{addr}/academic/index.jsp");
                             Ok::<_, std::convert::Infallible>(
                                 Response::builder()
                                     .status(StatusCode::FOUND)
-                                    .header(
-                                        header::LOCATION,
-                                        "http://jwzx.hrbust.edu.cn/academic/index.jsp",
-                                    )
+                                    .header(header::LOCATION, location)
                                     .header(
                                         header::SET_COOKIE,
                                         "JSESSIONID=mock123; Domain=hrbust.edu.cn; Path=/academic",
@@ -129,8 +128,16 @@ async fn spawn_server(upstream_origin: &str) -> String {
 
 /// 以指定持久化目录 + 随机端口启动被测服务（静态/反代不涉及，无需 web/dist）
 async fn spawn_server_with_storage(storage_dir: std::path::PathBuf) -> String {
+    spawn_server_with_storage_and_upstream(storage_dir, "http://127.0.0.1:1").await
+}
+
+/// 指定持久化目录 + 默认上游（自定义地址会从 storage.json 里覆盖它）
+async fn spawn_server_with_storage_and_upstream(
+    storage_dir: std::path::PathBuf,
+    upstream_origin: &str,
+) -> String {
     let config = ServerConfig {
-        upstream: Upstream::parse("http://127.0.0.1:1"),
+        upstream: Upstream::parse(upstream_origin),
         port_base: 0,
         port_tries: 1,
         storage_dir: Some(storage_dir),
@@ -270,6 +277,50 @@ async fn academic_redirect_location_and_cookie_domain_rewritten() {
         res.headers()[header::SET_COOKIE].to_str().unwrap(),
         "JSESSIONID=mock123; Path=/academic; Max-Age=604800; SameSite=Strict; HttpOnly"
     );
+}
+
+/// 自定义教务地址：storage.json 里的值按请求生效（无需重启），删除键即恢复默认
+#[tokio::test]
+async fn custom_academic_base_from_storage_switches_upstream() {
+    require_web_dist();
+    let (default_upstream, default_seen) = spawn_mock_upstream().await;
+    let (custom_upstream, custom_seen) = spawn_mock_upstream().await;
+    let dir = tempfile::tempdir().unwrap();
+
+    // 预置自定义地址（可带路径，等同于设置页保存后的 storage.json）
+    std::fs::write(
+        dir.path().join("storage.json"),
+        serde_json::json!({
+            "better_hrbust_academic_base": format!("{custom_upstream}/homepage/index.do")
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let origin =
+        spawn_server_with_storage_and_upstream(dir.path().to_path_buf(), &default_upstream).await;
+
+    let res = get(&format!("{origin}/academic/page"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(custom_seen.lock().unwrap().host.is_some(), "请求应转发到自定义上游");
+    assert!(default_seen.lock().unwrap().host.is_none(), "默认上游不应收到请求");
+    let expected_authority = custom_upstream.trim_start_matches("http://");
+    assert_eq!(
+        custom_seen.lock().unwrap().host.as_deref(),
+        Some(expected_authority),
+        "Host 头应随自定义上游改写"
+    );
+    assert_eq!(
+        custom_seen.lock().unwrap().referer.as_deref(),
+        Some(format!("{custom_upstream}/academic/").as_str()),
+        "Referer 应随自定义上游改写"
+    );
+
+    // 恢复默认：删除键后下一个请求立刻回到默认上游
+    delete(&format!("{origin}/__app/storage?key=better_hrbust_academic_base")).await.unwrap();
+    let res = get(&format!("{origin}/academic/page"), &[]).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(default_seen.lock().unwrap().host.is_some(), "恢复默认后应回到默认上游");
 }
 
 #[tokio::test]

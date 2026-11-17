@@ -21,7 +21,9 @@ WebView2 窗口 → http://127.0.0.1:1950（固定端口，占用向后顺延）
   ├─ 静态文件     web/dist（rust-embed 嵌入二进制，debug 模式读磁盘）
   ├─ /__app/storage → 键值持久化（storage.rs，JSON 文件原子落盘）
   ├─ /__app/ai/*   → AI 配置（ai-config.json）与 OpenAI 兼容端点流式转发（ai.rs）
-  └─ /academic/* → http://jwzx.hrbust.edu.cn（hyper 流式转发）
+  └─ /academic/* → 当前生效教务上游（默认 http://jwzx.hrbust.edu.cn；
+       设置页「教务地址」把目标写进 storage.json 的 better_hrbust_academic_base，
+       每个请求重新解析，保存即生效、无需重启）
        ├─ Host/Referer 注入（教务系统校验这两个请求头）
        ├─ Set-Cookie 剥离 Domain 属性（会话 Cookie 落在 127.0.0.1）
        ├─ 302 Location 绝对地址重写为 /academic/ 相对路径

@@ -87,6 +87,14 @@ impl Storage {
         self.data.lock().expect("storage 锁中毒").clone()
     }
 
+    /// 读取单键（教务地址等热路径配置用）。
+    ///
+    /// `/academic` 每个请求都要读一次当前教务地址，用 snapshot() 会把整份缓存
+    /// （成绩/课表/公告，可能上 MB）克隆一遍，因此单独提供一个短临界区的读接口。
+    pub fn get(&self, key: &str) -> Option<String> {
+        self.data.lock().expect("storage 锁中毒").get(key).cloned()
+    }
+
     /// 写入单键并落盘（save 在锁内执行，见 save() 注释）
     pub fn set(&self, key: String, value: String) -> io::Result<()> {
         let mut guard = self.data.lock().expect("storage 锁中毒");

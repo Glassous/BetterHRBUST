@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 )
 
 // Version 是配置文件结构版本。
@@ -59,11 +61,23 @@ type LLMSettings struct {
 	SendProfile bool `json:"send_profile"`
 }
 
+// AcademicSettings 是教务在线地址配置。
+//
+// BaseURL 留空表示官方默认（http://jwzx.hrbust.edu.cn/academic/），
+// 因此首次运行与老配置文件的行为完全不变。
+type AcademicSettings struct {
+	BaseURL string `json:"base_url"`
+
+	// BaseURLOverride 是 --base-url 的临时取值：只影响本次运行，不写回文件。
+	BaseURLOverride string `json:"-"`
+}
+
 // Config 是配置文件结构。
 type Config struct {
-	Version int         `json:"version"`
-	UI      UISettings  `json:"ui"`
-	LLM     LLMSettings `json:"llm"`
+	Version  int              `json:"version"`
+	UI       UISettings       `json:"ui"`
+	LLM      LLMSettings      `json:"llm"`
+	Academic AcademicSettings `json:"academic"`
 	// Path 是配置文件的绝对路径，不写入文件。
 	Path string `json:"-"`
 	// LoadWarning 记录加载时的问题（损坏、字段非法），供设置页展示。
@@ -92,6 +106,8 @@ func Default() Config {
 			TimeoutSecond: 120,
 			SendProfile:   false,
 		},
+		// 留空 = 官方教务在线；只有用户在设置页显式填写后才会落盘
+		Academic: AcademicSettings{BaseURL: ""},
 	}
 }
 
@@ -160,7 +176,34 @@ func merge(base, loaded Config) Config {
 	base.LLM.Consent = llm.Consent
 	base.LLM.SendProfile = llm.SendProfile
 	base.LLM.APIKey = llm.APIKey
+
+	// 教务地址：留空即"跟随官方默认"，因此只在非空时覆盖
+	if academic := strings.TrimSpace(loaded.Academic.BaseURL); academic != "" {
+		base.Academic.BaseURL = academic
+	}
 	return base
+}
+
+// EffectiveAcademicBase 返回实际生效的教务地址。
+//
+// 优先级：--base-url 临时覆盖 > 配置文件 academic.base_url > 官方默认。
+// 非法取值回退官方默认（设置页保存时已校验，这里只防御手工改坏文件）。
+func (c Config) EffectiveAcademicBase() string {
+	for _, raw := range []string{c.Academic.BaseURLOverride, c.Academic.BaseURL} {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if normalized, err := campus.NormalizeBase(raw); err == nil {
+			return normalized
+		}
+	}
+	return campus.OfficialBaseURL
+}
+
+// AcademicBaseIsCustom 表示当前是否指向非官方地址（设置页展示用）。
+func (c Config) AcademicBaseIsCustom() bool {
+	return strings.TrimSpace(c.Academic.BaseURLOverride) != "" || strings.TrimSpace(c.Academic.BaseURL) != ""
 }
 
 // Validate 修正非法取值并返回提示文本。
@@ -221,11 +264,13 @@ func (c Config) Save() error {
 		return fmt.Errorf("创建配置目录失败：%w", err)
 	}
 
+	// BaseURLOverride 带 json:"-"，不会写回文件（--base-url 只是本次运行的临时覆盖）
 	payload := struct {
-		Version int         `json:"version"`
-		UI      UISettings  `json:"ui"`
-		LLM     LLMSettings `json:"llm"`
-	}{Version: Version, UI: c.UI, LLM: c.LLM}
+		Version  int              `json:"version"`
+		UI       UISettings       `json:"ui"`
+		LLM      LLMSettings      `json:"llm"`
+		Academic AcademicSettings `json:"academic"`
+	}{Version: Version, UI: c.UI, LLM: c.LLM, Academic: c.Academic}
 
 	encoded, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {

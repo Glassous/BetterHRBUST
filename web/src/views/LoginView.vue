@@ -192,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
@@ -226,6 +226,16 @@ const captchaImgUrl = ref('');
 const captchaLoading = ref(false);
 const captchaError = ref(false);
 const errorMessage = ref('');
+// 自定义教务地址下验证码是 Blob URL，替换/卸载时必须回收
+let captchaObjectUrl = '';
+
+function releaseCaptchaImage() {
+  if (captchaObjectUrl) {
+    try { URL.revokeObjectURL(captchaObjectUrl); } catch { /* 忽略 */ }
+    captchaObjectUrl = '';
+  }
+  captchaImgUrl.value = '';
+}
 
 const form = reactive({
   username: savedCredential?.username || studentNumber.value || '',
@@ -244,17 +254,23 @@ const canSubmit = computed(() => {
 
 async function prepareAccount() {
   try { if (await prepareLoginAccount(form.username)) await refreshCaptcha(); }
-  catch (error) { errorMessage.value = error.message; captchaImgUrl.value = ''; captchaError.value = true; captchaLoading.value = false; }
+  catch (error) { errorMessage.value = error.message; releaseCaptchaImage(); captchaError.value = true; captchaLoading.value = false; }
 }
 
 async function refreshCaptcha() {
   captchaLoading.value = true;
   captchaError.value = false;
-  captchaImgUrl.value = '';
+  releaseCaptchaImage();
   form.captcha = '';
   try {
     await prepareLoginAccount(form.username);
-    captchaImgUrl.value = academicApi.getCaptchaUrl();
+    if (academicApi.captchaUsesProxy()) {
+      captchaImgUrl.value = academicApi.getCaptchaUrl();
+    } else {
+      // 自定义教务地址：图片与登录走同一通道，避免 SameSite Cookie 不随 <img> 发送
+      captchaImgUrl.value = await academicApi.loadCaptchaImage();
+      if (captchaImgUrl.value.startsWith('blob:')) captchaObjectUrl = captchaImgUrl.value;
+    }
   } catch (error) {
     errorMessage.value = error.message || '无法准备新账号的验证码，请重试';
     captchaLoading.value = false;
@@ -298,6 +314,8 @@ onMounted(() => {
     form.username = studentNumber.value;
   }
 });
+
+onUnmounted(releaseCaptchaImage);
 </script>
 
 <style scoped>

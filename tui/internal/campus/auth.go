@@ -46,7 +46,7 @@ type LoginResult struct {
 // 不依赖响应头：教务有时不写 Content-Type，有时写 octet-stream，
 // 浏览器靠嗅探就能显示，这里同样以文件头为准。
 func (s *Service) Captcha(ctx context.Context) ([]byte, error) {
-	response, err := s.client.Get(ctx, fmt.Sprintf("getCaptcha.do?_t=%d", time.Now().UnixMilli()))
+	response, err := s.clientFor().Get(ctx, fmt.Sprintf("getCaptcha.do?_t=%d", time.Now().UnixMilli()))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func looksLikeImage(body []byte) bool {
 
 // CheckCaptcha 调用教务的前置校验接口；失败不作为阻断条件（与前端一致）。
 func (s *Service) CheckCaptcha(ctx context.Context, code string) bool {
-	response, err := s.client.PostForm(ctx, "checkCaptcha.do?captchaCode="+url.QueryEscape(code), url.Values{})
+	response, err := s.clientFor().PostForm(ctx, "checkCaptcha.do?captchaCode="+url.QueryEscape(code), url.Values{})
 	if err != nil {
 		return true
 	}
@@ -104,7 +104,7 @@ func (s *Service) Login(ctx context.Context, request LoginRequest) (LoginResult,
 	form.Set("j_username", username)
 	form.Set("j_password", password)
 	form.Set("j_captcha", captcha)
-	response, err := s.client.PostForm(ctx, "j_acegi_security_check", form)
+	response, err := s.clientFor().PostForm(ctx, "j_acegi_security_check", form)
 	if err != nil {
 		return LoginResult{}, err
 	}
@@ -176,7 +176,7 @@ func (s *Service) Login(ctx context.Context, request LoginRequest) (LoginResult,
 // Logout 结束教务会话，并把本地标记为「会话已失效、可离线查看」。
 func (s *Service) Logout(ctx context.Context) error {
 	// 服务端登出失败不应阻断本地清理
-	_, _ = s.client.Get(ctx, "logout_security_check")
+	_, _ = s.clientFor().Get(ctx, "logout_security_check")
 
 	if err := s.session.Clear(); err != nil {
 		return err
@@ -190,7 +190,7 @@ func (s *Service) Logout(ctx context.Context) error {
 
 // studentContext 拉取教务上下文；会话失效时返回 ErrSessionExpired。
 func (s *Service) studentContext(ctx context.Context) (StudentContext, error) {
-	response, err := s.client.Get(ctx, "student/currcourse/currcourse.jsdo")
+	response, err := s.clientFor().Get(ctx, "student/currcourse/currcourse.jsdo")
 	if err != nil {
 		return StudentContext{}, err
 	}
@@ -202,7 +202,7 @@ func (s *Service) studentContext(ctx context.Context) (StudentContext, error) {
 
 // personalInfo 拉取学籍档案；会话失效时返回 ErrSessionExpired。
 func (s *Service) personalInfo(ctx context.Context) (Profile, error) {
-	response, err := s.client.Get(ctx, "showPersonalInfo.do")
+	response, err := s.clientFor().Get(ctx, "showPersonalInfo.do")
 	if err != nil {
 		return Profile{}, err
 	}

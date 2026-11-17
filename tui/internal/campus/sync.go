@@ -250,7 +250,7 @@ func (s *Service) fetchScores(ctx context.Context) (ScoresResult, error) {
 	query.Set("para", "0")
 	query.Set("sortColumn", "")
 
-	response, err := s.client.Get(ctx, "manager/score/studentOwnScore.do?"+query.Encode())
+	response, err := s.clientFor().Get(ctx, "manager/score/studentOwnScore.do?"+query.Encode())
 	if err != nil {
 		return ScoresResult{}, err
 	}
@@ -271,7 +271,7 @@ func (s *Service) fetchTimetable(
 	query.Set("timetableType", "STUDENT")
 	query.Set("sectionType", sectionType)
 
-	response, err := s.client.Get(ctx, "manager/coursearrange/showTimetable.do?"+query.Encode())
+	response, err := s.clientFor().Get(ctx, "manager/coursearrange/showTimetable.do?"+query.Encode())
 	if err != nil {
 		return Timetable{}, err
 	}
@@ -283,7 +283,7 @@ func (s *Service) fetchTimetable(
 
 // fetchExams 拉取考试安排：优先全量接口，空结果时回退近期考试接口。
 func (s *Service) fetchExams(ctx context.Context) ([]ExamEntry, error) {
-	response, err := s.client.Get(ctx, "manager/examstu/studentQueryAllExam.do")
+	response, err := s.clientFor().Get(ctx, "manager/examstu/studentQueryAllExam.do")
 	if err == nil && !isLoginPage(response.HTML) {
 		if exams := parseExams(response.HTML); len(exams) > 0 {
 			return exams, nil
@@ -292,7 +292,7 @@ func (s *Service) fetchExams(ctx context.Context) ([]ExamEntry, error) {
 		return nil, ErrSessionExpired
 	}
 
-	fallback, fallbackErr := s.client.Get(ctx, "student/exam/index.jsdo")
+	fallback, fallbackErr := s.clientFor().Get(ctx, "student/exam/index.jsdo")
 	if fallbackErr != nil {
 		if err != nil {
 			return nil, err
@@ -307,7 +307,7 @@ func (s *Service) fetchExams(ctx context.Context) ([]ExamEntry, error) {
 
 // fetchPlan 拉取培养方案。
 func (s *Service) fetchPlan(ctx context.Context, studentID string) (Plan, error) {
-	entry, err := s.client.Get(ctx, "manager/studyschedule/studentSelfSchedule.jsdo")
+	entry, err := s.clientFor().Get(ctx, "manager/studyschedule/studentSelfSchedule.jsdo")
 	if err != nil {
 		return Plan{}, err
 	}
@@ -325,7 +325,7 @@ func (s *Service) fetchPlan(ctx context.Context, studentID string) (Plan, error)
 		id = decoded
 	}
 
-	response, err := s.client.Get(ctx,
+	response, err := s.clientFor().Get(ctx,
 		"manager/studyschedule/studentScheduleShowByTerm.do?z=z&studentId="+url.QueryEscape(id))
 	if err != nil {
 		return Plan{}, err
@@ -342,7 +342,7 @@ func (s *Service) fetchCalendar(ctx context.Context, week int) (CalendarInfo, er
 	if week > 0 {
 		path += "?week=" + strconv.Itoa(week)
 	}
-	response, err := s.client.Get(ctx, path)
+	response, err := s.clientFor().Get(ctx, path)
 	if err != nil {
 		return CalendarInfo{}, err
 	}

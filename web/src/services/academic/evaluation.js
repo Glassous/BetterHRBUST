@@ -1,17 +1,20 @@
 import { createDom } from './parser.js';
-import { request } from './client.js';
+import { getAcademicBase, request } from './client.js';
 import { recordAcademicDiagnostic } from './diagnostics.js';
 
-const BASE = 'http://jwzx.hrbust.edu.cn/academic/';
+const OFFICIAL_BASE = 'http://jwzx.hrbust.edu.cn/academic/';
 function evaluationUrl(value, page) {
-  const source = new URL(page, BASE);
-  const base = new URL(source.pathname + source.search, BASE);
+  // 教务地址可自定义：解析基准与 host 白名单都跟随当前生效地址
+  const allowed = new URL(getAcademicBase() || OFFICIAL_BASE);
+  const source = new URL(page, allowed.href);
+  const base = new URL(source.pathname + source.search, allowed.href);
   const url = new URL(value, base);
-  if (url.hostname !== 'jwzx.hrbust.edu.cn' || url.username || url.password || !['http:', 'https:'].includes(url.protocol)
-      || (url.port && !['80', '443'].includes(url.port)) || !url.pathname.startsWith('/academic/eva/')) {
+  if (url.hostname !== allowed.hostname || url.username || url.password || !['http:', 'https:'].includes(url.protocol)
+      || !url.pathname.startsWith('/academic/eva/')) {
     throw new Error('评价地址不属于学校教学评价模块');
   }
-  url.protocol = 'http:'; url.port = '';
+  // 协议与端口跟随当前教务地址：官方仅 HTTP，自建镜像通常是 HTTPS
+  url.protocol = allowed.protocol; url.port = allowed.port;
   return url.href;
 }
 export function parseEvaluationTasks(html, page = 'eva/index/resultlist.jsdo') {

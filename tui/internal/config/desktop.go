@@ -5,11 +5,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 )
 
 // desktopAIConfigFile 与桌面端 Rust 侧 ai.rs 的 CONFIG_FILE 保持一致。
 // 文件位于教务数据目录（与 storage.json 同目录），由图形界面写入。
 const desktopAIConfigFile = "ai-config.json"
+
+// desktopStorageFile 是桌面端（Rust）拥有的键值存储文件。
+const desktopStorageFile = "storage.json"
+
+// desktopAcademicBaseKey 与 Rust/server.rs 的 ACADEMIC_BASE_KEY、前端 base.js 的键一致。
+const desktopAcademicBaseKey = "better_hrbust_academic_base"
 
 // OverlayDesktopAI 用桌面端（图形界面）保存的 AI 配置覆盖 LLM 段。
 //
@@ -44,5 +52,43 @@ func OverlayDesktopAI(settings Config, dataDir string) (Config, bool) {
 		desktop.APIKeyEnv = settings.LLM.APIKeyEnv
 	}
 	settings.LLM = desktop
+	return settings.Normalized(), true
+}
+
+// OverlayDesktopAcademicBase 用桌面端（图形界面）保存的教务地址覆盖 academic 段。
+//
+// 目的：在图形端设置页改过一次地址后，终端不必再抄一遍。
+//
+// 规则（沿用 OverlayDesktopAI 的只读范式）：
+//   - 终端自己配过地址 → 用终端的，不覆盖；
+//   - 桌面 storage.json 缺失 / 解析失败 / 该键为空 → 保持不变；
+//   - 地址非法 → 忽略（设置页保存时已校验，这里防手工改坏文件）。
+//
+// 该函数**只读**：终端不写 storage.json 的这个键，避免与图形界面的内存镜像互相覆盖。
+func OverlayDesktopAcademicBase(settings Config, dataDir string) (Config, bool) {
+	if strings.TrimSpace(settings.Academic.BaseURL) != "" {
+		return settings, false
+	}
+	dir := strings.TrimSpace(dataDir)
+	if dir == "" {
+		return settings, false
+	}
+	bytes, err := os.ReadFile(filepath.Join(dir, desktopStorageFile))
+	if err != nil {
+		return settings, false
+	}
+	var store map[string]string
+	if err := json.Unmarshal(bytes, &store); err != nil {
+		return settings, false
+	}
+	raw := strings.TrimSpace(store[desktopAcademicBaseKey])
+	if raw == "" {
+		return settings, false
+	}
+	normalized, err := campus.NormalizeBase(raw)
+	if err != nil {
+		return settings, false
+	}
+	settings.Academic.BaseURL = normalized
 	return settings.Normalized(), true
 }

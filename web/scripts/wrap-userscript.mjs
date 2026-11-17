@@ -51,6 +51,9 @@ const header = `// ==UserScript==
 // @grant        GM_deleteValue
 // @grant        unsafeWindow
 // @connect      jwzx.hrbust.edu.cn
+// @connect      *
+// 说明:@connect * 为自定义教务地址(设置页可填任意可访问教务站点)放行跨域请求;
+// 不使用自定义地址时,请求仍然发往上面的官方域名。
 // @homepageURL  https://github.com/Glassous/BetterHRBUST
 // @license      MIT
 ${updateMeta}// ==/UserScript==

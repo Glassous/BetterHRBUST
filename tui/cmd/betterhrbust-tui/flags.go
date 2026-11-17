@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Glassous/BetterHRBUST/tui/internal/academic"
+	"github.com/Glassous/BetterHRBUST/tui/internal/campus"
 	"github.com/Glassous/BetterHRBUST/tui/internal/query"
 	"github.com/Glassous/BetterHRBUST/tui/internal/store"
 )
@@ -22,6 +23,8 @@ type Flags struct {
 	ascii       bool
 	nerdFont    bool
 	screen      string
+	// baseURL 临时覆盖教务地址（不写入配置文件）。
+	baseURL string
 
 	// 命令
 	command string
@@ -109,6 +112,16 @@ func parseFlags(argv []string) (Flags, error) {
 			flags.options.All = true
 		case "--strict":
 			flags.options.Strict = true
+		case "--base-url":
+			value, next, err := optionValue(argv, index, inline, name)
+			if err != nil {
+				return flags, err
+			}
+			if _, validErr := campus.NormalizeBase(value); validErr != nil {
+				return flags, fmt.Errorf("--base-url %v", validErr)
+			}
+			flags.baseURL = value
+			index = next
 		case "--data-dir":
 			value, next, err := optionValue(argv, index, inline, name)
 			if err != nil {
@@ -311,6 +324,7 @@ func printHelp() {
 		"",
 		"选项：",
 		"  --data-dir <路径>          指定数据目录（默认与图形界面一致）",
+		"  --base-url <地址>          临时指定教务在线地址（不写入配置文件，留空恢复官方默认）",
 		"  --week <1..26>            指定教学周",
 		"  --day <1..7>              指定星期",
 		"  --today                   只看今天剩余的课程",

@@ -18,6 +18,9 @@
       </div>
     </UiCard>
 
+    <!-- 教务地址（自定义 base URL，官方为默认） -->
+    <AcademicBaseCard />
+
     <!-- Theme Settings Card -->
     <UiCard title="外观与个性化设置">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -83,6 +86,7 @@ import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import Icon from '@/components/icons/Icon.vue';
+import AcademicBaseCard from '@/components/settings/AcademicBaseCard.vue';
 import AiSettingsCard from '@/components/settings/AiSettingsCard.vue';
 import CliCard from '@/components/settings/CliCard.vue';
 import UpdateCard from '@/components/settings/UpdateCard.vue';

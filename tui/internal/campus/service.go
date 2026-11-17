@@ -3,6 +3,7 @@ package campus
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/Glassous/BetterHRBUST/tui/internal/model"
@@ -15,7 +16,11 @@ import (
 type Service struct {
 	dir     string
 	session *Session
+	// mu 保护 client / baseURL：设置页可以在运行中切换教务地址，
+	// 而同步与登录可能在另一个 goroutine 里取客户端。
+	mu      sync.RWMutex
 	client  *Client
+	baseURL string
 	now     func() time.Time
 	// writer 把改动合并写回 `storage.json`；未注入时（测试）只返回结果。
 	writer func(Patch) (WriteReport, error)
@@ -43,8 +48,45 @@ func NewService(dataDir string, now func() time.Time) *Service {
 		dir:     dataDir,
 		session: session,
 		client:  NewClient(session),
+		baseURL: OfficialBaseURL,
 		now:     now,
 	}
+}
+
+// clientFor 返回当前生效的客户端（切换教务地址后拿到的是新客户端）。
+func (s *Service) clientFor() *Client {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.client
+}
+
+// BaseURL 返回当前生效的教务地址（以 /academic/ 结尾）。
+func (s *Service) BaseURL() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.baseURL == "" {
+		return OfficialBaseURL
+	}
+	return s.baseURL
+}
+
+// SetBaseURL 归一化并立即切换目标教务站点。
+//
+// 只影响后续请求：已在会话文件里的 Cookie 按站点隔离保留，
+// 切回原地址时旧登录态仍可用；非法地址返回中文错误且不生效。
+func (s *Service) SetBaseURL(raw string) error {
+	normalized, err := NormalizeBase(raw)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.baseURL == normalized && s.client != nil {
+		return nil
+	}
+	s.baseURL = normalized
+	s.client = NewClientAt(s.session, normalized)
+	return nil
 }
 
 // SetWriter 注入缓存写回实现（由 cmd 接到 store.Writer）。
