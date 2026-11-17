@@ -17,6 +17,9 @@
 # 桌面小部件：receiver 由系统按类名反射实例化，Glance 亦按类名管理各小部件实例
 -keep class com.glassous.betterhrbust.widget.** { *; }
 -keepnames class com.glassous.betterhrbust.widget.**
+# 上课提示（超级岛）：闹钟广播接收器与窗口级前台服务由系统按类名反射实例化
+-keep class com.glassous.betterhrbust.core.notify.ClassReminderReceiver { *; }
+-keep class com.glassous.betterhrbust.core.notify.ClassReminderService { *; }
 
 # ---------------------------------------------------------------
 # 桌面小部件运行栈（Glance / WorkManager / DataStore / protobuf）：

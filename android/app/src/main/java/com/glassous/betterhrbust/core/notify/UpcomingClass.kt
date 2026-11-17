@@ -34,6 +34,9 @@ object UpcomingClassResolver {
     /** 提醒窗口：上课前 20 分钟内 */
     const val WINDOW_MINUTES = 20L
 
+    /** 窗口外跨天查找下一节课的最大前瞻天数（覆盖整周课表循环） */
+    private const val LOOKAHEAD_DAYS = 7L
+
     fun resolve(
         cells: List<TimetableCell>,
         date: LocalDate,
@@ -62,6 +65,69 @@ object UpcomingClassResolver {
             start = date.atTime(start),
             end = date.atTime(end)
         )
+    }
+
+    /**
+     * 当前已处于提醒窗口内时，计算下一次需要刷新或收起通知的精确时刻：
+     * - 剩余显示分钟数 >= 2（如 15分）：返回分钟数跳变为 14分 的精确整分边界 `start - 14min`；
+     * - 最后 1 分钟内（显示 1分）：返回课程开始时刻 `start`，到点立即收起通知。
+     */
+    fun nextActiveBoundary(upcoming: UpcomingClass, now: LocalDateTime): LocalDateTime {
+        if (!upcoming.start.isAfter(now)) return upcoming.start
+        val seconds = Duration.between(now, upcoming.start).seconds
+        if (seconds <= 0L) return upcoming.start
+        val displayMinutes = (seconds + 59) / 60
+        return if (displayMinutes <= 1L) {
+            upcoming.start
+        } else {
+            upcoming.start.minusMinutes(displayMinutes - 1)
+        }
+    }
+
+    /**
+     * 计算下一次系统闹钟应唤醒重算的时刻：
+     * 1. 若此刻正处于某节课的课前提醒窗口内，返回 [nextActiveBoundary]（下一整分跳变点或上课到点时刻）；
+     * 2. 否则向后扫描今天及未来 [LOOKAHEAD_DAYS] 天内最早一节尚未开始的课，返回其窗口开启时刻 `start - windowMinutes`；
+     * 3. 若扫描范围内无课但本地课表非空（如假期或整周无课），返回次日 00:05 低频推进检查；
+     * 4. 若本地课表为空，返回 null（不注册任何闹钟）。
+     */
+    fun nextReminderWakeup(
+        cells: List<TimetableCell>,
+        now: LocalDateTime,
+        weekForDate: (LocalDate) -> Int?,
+        windowMinutes: Long = WINDOW_MINUTES
+    ): LocalDateTime? {
+        if (cells.isEmpty()) return null
+        val today = now.toLocalDate()
+        val activeNow = resolve(cells, today, weekForDate(today), now.toLocalTime(), windowMinutes)
+        if (activeNow != null) {
+            return nextActiveBoundary(activeNow, now)
+        }
+        for (offset in 0L..LOOKAHEAD_DAYS) {
+            val candidateDate = today.plusDays(offset)
+            val week = weekForDate(candidateDate) ?: continue
+            val dayOfWeek = candidateDate.dayOfWeek.value
+            val earliest = cells.asSequence()
+                .filter { it.day == dayOfWeek && AcademicParsers.isCourseActiveInWeek(it.weeks, week) }
+                .mapNotNull { it.toSchedule() }
+                .sortedBy { it.first }
+                .map { (startTime, endTime, cell) ->
+                    UpcomingClass(
+                        courseName = cell.courseName,
+                        location = cell.location.ifBlank { "地点待公布" },
+                        teacher = cell.teacher,
+                        sectionLabel = cell.sectionLabel,
+                        start = candidateDate.atTime(startTime),
+                        end = candidateDate.atTime(endTime)
+                    )
+                }
+                .firstOrNull { it.start.isAfter(now) }
+            if (earliest != null) {
+                val windowStart = earliest.start.minusMinutes(windowMinutes)
+                return if (windowStart.isAfter(now)) windowStart else nextActiveBoundary(earliest, now)
+            }
+        }
+        return today.plusDays(1).atTime(0, 5)
     }
 
     /** 大节序号 → 起止时间；序号越界或时间解析失败返回 null，绝不抛异常。 */

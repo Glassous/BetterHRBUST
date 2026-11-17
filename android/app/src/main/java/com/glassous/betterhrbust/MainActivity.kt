@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             com.glassous.betterhrbust.widget.TimetableWidgetProvider.refreshAll(this@MainActivity)
         }
+        com.glassous.betterhrbust.core.notify.ClassReminderTicker.refreshAsync(this@MainActivity)
     }
 
     /** 桌面小部件点击请求打开的一级 Tab 索引（null = 无待处理请求） */

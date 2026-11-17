@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 课表与上课提醒应用专属精确闹钟权限：Android 13+ 安装即自动授予，保证未进入应用也能准时上岛与按分钟刷新 -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- 小部件在开机后刷新一次，避免显示开机前的旧课表 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -97,6 +102,30 @@
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 上课提示（超级岛 / 实况通知）：课前 20 分钟窗口级前台服务，防后台冻结导致倒计时停走，上课即停 -->
+        <service
+            android:name=".core.notify.ClassReminderService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="课前 20 分钟在状态栏与超级岛实时刷新上课倒计时与教室，上课后立即结束服务" />
+        </service>
+
+        <!-- 上课提示闹钟与系统时间广播接收器 -->
+        <receiver
+            android:name=".core.notify.ClassReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.glassous.betterhrbust.action.CLASS_REMINDER_TICK" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

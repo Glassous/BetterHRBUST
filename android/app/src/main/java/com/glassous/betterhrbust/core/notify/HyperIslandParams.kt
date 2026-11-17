@@ -13,29 +13,31 @@ import kotlinx.serialization.json.put
  * 岛通知需要展示的文案（集中一处，避免各层各拼一套）。
  *
  * 布局依据《小米超级岛摘要态设计规范》：
- * - 大岛以摄像头为界分 A 区（左）/ B 区（右），A 区可只放文字（图标与大字二选一）；
+ * - 大岛以摄像头为界分 A 区（左）/ B 区（右），A 区图标与正文大字二选一；
  * - 文本组件只有「前置小字 / 大字 / 后置小字」三级，字号由系统固定，不能传参，
  *   因此需要强调的内容一律放进 `title`（唯一的大字槽位）。
  */
 data class IslandNotificationText(
     /** 通知标题 / 焦点通知卡片主文案，如「12 分钟后上课」 */
     val title: String,
-    /** 焦点通知卡片次要文本（第二行），如「教1-302」 */
+    /** 焦点通知卡片次要文本（第二行，完整教室），如「西-新B406（直播）」 */
     val content: String,
     /** 状态栏 / 息屏短文案，如「数据结构与算法 · 12 分钟后上课」 */
     val ticker: String,
-    /** 息屏文案，如「数据结构与算法 教1-302」 */
+    /** 息屏文案，如「数据结构与算法 西-新B406」 */
     val aodTitle: String,
     /** 大岛 A 区（左）大字：倒计时数字，如「12」 */
     val countdownNumber: String,
-    /** 大岛 A 区（左）后置小字：单位，如「分钟」 */
+    /** 大岛 A 区（左）后置小字：单位，如「分」 */
     val countdownUnit: String,
-    /** 大岛 B 区（右）大字：教室，如「教1-302」 */
+    /** 大岛 B 区（右）大字：精简教室，如「西-新B406」 */
     val room: String,
     /** 焦点通知默认消失时间（分钟） */
     val timeoutMinutes: Int,
     /** 岛自动消失时间（秒） */
-    val islandTimeoutSeconds: Int
+    val islandTimeoutSeconds: Int,
+    /** 是否为本节课提醒首次出现（首次展开一次，后续整分更新静默刷新） */
+    val firstFloat: Boolean = false
 )
 
 /**
@@ -52,7 +54,7 @@ object HyperIslandParams {
     const val PICS_KEY = "miui.focus.pics"
     const val ACTIONS_KEY = "miui.focus.actions"
 
-    /** 岛屿图片 key（`miui.focus.pics` 中的键名） */
+    /** 岛屿图片 key（`miui.focus.pics` 中的键名，供小岛折叠态引用） */
     const val PIC_KEY_LOGO = "miui.focus.pic_logo"
 
     /** 岛内按钮 key（`miui.focus.actions` 中的键名） */
@@ -64,14 +66,30 @@ object HyperIslandParams {
     /** 主文案强调色，取应用主色系中较醒目的一档 */
     private const val HIGHLIGHT_COLOR = "#006EFF"
 
+    private val PAREN_SUFFIX_REGEX = Regex("""\s*(?:（[^）]*）|\([^)]*\))\s*""")
+    private val MULTI_SPACE_REGEX = Regex("""\s+""")
+
+    /**
+     * 精简超级岛胶囊右侧展示的教室文案：
+     * - 空串或默认占位「地点待公布」统一收敛为「待公布」；
+     * - 去除全角 / 半角括号备注（如「西-新B406（直播）」→「西-新B406」），展开卡片仍展示完整教室；
+     * - 若剥离后为空串（整段内容均在括号内），回退为去除首尾空白的原文。
+     */
+    fun compactRoomForIsland(rawLocation: String): String {
+        val trimmed = rawLocation.trim()
+        if (trimmed.isEmpty() || trimmed == "地点待公布") return "待公布"
+        val stripped = trimmed.replace(PAREN_SUFFIX_REGEX, " ").trim().replace(MULTI_SPACE_REGEX, " ")
+        return stripped.ifEmpty { trimmed }
+    }
+
     fun build(text: IslandNotificationText): String = buildJsonObject {
         put("param_v2", buildJsonObject {
             put("protocol", 1)
             put("business", BUSINESS)
             // 持续性通知：同 id 反复更新时保持「岛」形态，而不是每次都当作新通知
             put("updatable", true)
-            // 首次出现自动展开一次；后续按分钟更新不再强制展开，避免反复打断用户
-            put("islandFirstFloat", true)
+            // 仅在本节课提醒首次出现时自动展开一次；后续按分钟更新置 false，避免反复打断用户
+            put("islandFirstFloat", text.firstFloat)
             put("enableFloat", false)
             // 被取消后同 id 再次发送仍然展示（下一节课复用同一条通知 id）
             put("reopen", "reopen")
@@ -101,19 +119,17 @@ object HyperIslandParams {
                 put("islandTimeout", text.islandTimeoutSeconds)
                 put("highlightColor", HIGHLIGHT_COLOR)
                 put("bigIslandArea", buildJsonObject {
-                    // A 区（摄像头左侧）：倒计时（大字槽位）
+                    // A 区（摄像头左侧）：纯文本倒计时（遵循「图标或正文大字二选一」，不再附带应用图标）
                     put("imageTextInfoLeft", buildJsonObject {
                         put("type", 1)
-                        put("picInfo", appIconPic())
                         put("textInfo", buildJsonObject {
                             put("title", text.countdownNumber)
                             if (text.countdownUnit.isNotBlank()) put("content", text.countdownUnit)
-                            // 唯一能提升主数字视觉权重的两个开关（字号本身不可调）
                             put("showHighlightColor", true)
                             put("narrowFont", true)
                         })
                     })
-                    // B 区（摄像头右侧）：图文组件2 的文字槽位（该模板不要求 picInfo），放教室
+                    // B 区（摄像头右侧）：图文组件2 的文字槽位，放精简后的教室名称
                     put("imageTextInfoRight", buildJsonObject {
                         put("type", 2)
                         put("textInfo", buildJsonObject {
@@ -122,9 +138,7 @@ object HyperIslandParams {
                         })
                     })
                 })
-                // 小岛（折叠态）只放图片：官方仅支持「图标 / 图标+环形进度 / 图文组件6」，
-                // 其中图文组件6 实测只渲染数字、不渲染文本，教室无法在胶囊里呈现。
-                // 课程与教室信息由展开态与焦点通知承载，这里不再尝试塞文字。
+                // 小岛（多岛并存折叠态）只支持图片组件：引用 pics 中的应用图标
                 put("smallIslandArea", buildJsonObject {
                     put("picInfo", appIconPic())
                 })
@@ -137,12 +151,6 @@ object HyperIslandParams {
         })
     }.toString()
 
-    /**
-     * 图片组件：`type=1` 配 `pic`，`pic` 的取值必须与 [PICS_KEY] Bundle 中的键名一致。
-     *
-     * 注意：只写 `type` 不写 `pic` 时系统取不到图，整个图文组件（B 区）会被丢弃，
-     * 表现为胶囊右侧不显示内容。
-     */
     private fun appIconPic() = buildJsonObject {
         put("type", 1)
         put("pic", PIC_KEY_LOGO)
@@ -150,9 +158,6 @@ object HyperIslandParams {
 
     /**
      * 组装需要挂到通知上的 extras：岛参数 + 图片 + 操作按钮。
-     *
-     * 岛图片统一用**资源型 Icon**（应用桌面图标）：与 JSON 里的 `pic` 键名对应，
-     * 跨进程传递时由系统按资源解析，比 Bitmap 更稳。
      */
     fun extras(
         context: Context,
