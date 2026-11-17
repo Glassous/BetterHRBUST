@@ -2,8 +2,12 @@
   <aside
     :class="[
       'h-[calc(100vh_-_var(--tb))] flex flex-col bg-[var(--md-surface-container-low)] select-none overflow-hidden',
-      // Desktop layout（sticky 顶部让出标题栏高度）
-      'lg:sticky lg:top-[var(--tb)] lg:shrink-0 lg:z-30 lg:rounded-r-[var(--shape-xxl)]',
+      // Desktop layout：主区域自己滚动（见 AppLayout 的 main），侧栏和页面同高即可。
+      // 不要再加 sticky 偏移——外层 flex 行本身是 sticky 的滚动容器（overflow-hidden），
+      // top 会与行顶部叠加，把侧栏整体往下推 40px（--tb）。
+      // top/bottom 必须显式归零：v-overlay-scroll 会给滚动容器的父元素（也就是这里）
+      // 注入内联 position: relative，下面移动端的 top-[var(--tb)] / bottom-0 会因此生效。
+      'lg:static lg:top-auto lg:bottom-auto lg:left-auto lg:shrink-0 lg:z-30 lg:rounded-r-[var(--shape-xxl)]',
       'lg:transition-[width,background-color] lg:duration-300 lg:ease-[cubic-bezier(0.2,0,0,1)]',
       isCollapsedState ? 'lg:w-[76px]' : 'lg:w-[272px]',
       // Mobile / Responsive overlay layout

@@ -1,6 +1,6 @@
 <template>
   <header
-    class="h-[68px] px-5 sm:px-8 lg:px-10 sticky top-[var(--tb)] z-20 bg-[var(--bg-canvas)]/88 backdrop-blur-xl flex items-center justify-between gap-3 transition-colors duration-200"
+    class="h-[68px] px-5 sm:px-8 lg:px-10 z-20 bg-[var(--bg-canvas)]/88 backdrop-blur-xl flex items-center justify-between gap-3 transition-colors duration-200"
   >
     <!-- 左侧：侧栏折叠 + 当前页面与周次定位 -->
     <div class="flex items-center gap-3 min-w-0">

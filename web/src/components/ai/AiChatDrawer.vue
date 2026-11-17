@@ -9,7 +9,7 @@
     @click="close"
   />
   <div
-    class="fixed inset-x-0 bottom-0 z-40 min-h-0 overflow-hidden rounded-t-[var(--shape-xxl)] shadow-[var(--shadow-float)] transition-[width,height] duration-300 ease-out motion-reduce:transition-none md:max-xl:left-auto md:max-xl:right-0 md:max-xl:top-[var(--tb)] md:max-xl:bottom-0 md:max-xl:rounded-t-none md:max-xl:rounded-l-[var(--shape-xxl)] xl:static xl:inset-auto xl:h-full xl:shrink-0 xl:rounded-none xl:shadow-none"
+    class="fixed inset-x-0 bottom-0 z-40 min-h-0 min-w-0 overflow-hidden rounded-t-[var(--shape-xxl)] shadow-[var(--shadow-float)] transition-[width,height] duration-300 ease-out motion-reduce:transition-none md:max-xl:left-auto md:max-xl:right-0 md:max-xl:top-[var(--tb)] md:max-xl:bottom-0 md:max-xl:rounded-t-none md:max-xl:rounded-l-[var(--shape-xxl)] xl:static xl:inset-auto xl:h-full xl:shrink-0 xl:overflow-hidden xl:rounded-none xl:shadow-none"
     :class="[
       open ? 'w-full md:max-xl:w-[400px] xl:w-[440px]' : 'w-full md:max-xl:w-0 xl:w-0',
       open ? '' : 'max-md:shadow-none'

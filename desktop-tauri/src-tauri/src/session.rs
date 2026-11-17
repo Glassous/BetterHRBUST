@@ -27,8 +27,6 @@ use serde::{Deserialize, Serialize};
 pub const FILE_NAME: &str = "academic-session.json";
 /// 文件结构版本。
 pub const VERSION: u32 = 1;
-/// 会话所属的教务系统 origin（官方默认；自定义地址由调用方显式传入）。
-pub const ORIGIN: &str = "http://jwzx.hrbust.edu.cn";
 /// 官方教务系统主机名：旧会话文件没有 host 字段时按它归属。
 pub const OFFICIAL_HOST: &str = "jwzx.hrbust.edu.cn";
 
@@ -106,15 +104,10 @@ impl SessionBridge {
         bridge
     }
 
-    /// 返回当前可用（未过期）的官方站点 Cookie 快照。
+    /// 返回指定上游站点的可用 Cookie 快照。
     ///
     /// 每次调用先检查文件是否被终端更新过：终端在图形界面运行期间登录时，
     /// 下一次请求就能用上新会话，不需要重启。
-    pub fn cookies(&self) -> Vec<StoredCookie> {
-        self.cookies_for(OFFICIAL_HOST)
-    }
-
-    /// 返回指定上游站点的可用 Cookie。
     ///
     /// 切换自定义教务地址后，官方站点的 Cookie 不会被发给第三方站点；
     /// 若终端在自定义站点登录过，这里仍能读到对应的那份会话。
@@ -132,18 +125,9 @@ impl SessionBridge {
             .collect()
     }
 
-    /// 批量导出响应头里的 Set-Cookie（官方站点）。
-    ///
-    /// 空值（教务删除 Cookie / 登出）会从文件里移除，与浏览器语义一致。
-    pub fn export<'a, I>(&self, cookies: I)
-    where
-        I: IntoIterator<Item = &'a str>,
-    {
-        self.export_at(cookies, OFFICIAL_HOST, ORIGIN);
-    }
-
     /// 批量导出指定上游站点的 Set-Cookie。
     ///
+    /// 空值（教务删除 Cookie / 登出）会从文件里移除，与浏览器语义一致。
     /// `host` 来自当前生效上游（可能与官方不同），`origin` 只是文件里的展示字段。
     pub fn export_at<'a, I>(&self, cookies: I, host: &str, origin: &str)
     where
@@ -373,6 +357,9 @@ fn restrict_permissions(path: &Path) {
 
 #[cfg(test)]
 mod tests {
+    /// 测试里模拟"官方站点"的 origin（生产由当前生效上游决定）
+    const TEST_ORIGIN: &str = "http://jwzx.hrbust.edu.cn";
+
     use super::*;
 
     #[test]
@@ -402,12 +389,12 @@ mod tests {
     fn bridge_exports_and_reimports_cookies() {
         let dir = tempfile::tempdir().unwrap();
         let bridge = SessionBridge::open(dir.path());
-        bridge.export(vec!["JSESSIONID=abc; Path=/academic"]);
-        assert_eq!(bridge.cookies().len(), 1);
+        bridge.export_at(vec!["JSESSIONID=abc; Path=/academic"], OFFICIAL_HOST, TEST_ORIGIN);
+        assert_eq!(bridge.cookies_for(OFFICIAL_HOST).len(), 1);
 
         // 另一个进程（终端）读同一份文件
         let reopened = SessionBridge::open(dir.path());
-        let cookies = reopened.cookies();
+        let cookies = reopened.cookies_for(OFFICIAL_HOST);
         assert_eq!(cookies.len(), 1);
         assert_eq!(cookies[0].name, "JSESSIONID");
         assert_eq!(cookies[0].value, "abc");
@@ -417,9 +404,9 @@ mod tests {
     fn bridge_removes_cookie_on_logout_response() {
         let dir = tempfile::tempdir().unwrap();
         let bridge = SessionBridge::open(dir.path());
-        bridge.export(vec!["JSESSIONID=abc; Path=/academic"]);
-        bridge.export(vec!["JSESSIONID=; Max-Age=0; Path=/academic"]);
-        assert!(bridge.cookies().is_empty(), "登出后不应再有会话 Cookie");
+        bridge.export_at(vec!["JSESSIONID=abc; Path=/academic"], OFFICIAL_HOST, TEST_ORIGIN);
+        bridge.export_at(vec!["JSESSIONID=; Max-Age=0; Path=/academic"], OFFICIAL_HOST, TEST_ORIGIN);
+        assert!(bridge.cookies_for(OFFICIAL_HOST).is_empty(), "登出后不应再有会话 Cookie");
     }
 
     #[test]
@@ -427,20 +414,20 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join(FILE_NAME), b"{ not json").unwrap();
         let bridge = SessionBridge::open(dir.path());
-        assert!(bridge.cookies().is_empty());
+        assert!(bridge.cookies_for(OFFICIAL_HOST).is_empty());
     }
 
     #[test]
     fn cookies_are_isolated_per_upstream_host() {
         let dir = tempfile::tempdir().unwrap();
         let bridge = SessionBridge::open(dir.path());
-        bridge.export(vec!["JSESSIONID=official; Path=/academic"]);
+        bridge.export_at(vec!["JSESSIONID=official; Path=/academic"], OFFICIAL_HOST, TEST_ORIGIN);
         bridge.export_at(vec!["JSESSIONID=mirror; Path=/academic"], "JWZX.fiacloud.top", "https://jwzx.fiacloud.top");
 
         assert_eq!(bridge.cookies_for("jwzx.hrbust.edu.cn")[0].value, "official");
         assert_eq!(bridge.cookies_for("jwzx.fiacloud.top")[0].value, "mirror");
         // 同名 Cookie 不互相覆盖，也不会把官方会话发给第三方站点
-        assert_eq!(bridge.cookies()[0].value, "official");
+        assert_eq!(bridge.cookies_for(OFFICIAL_HOST)[0].value, "official");
 
         // 登出只清掉当前站点的 Cookie
         bridge.export_at(vec!["JSESSIONID=; Max-Age=0; Path=/academic"], "jwzx.fiacloud.top", "https://jwzx.fiacloud.top");

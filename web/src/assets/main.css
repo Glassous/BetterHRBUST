@@ -224,6 +224,21 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 应用外壳锁死视口：唯一的滚动区是 AppLayout 的 <main>。
+   html/body 一律不滚动——AI 抽屉关闭态的 0 宽面板、浮层阴影等装饰性内容
+   一旦越出视口，浏览器就会给整页加上外层滚动条（横向滚动条还会吃掉 10px
+   高度、把纵向滚动条也带出来），把整个界面挤小一圈。 */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#app {
+  height: 100%;
+}
+
 body {
   background-color: var(--bg-canvas);
   color: var(--ink-primary);
