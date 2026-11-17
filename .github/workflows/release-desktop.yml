@@ -1,0 +1,39 @@
+name: Release Desktop (Windows + Linux)
+
+# Release 发布时自动构建桌面端全平台产物并上传到该 Release。
+# 构建本身完全复用 build-desktop.yml（Windows + Linux + 汇总整合包），
+# 这里只负责把 betterhrbust-desktop-all 产物挂到 Release 上，不再单独维护一套打包步骤。
+# workflow_dispatch 供发布后补传 / 重传（--clobber 覆盖同名资产）。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要补充上传资产的 Release tag'
+        required: true
+
+permissions:
+  contents: write
+  # 复用工作流里的 package job 用 gh run download 取产物，调用方必须放行 actions: read
+  actions: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-desktop.yml
+
+  upload:
+    needs: build
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      # 产物含：全平台整合包 BetterHRBUST-<version>-desktop-all.zip +
+      # 四份单文件安装包（windows-setup / windows-portable / linux-amd64.deb / linux-x86_64.rpm）
+      - name: Download bundled artifacts
+        run: gh run download "$GITHUB_RUN_ID" -n betterhrbust-desktop-all -D dist
+
+      - name: Upload assets to release
+        run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

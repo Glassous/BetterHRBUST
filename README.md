@@ -4,7 +4,7 @@
 
 <h1 align="center">BetterHRBUST ✨</h1>
 
-<p align="center">现代化哈理工教务在线 · 课程表 · 成绩 GPA · 考试日程 · Web / 油猴 / Windows 桌面端 / Android / 终端</p>
+<p align="center">现代化哈理工教务在线 · 课程表 · 成绩 GPA · 考试日程 · Web / 油猴 / Windows 与 Linux 桌面端 / Android / 终端</p>
 
 <p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" /></a>
@@ -16,8 +16,9 @@
   <a href="https://github.com/Glassous/BetterHRBUST/actions/workflows/build-userscript.yml"><img src="https://github.com/Glassous/BetterHRBUST/actions/workflows/build-userscript.yml/badge.svg" alt="Userscript CI" /></a>
 </p>
 
-<!-- 快捷下载：发版时请把下方三条 releases/latest/download 链接中的版本号（1.0.0）同步替换为新版本 -->
+<!-- 快捷下载：发版时请把下方 releases/latest/download 链接中的版本号（1.5.0）同步替换为新版本 -->
 <p align="center">
+  <a href="https://github.com/Glassous/BetterHRBUST/releases/latest/download/BetterHRBUST-1.5.0-desktop-all.zip"><img src="https://img.shields.io/badge/下载-桌面端全平台包-0078D6?logo=windows&logoColor=white" alt="下载桌面端全平台包" /></a>
   <a href="https://github.com/Glassous/BetterHRBUST/releases/latest"><img src="https://img.shields.io/badge/下载-Windows_安装版-0078D6?logo=windows&logoColor=white" alt="下载 Windows 安装版" /></a>
   <a href="https://github.com/Glassous/BetterHRBUST/releases/latest"><img src="https://img.shields.io/badge/下载-Windows_便携版-5C2D91?logo=windows&logoColor=white" alt="下载 Windows 便携版" /></a>
   <a href="https://github.com/Glassous/BetterHRBUST/releases/latest"><img src="https://img.shields.io/badge/下载-Android_APK-3DDC84?logo=android&logoColor=white" alt="下载 Android APK" /></a>
@@ -25,9 +26,9 @@
   <a href="https://github.com/Glassous/BetterHRBUST/releases"><img src="https://img.shields.io/badge/全部版本-Releases-181717?logo=github&logoColor=white" alt="全部版本" /></a>
 </p>
 
-自制的现代化哈尔滨理工大学教务在线（URP）客户端：Web / 油猴 / Windows 桌面端 / Android 原生 / 终端界面五端同源。
+自制的现代化哈尔滨理工大学教务在线（URP）客户端：Web / 油猴 / 桌面端（Windows · Linux）/ Android 原生 / 终端界面五端同源。
 
-Android 源码版本为 **1.4.0（versionCode 6）**，上课提醒升级为全设备可用的「上课提示」：小米澎湃 OS 3 呈现为超级岛、Android 16 设备走实况通知，其余设备回落为普通通知；设置页移除适配自检，调试包内置模拟提醒入口。资料索引来自教务处公开下载栏目，包含 **9 个分类、97 条资料及 126 个附件链接**；网页与 Android 使用同一份索引。正式安装包以 [Releases](https://github.com/Glassous/BetterHRBUST/releases) 中已经发布的文件为准。
+Android 源码版本为 **1.5.0（versionCode 7）**，上课提醒升级为全设备可用的「上课提示」：小米澎湃 OS 3 呈现为超级岛、Android 16 设备走实况通知，其余设备回落为普通通知；设置页移除适配自检，调试包内置模拟提醒入口。资料索引来自教务处公开下载栏目，包含 **9 个分类、97 条资料及 126 个附件链接**；网页与 Android 使用同一份索引。正式安装包以 [Releases](https://github.com/Glassous/BetterHRBUST/releases) 中已经发布的文件为准。
 
 新版发布页位于 [`landing/`](landing/README.md)，提供浅色/深色主题、平台下载入口和使用指南。GitHub Pages 工作流只在原仓库 `Glassous/BetterHRBUST` 的 `main` 分支部署，PR 和 fork 只构建验证。
 
@@ -45,7 +46,7 @@ BetterHRBUST/
 ├── android/         # Android 原生客户端（Kotlin + Jetpack Compose + Room）
 ├── tui/             # 终端界面（Go + Bubble Tea v2，可独立登录同步 + 内置 AI 对话）+ --json CLI
 ├── shared/          # 跨端共享数据（校历、资料索引、parity 一致性向量）
-└── desktop-tauri/   # Windows 桌面端（Tauri + Rust，内置本地反向代理）+ 命令行程序
+└── desktop-tauri/   # 桌面端（Tauri + Rust，Windows / Linux，内置本地反向代理）+ 命令行程序
 ```
 
 ---
@@ -124,10 +125,10 @@ Kotlin + Jetpack Compose 编写的原生 Android 客户端，与 Web 端共用�
 ```bash
 cd android
 
-# 构建 Debug 安装包（产物：app/build/outputs/apk/debug/BetterHRBUST-1.4.0-android-debug.apk）
+# 构建 Debug 安装包（产物：app/build/outputs/apk/debug/BetterHRBUST-1.5.0-android-debug.apk）
 ./gradlew :app:assembleDebug
 
-# 构建正式安装包（产物：app/build/outputs/apk/release/BetterHRBUST-1.4.0-android.apk）
+# 构建正式安装包（产物：app/build/outputs/apk/release/BetterHRBUST-1.5.0-android.apk）
 ./gradlew :app:assembleRelease
 
 # 运行单元测试（JVM）
@@ -141,9 +142,9 @@ cd android
 .\gradlew.bat :app:assembleDebug
 ```
 
-Debug 与 Release 完全分离：Debug 包带有 `applicationIdSuffix ".debug"`（安装后包名为 `com.glassous.betterhrbust.debug`），可与正式版在同一台设备共存、互不覆盖，版本号显示为 `1.4.0-debug`；正式版覆盖升级仍只依赖同一份正式签名。
+Debug 与 Release 完全分离：Debug 包带有 `applicationIdSuffix ".debug"`（安装后包名为 `com.glassous.betterhrbust.debug`），可与正式版在同一台设备共存、互不覆盖，版本号显示为 `1.5.0-debug`；正式版覆盖升级仍只依赖同一份正式签名。
 
-构建完成后用 `adb install -r app\build\outputs\apk\debug\BetterHRBUST-1.4.0-android-debug.apk` 安装到设备，或直接在 Android Studio 中运行。
+构建完成后用 `adb install -r app\build\outputs\apk\debug\BetterHRBUST-1.5.0-android-debug.apk` 安装到设备，或直接在 Android Studio 中运行。
 开启 R8 压缩后 Release 包体量约 **3.8 MB**（产物 `BetterHRBUST-<version>-android.apk`；未提供密钥时为未签名包，文件名不变），Debug 包约 66 MB（含调试符号与未压缩资源）。
 
 > [!NOTE]
@@ -181,7 +182,7 @@ androidKeyPassword=xxxx
 
 > [!IMPORTANT]
 > **安装包命名格式**：`./gradlew :app:assembleRelease` 直接产出 `BetterHRBUST-<版本>-android.apk`
-> （如 `BetterHRBUST-1.4.0-android.apk`，命名规则见 `app/build.gradle.kts` 的 `androidComponents` 块，版本号取自同一处的 `appVersionName`，无需手动重命名），
+> （如 `BetterHRBUST-1.5.0-android.apk`，命名规则见 `app/build.gradle.kts` 的 `androidComponents` 块，版本号取自同一处的 `appVersionName`，无需手动重命名），
 > 与桌面端安装版 `BetterHRBUST-<版本>-windows-setup.exe`、便携版 `BetterHRBUST-<版本>-windows-portable.zip`
 > 保持同一命名格式，便于用户识别与 README 快捷下载链接对齐。
 > 详见「[发布 Release 与更新检测](#5-发布-release-与更新检测)」。
@@ -227,7 +228,7 @@ https://raw.githubusercontent.com/Glassous/BetterHRBUST/dist/better-hrbust.user.
 
 ---
 
-### 4. Windows 桌面端 (`desktop-tauri/`)
+### 4. 桌面端 Windows / Linux (`desktop-tauri/`)
 
 Tauri（Rust）封装的桌面客户端：主进程内置仅监听 `127.0.0.1` 的本地反向代理
 （与开发代理同一套规则），静态托管 `web/dist`，前端代码零改动，
@@ -240,7 +241,9 @@ WebView 数据被清理均不丢。体量轻量：安装包 ≤ 10MB、
 ```powershell
 cd desktop-tauri
 npm install
-npm run dist    # 构建 web + 打包 + 统一命名，产物见 desktop-tauri/release/
+npm run dist        # Windows：构建 web + TUI + 打包 + 统一命名，产物见 desktop-tauri/release/
+npm run dist:linux  # Linux：deb + rpm（在 Ubuntu 22.04 等目标发行版上执行）
+npm run bundle:all  # 两端产物齐备后合并为 release/BetterHRBUST-<版本>-desktop-all.zip
 ```
 
 安装版与便携版都附带命令行程序（安装时自动写入用户 PATH），数据与图形界面同源：
@@ -352,7 +355,7 @@ cd admin && npm run build   # 产物：admin/dist
 
 | 端 | 更新检测入口 | 当前版本来源 |
 | --- | --- | --- |
-| Windows 桌面端 | 设置页最底部「版本更新」卡片（**仅 Tauri 端渲染**，网页 / 油猴不显示） | `tauri.conf.json` 的 `version`（运行时经 `getVersion()` 读取） |
+| 桌面端（Windows / Linux） | 设置页最底部「版本更新」卡片（**仅 Tauri 端渲染**，网页 / 油猴不显示） | `tauri.conf.json` 的 `version`（运行时经 `getVersion()` 读取） |
 | Android | 「更多」页最底部「关于与更新」 | `app/build.gradle.kts` 的 `appVersionName`（即 `versionName`） |
 | Web / 油猴 | 不显示更新模块（油猴凭 `@updateURL` 自动更新） | — |
 
@@ -360,16 +363,19 @@ cd admin && npm run build   # 产物：admin/dist
 
 | 平台 | 文件名 | 生成方式 |
 | --- | --- | --- |
+| 桌面端全平台包 | `BetterHRBUST-<version>-desktop-all.zip` | CI / `npm run bundle:all`（解压后含下列 Windows + Linux 四份产物） |
 | Windows 安装版 | `BetterHRBUST-<version>-windows-setup.exe` | CI / `npm run dist` 自动统一命名 |
 | Windows 便携版 | `BetterHRBUST-<version>-windows-portable.zip` | 同上（单文件 exe 压缩，解压即用） |
+| Linux（Debian / Ubuntu） | `BetterHRBUST-<version>-linux-amd64.deb` | CI / `npm run dist:linux` |
+| Linux（RHEL / Fedora / openSUSE） | `BetterHRBUST-<version>-linux-x86_64.rpm` | 同上 |
 | Android | `BetterHRBUST-<version>-android.apk` | `./gradlew :app:assembleRelease`（构建脚本自动命名，见 `app/build.gradle.kts`） |
 
 **发布流程**：
 
-1. 桌面端产物从 Actions 的 `betterhrbust-desktop-windows` 下载（已统一命名）；Android 从 Actions 的 `BetterHRBUST-Android` 下载 CI 已签名、已按 `BetterHRBUST-<version>-android.apk` 命名的 APK；
-2. 打 tag `v<version>`（如 `v1.0.0`）并创建 Release，标题建议 `BetterHRBUST v<version>`，正文填写更新日志；
-3. 上传上述三个产物；
-4. 把 README 顶部「快捷下载」徽章链接中的版本号同步替换为新版本。
+1. 桌面端只需从 Actions 的 `betterhrbust-desktop-all` 下载一个产物（同一 run 内的 Windows、Linux 两个 job 已由 `package` job 合并，附件里同时有整合包与四份单文件安装包）；Android 从 Actions 的 `BetterHRBUST-Android` 下载 CI 已签名、已按 `BetterHRBUST-<version>-android.apk` 命名的 APK；
+2. 打 tag `v<version>`（如 `v1.5.0`）并创建 Release，标题建议 `BetterHRBUST v<version>`，正文填写更新日志；
+3. 桌面端产物由 `release-desktop.yml` 在 Release 发布后自动上传（复用同一条 Windows + Linux 流水线，`workflow_dispatch` 可补传）；Android 产物手动上传；
+4. 把 README 顶部「快捷下载」徽章与 `landing/src/links.js` 中的版本号同步替换为新版本。
 
 > [!TIP]
 > **tag 统一用 `v<version>`**：桌面端与 Android 共用同一个 Release（内含三份产物）。

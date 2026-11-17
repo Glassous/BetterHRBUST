@@ -4,6 +4,9 @@ import { gsap } from 'gsap'
 import PlatformIcon from './PlatformIcon.vue'
 import {
   ANDROID_APK,
+  DESKTOP_ALL,
+  LINUX_DEB,
+  LINUX_RPM,
   RELEASES,
   USERSCRIPT,
   WINDOWS_PORTABLE,
@@ -31,7 +34,8 @@ const platforms = [
     desc: '独立桌面应用，离线可用',
     links: [
       { label: '下载安装版', href: WINDOWS_SETUP, primary: true },
-      { label: '便携版 ZIP', href: WINDOWS_PORTABLE, primary: false }
+      { label: '便携版 ZIP', href: WINDOWS_PORTABLE, primary: false },
+      { label: '含 Linux 整合包', href: DESKTOP_ALL, primary: false }
     ]
   },
   {
@@ -45,8 +49,12 @@ const platforms = [
     name: 'Linux 版',
     logo: '/Linux_logo.svg',
     logoClass: 'h-16 w-auto',
-    desc: 'Linux 桌面客户端，正在开发中',
-    links: [{ label: '敬请期待', soon: true }]
+    desc: 'deb / rpm 双发行版，与 Windows 同一套内核',
+    links: [
+      { label: '下载整合包', href: DESKTOP_ALL, primary: true },
+      { label: 'deb', href: LINUX_DEB, primary: false },
+      { label: 'rpm', href: LINUX_RPM, primary: false }
+    ]
   },
   {
     name: 'Mac 版',

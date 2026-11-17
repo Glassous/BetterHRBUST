@@ -8,7 +8,7 @@
  *     `BetterHRBUSTTUI` 无需任何额外 PATH 逻辑即可在终端里直接调用。
  *
  * 版本号取自 desktop-tauri/package.json，与安装包严格同号；
- * 不用 tui/Makefile 的 git describe，避免出现"安装包 1.4.0、TUI 1.3.0-5-gxxxx"。
+ * 不用 tui/Makefile 的 git describe，避免出现"安装包 1.5.0、TUI 1.3.0-5-gxxxx"。
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';

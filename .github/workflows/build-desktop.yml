@@ -1,8 +1,11 @@
 name: Build Desktop (Tauri)
 
-# 推送 desktop-tauri/ 或 web/ 相关改动到 main 时自动构建 Windows 桌面端,
-# Rust 集成测试作为门禁;构建产物上传为 workflow artifact,可从 Actions 页面下载。
-# Release 由维护者手动创建并上传产物(桌面端更新检查读取 GitHub Release 的 latest)。
+# 桌面端唯一的打包入口：Windows 与 Linux 在同一次运行里构建，最后合并为
+# 一个带版本号的「全平台整合包」，Actions 里只下载一个产物即可拿全部安装包。
+#   windows job → 安装版 exe + 免安装版 zip
+#   linux job   → deb + rpm
+#   package job → BetterHRBUST-<version>-desktop-all.zip（解压后含上述四类产物）
+# Rust 集成测试作为门禁；Release 由 release-desktop.yml 复用本工作流后自动上传。
 on:
   push:
     branches: [main]
@@ -16,6 +19,7 @@ on:
       # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
       - '!shared/parity/**'
       - '.github/workflows/build-desktop.yml'
+      - '.github/workflows/release-desktop.yml'
   pull_request:
     paths:
       - 'desktop-tauri/**'
@@ -27,17 +31,22 @@ on:
       # 不加这条排除，任何一次向量调整都会白跑一遍 Windows + Linux 构建。
       - '!shared/parity/**'
       - '.github/workflows/build-desktop.yml'
+      - '.github/workflows/release-desktop.yml'
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+  # package job 用 gh run download 取同一 run 内另外两个 job 的产物，
+  # 换成 actions/download-artifact 就要多钉一个第三方 action 的 SHA，这里直接用官方 CLI。
+  actions: read
 
 concurrency:
-  group: build-desktop
+  group: build-desktop-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,10 +103,9 @@ jobs:
         working-directory: desktop-tauri
         run: node scripts/make-portable.mjs
 
-      # 产物已统一命名(见 desktop-tauri/scripts/make-portable.mjs),发布 Release 时直接上传:
+      # 产物已统一命名(见 desktop-tauri/scripts/make-portable.mjs)，由 package job 汇总:
       #   BetterHRBUST-<version>-windows-setup.exe     安装版
       #   BetterHRBUST-<version>-windows-portable.zip  便携版(解压即用)
-      # Android 安装包在本地打包后重命名为 BetterHRBUST-<version>-android.apk 一并上传
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -162,12 +170,49 @@ jobs:
           sudo apt-get install -y rpm
           rpm -qlp desktop-tauri/release/BetterHRBUST-*-linux-x86_64.rpm | grep -E 'usr/bin/BetterHRBUSTCLI'
 
-      # 产物已统一命名(见 desktop-tauri/scripts/collect-linux.mjs)，发布 Release 时直接上传:
+      # 产物已统一命名(见 desktop-tauri/scripts/collect-linux.mjs)，由 package job 汇总:
       #   BetterHRBUST-<version>-linux-amd64.deb    Debian/Ubuntu 安装包
       #   BetterHRBUST-<version>-linux-x86_64.rpm   RHEL/Fedora/openSUSE 安装包
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: betterhrbust-desktop-linux
+          path: desktop-tauri/release/*
+          if-no-files-found: error
+
+  # 汇总：把两个平台的产物合并成一个带版本号的大压缩包。
+  # 下载地址（Actions 产物、Release 资产）从此只有一个入口，不再分平台各点一次。
+  package:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Install zip
+        run: sudo apt-get update && sudo apt-get install -y zip unzip
+
+      # 同一 run 内先完成的两个 job 的产物：gh 已随 runner 预装并带 GITHUB_TOKEN
+      - name: Download platform artifacts
+        run: |
+          gh run download "$GITHUB_RUN_ID" -n betterhrbust-desktop-windows -D staging/windows
+          gh run download "$GITHUB_RUN_ID" -n betterhrbust-desktop-linux -D staging/linux
+
+      # 产出 release/BetterHRBUST-<version>-desktop-all.zip，并把四份单文件产物
+      # 一并归拢到 release/：本 job 的 artifact 与 Release 资产都只需上传这一个目录
+      - name: Bundle all platforms
+        working-directory: desktop-tauri
+        run: node scripts/make-all-platforms.mjs --windows ../staging/windows --linux ../staging/linux
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: betterhrbust-desktop-all
           path: desktop-tauri/release/*
           if-no-files-found: error

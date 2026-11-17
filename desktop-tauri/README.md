@@ -228,6 +228,10 @@ npm run pack    # 仅产出未打包的裸 exe（快速验证）
 | --- | --- |
 | `src-tauri/target/release/bundle/nsis/BetterHRBUST_<版本>_x64-setup.exe` | NSIS 安装包（currentUser 免管理员；内含图形界面 + 命令行 + 终端界面，安装时写入用户 PATH） |
 | `release/BetterHRBUST-<版本>-windows-portable.zip` | 免安装绿色版（`BetterHRBUST.exe` + `BetterHRBUSTCLI.exe` + `BetterHRBUSTTUI.exe`，资产已嵌入） |
+| `release/BetterHRBUST-<版本>-desktop-all.zip` | 全平台整合包（Windows 安装版 + 免安装版 + Linux deb/rpm，见 `scripts/make-all-platforms.mjs`） |
+
+Linux 端（Ubuntu 22.04 基线，deb + rpm）用 `npm run dist:linux` 构建，
+产物同样落在 `release/`；两端产物齐备后执行 `npm run bundle:all` 生成整合包。
 
 > `tauri build` 会构建 crate 里的全部 bin，因此安装包自动包含 `BetterHRBUSTCLI.exe`，
 > 无需额外的 sidecar 步骤；`BetterHRBUSTTUI.exe` 由 Go 编译（`npm run build:tui`），
@@ -235,14 +239,19 @@ npm run pack    # 仅产出未打包的裸 exe（快速验证）
 > 便携版由 `scripts/make-portable.mjs` 一并打包三个 exe，缺失任一程序时脚本直接失败，
 > 避免打出"只有图形界面"的包。
 
-CI（`.github/workflows/build-desktop.yml`）：推送 main 自动构建并以 Rust 测试为门禁；
-打 `desktop-v*` 标签时自动发布 Release。
+CI 只有一条桌面端流水线（`.github/workflows/build-desktop.yml`）：推送 main / PR 跑 Rust 测试门禁，
+Windows 与 Linux 两个 job 并行构建，最后由 `package` job 汇总为
+`BetterHRBUST-<版本>-desktop-all.zip` 并作为唯一产物 `betterhrbust-desktop-all` 上传；
+`release-desktop.yml` 直接复用这条流水线，Release 发布时自动把同一批产物挂到 Release 上。
 
 ## 分发说明
 
 - **WebView2**：默认 `downloadBootstrapper`，目标机器缺失运行时时安装器联网引导
   （Win10/11 一般已随系统更新安装，此路径仅兜底）。
 - **SmartScreen**：应用未做代码签名，首次运行若被拦截，点击「更多信息 → 仍要运行」。
+- **Linux**：`sudo apt install ./BetterHRBUST-<版本>-linux-amd64.deb`（Debian / Ubuntu）或
+  `sudo dnf install ./BetterHRBUST-<版本>-linux-x86_64.rpm`（RHEL / Fedora / openSUSE）；
+  需要 WebKitGTK 4.1 与 libayatana-appindicator3，主流桌面发行版均已自带。
 - **应用图标**：更换时把新的正方形 PNG（建议 1024x1024、透明背景）放到
   `desktop-tauri/build/icon-source.png`，执行 `npm run icon` 重新生成全套，再 `npm run dist`
   （当前图标为项目吉祥物）。

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import PlatformIcon from './PlatformIcon.vue'
-import { ANDROID_APK, PLATFORM_LOGOS, WINDOWS_SETUP } from '../links.js'
+import { ANDROID_APK, DESKTOP_ALL, PLATFORM_LOGOS, WINDOWS_SETUP } from '../links.js'
 
 const root = ref(null)
 let ctx
@@ -29,7 +29,8 @@ const detectVisitorPlatform = () => {
 
 const visitorPlatform = detectVisitorPlatform()
 
-// 已发布的两端直达安装包；Mac / Linux / iOS 尚未发布 → 按钮锁定并显示「敬请期待」；
+// 已发布的三端直达安装包（Linux 走 Windows + Linux 合并的全平台包，与 CI 产物同一地址）；
+// Mac / iOS 尚未发布 → 按钮锁定并显示「敬请期待」；
 // 其余系统给「选择你的平台」，滑到下方「随处可用」自行挑选
 const primaryDownload = computed(() => {
   switch (visitorPlatform) {
@@ -40,7 +41,7 @@ const primaryDownload = computed(() => {
     case 'mac':
       return { label: 'Mac 版敬请期待', locked: true }
     case 'linux':
-      return { label: 'Linux 版敬请期待', locked: true }
+      return { label: '下载 Linux 整合包', href: DESKTOP_ALL, logo: '/Linux_logo.svg', external: true }
     case 'ios':
       return { label: 'iOS 版敬请期待', locked: true }
     default:
@@ -130,7 +131,7 @@ onUnmounted(() => {
       现代化哈理工教务在线 · 课程表 · 成绩 GPA · 考试日程
     </p>
 
-    <!-- 真实下载 / 入口按钮：按访客系统动态区分（Windows / Android 直达安装包，Mac / Linux / iOS 锁定敬请期待） -->
+    <!-- 真实下载 / 入口按钮：按访客系统动态区分（Windows 安装版 / Android APK / Linux 全平台整合包，Mac 与 iOS 锁定敬请期待） -->
     <div
       class="hero-actions mt-10 flex w-full flex-col items-center justify-center gap-4 sm:w-auto sm:flex-row"
     >
