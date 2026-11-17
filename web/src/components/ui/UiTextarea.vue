@@ -1,7 +1,9 @@
 <template>
   <div class="relative w-full">
     <textarea
+      ref="textareaRef"
       v-bind="$attrs"
+      :id="id || undefined"
       :value="modelValue"
       :placeholder="placeholder"
       :disabled="disabled"
@@ -31,9 +33,17 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
+
 defineOptions({ inheritAttrs: false });
 
+const textareaRef = ref(null);
+
 defineProps({
+  id: {
+    type: String,
+    default: ''
+  },
   modelValue: {
     type: String,
     default: ''
@@ -70,4 +80,8 @@ defineProps({
 });
 
 defineEmits(['update:modelValue', 'blur']);
+
+defineExpose({
+  focus: () => textareaRef.value?.focus()
+});
 </script>

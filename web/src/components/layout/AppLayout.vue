@@ -5,6 +5,7 @@
   <div
     class="h-screen max-h-screen flex flex-col overflow-hidden bg-[var(--bg-canvas)] text-[var(--ink-primary)] antialiased selection:bg-[var(--accent-soft)] selection:text-[var(--ink-primary)]"
   >
+    <a href="#main-content" class="visually-hidden skip-link">跳到主内容</a>
     <!-- 桌面端自定义标题栏（浏览器环境不渲染，占位高度由 --tb 驱动） -->
     <DesktopTitleBar />
 
@@ -47,8 +48,10 @@
         <!-- 主区域自己滚动：宽内容（课表 / 成绩表）已在视图内自带 overflow-x-auto，
              这里再兜一层，保证任何情况下都不会把整页宽度撑破 -->
         <main
+          id="main-content"
+          tabindex="-1"
           v-overlay-scroll
-          class="academic-main flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-1 sm:pt-2 pb-16 max-w-[1600px] w-full mx-auto"
+          class="academic-main flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-1 sm:pt-2 pb-16 max-w-[1600px] w-full mx-auto outline-none"
         >
           <slot />
         </main>

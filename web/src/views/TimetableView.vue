@@ -29,12 +29,15 @@
 
               <!-- 触发器近邻的上下文周次选择浮层 -->
               <button
+                ref="weekTriggerRef"
                 type="button"
-                aria-haspopup="true"
+                :popovertarget="supportsPopover ? weekPickerId : undefined"
                 :aria-expanded="showWeekPicker"
+                :aria-controls="weekPickerId"
+                :style="weekTriggerStyle"
                 class="h-9 px-4 rounded-full bg-[var(--bg-surface)] hover:bg-[var(--md-surface-container-low)] cursor-pointer min-w-[7.5rem] flex items-center justify-center gap-1.5 transition-all duration-200 active:scale-[0.98]"
                 title="点击选择教学周次"
-                @click="showWeekPicker = !showWeekPicker"
+                @click="!supportsPopover && (showWeekPicker = !showWeekPicker)"
               >
                 <span class="text-[13px] sm:text-sm font-semibold text-[var(--ink-primary)] num-tabular">
                   第 {{ selectedWeek }} 周
@@ -56,48 +59,46 @@
                 <Icon name="chevron-right" customClass="w-4 h-4" />
               </button>
 
-              <!-- 上下文选周弹出面板（近邻触发器，不打断全局视口） -->
-              <Transition
-                enter-active-class="transition duration-160 ease-out"
-                enter-from-class="opacity-0 -translate-y-1 scale-95"
-                enter-to-class="opacity-100 translate-y-0 scale-100"
-                leave-active-class="transition duration-110 ease-in"
-                leave-from-class="opacity-100 translate-y-0 scale-100"
-                leave-to-class="opacity-0 -translate-y-1 scale-95"
+              <!-- 上下文选周弹出面板（Top Layer + 锚点自适应翻转） -->
+              <div
+                :id="weekPickerId"
+                ref="weekPickerRef"
+                :popover="supportsPopover ? 'auto' : undefined"
+                aria-label="选择教学周次"
+                :style="weekPanelStyle"
+                :class="[
+                  'week-picker-panel z-30 w-[min(320px,calc(100vw-2rem))] rounded-[var(--shape-xl)] bg-[var(--md-surface-container-high)] p-4 shadow-[var(--shadow-float)] border-0',
+                  supportsPopover ? '' : (showWeekPicker ? 'absolute left-0 top-[calc(100%+8px)] block' : 'hidden')
+                ]"
+                @toggle="onWeekPickerToggle"
               >
-                <div
-                  v-if="showWeekPicker"
-                  role="dialog"
-                  aria-label="选择教学周次"
-                  class="absolute left-0 top-[calc(100%+8px)] z-30 w-[min(320px,calc(100vw-2rem))] rounded-[var(--shape-xl)] bg-[var(--md-surface-container-high)] p-4 shadow-[var(--shadow-float)]"
-                >
-                  <div class="flex items-center justify-between gap-2 mb-2.5">
-                    <span class="text-xs font-semibold text-[var(--ink-primary)]">选择教学周次</span>
-                    <span class="text-xs text-[var(--ink-muted)] num-tabular">
-                      {{ calendarWeekCountKnown ? `共 ${semesterTeachingWeeks} 周` : `暂列 ${semesterTeachingWeeks} 周` }}
-                    </span>
-                  </div>
-                  <div class="grid grid-cols-5 gap-1.5">
-                    <button
-                      v-for="w in semesterTeachingWeeks"
-                      :key="w"
-                      type="button"
-                      :class="[
-                        'h-10 rounded-full flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none transition-colors num-tabular',
-                        w === selectedWeek
-                          ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
-                          : w === currentWeek
-                            ? 'bg-[var(--sem-success-soft)] text-[var(--sem-success)] font-semibold'
-                            : 'text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-highest)]'
-                      ]"
-                      @click="pickWeek(w)"
-                    >
-                      <span class="text-xs leading-none">{{ w }}</span>
-                      <span v-if="w === currentWeek && w !== selectedWeek" class="w-1 h-1 rounded-full bg-[var(--sem-success)]" />
-                    </button>
-                  </div>
+                <div class="flex items-center justify-between gap-2 mb-2.5">
+                  <span class="text-xs font-semibold text-[var(--ink-primary)]">选择教学周次</span>
+                  <span class="text-xs text-[var(--ink-muted)] num-tabular">
+                    {{ calendarWeekCountKnown ? `共 ${semesterTeachingWeeks} 周` : `暂列 ${semesterTeachingWeeks} 周` }}
+                  </span>
                 </div>
-              </Transition>
+                <div class="grid grid-cols-5 gap-1.5">
+                  <button
+                    v-for="w in semesterTeachingWeeks"
+                    :key="w"
+                    type="button"
+                    :aria-pressed="w === selectedWeek"
+                    :class="[
+                      'h-10 rounded-full flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none transition-colors num-tabular',
+                      w === selectedWeek
+                        ? 'bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] font-semibold'
+                        : w === currentWeek
+                          ? 'bg-[var(--sem-success-soft)] text-[var(--sem-success)] font-semibold'
+                          : 'text-[var(--ink-primary)] hover:bg-[var(--md-surface-container-highest)]'
+                    ]"
+                    @click="pickWeek(w)"
+                  >
+                    <span class="text-xs leading-none">{{ w }}</span>
+                    <span v-if="w === currentWeek && w !== selectedWeek" class="w-1 h-1 rounded-full bg-[var(--sem-success)]" />
+                  </button>
+                </div>
+              </div>
             </div>
 
             <button
@@ -369,7 +370,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount, useId, nextTick } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiBadge from '@/components/ui/UiBadge.vue';
@@ -387,6 +388,7 @@ import { timetableDayDate } from '@/utils/timetableDates.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
 import { buildIcsCalendar, downloadIcs } from '@/utils/ics.js';
 import { stageDotClass, stageDotStyle } from '@/utils/teachingProcessSymbols.js';
+import { computeAnchoredFixedStyle, supportsAnchorPositionArea } from '@/utils/topLayer.js';
 
 defineEmits(['navigate']);
 
@@ -485,6 +487,19 @@ const expandedCourseKey = computed(() => courseKey(selectedCourse.value));
 const expandedLayout = ref('');
 const showWeekPicker = ref(false);
 const weekPickerAnchorRef = ref(null);
+const weekTriggerRef = ref(null);
+const weekPickerRef = ref(null);
+const weekUid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+const weekPickerId = `week-picker-${weekUid}`;
+const weekAnchorName = `--week-picker-${weekUid}`;
+const supportsPopover = typeof HTMLElement !== 'undefined' && Object.hasOwn(HTMLElement.prototype, 'popover');
+const supportsAnchor = supportsAnchorPositionArea();
+const weekFallbackStyle = ref({});
+const weekTriggerStyle = computed(() => (supportsPopover && supportsAnchor ? { anchorName: weekAnchorName } : undefined));
+const weekPanelStyle = computed(() => {
+  if (!supportsPopover) return undefined;
+  return supportsAnchor ? { positionAnchor: weekAnchorName } : weekFallbackStyle.value;
+});
 
 const daysOfWeek = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const shortDaysOfWeek = ['一', '二', '三', '四', '五', '六', '日'];
@@ -511,7 +526,11 @@ function isCourseActiveThisWeek(course) {
 
 function pickWeek(week) {
   selectedWeek.value = week;
-  showWeekPicker.value = false;
+  if (supportsPopover && weekPickerRef.value?.matches?.(':popover-open')) {
+    try { weekPickerRef.value.hidePopover(); } catch {}
+  } else {
+    showWeekPicker.value = false;
+  }
 }
 
 function backToCurrentWeek() {
@@ -613,14 +632,29 @@ async function exportIcs() {
   }
 }
 
+function updateWeekPickerFallback() {
+  if (!supportsPopover || supportsAnchor || !weekTriggerRef.value) return;
+  weekFallbackStyle.value = computeAnchoredFixedStyle(weekTriggerRef.value, weekPickerRef.value, 8);
+}
+
+async function onWeekPickerToggle(event) {
+  const isOpen = event.newState === 'open';
+  showWeekPicker.value = isOpen;
+  if (isOpen && !supportsAnchor) {
+    await nextTick();
+    updateWeekPickerFallback();
+  }
+}
+
 function onDocumentPointerDown(event) {
-  if (!showWeekPicker.value) return;
+  if (supportsPopover || !showWeekPicker.value) return;
   if (weekPickerAnchorRef.value && !weekPickerAnchorRef.value.contains(event.target)) {
     showWeekPicker.value = false;
   }
 }
 
 function onDocumentKeydown(event) {
+  if (supportsPopover) return;
   if (event.key === 'Escape' && showWeekPicker.value) {
     showWeekPicker.value = false;
   }
@@ -628,6 +662,18 @@ function onDocumentKeydown(event) {
 
 watch(showWeekPicker, (open) => {
   if (typeof document === 'undefined') return;
+  if (supportsPopover) {
+    if (!supportsAnchor) {
+      if (open) {
+        window.addEventListener('resize', updateWeekPickerFallback);
+        window.addEventListener('scroll', updateWeekPickerFallback, true);
+      } else {
+        window.removeEventListener('resize', updateWeekPickerFallback);
+        window.removeEventListener('scroll', updateWeekPickerFallback, true);
+      }
+    }
+    return;
+  }
   if (open) {
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
     document.addEventListener('keydown', onDocumentKeydown);
@@ -639,9 +685,59 @@ watch(showWeekPicker, (open) => {
 
 onMounted(() => {});
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateWeekPickerFallback);
+    window.removeEventListener('scroll', updateWeekPickerFallback, true);
+  }
   if (typeof document !== 'undefined') {
     document.removeEventListener('pointerdown', onDocumentPointerDown, true);
     document.removeEventListener('keydown', onDocumentKeydown);
   }
 });
 </script>
+
+<style scoped>
+.week-picker-panel[popover] {
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+.week-picker-panel[popover]:popover-open {
+  opacity: 1;
+}
+
+@starting-style {
+  .week-picker-panel[popover]:popover-open {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .week-picker-panel[popover] {
+    transform: translateY(-4px) scale(0.96);
+  }
+
+  .week-picker-panel[popover]:popover-open {
+    transform: translateY(0) scale(1);
+  }
+
+  @starting-style {
+    .week-picker-panel[popover]:popover-open {
+      transform: translateY(-4px) scale(0.96);
+    }
+  }
+}
+
+@supports (position-area: block-end) {
+  .week-picker-panel[popover] {
+    inset: auto;
+    margin-block: 8px;
+    margin-inline: 0;
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  }
+}
+</style>

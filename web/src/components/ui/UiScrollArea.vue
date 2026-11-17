@@ -4,6 +4,9 @@
       ref="viewportRef"
       class="ui-scroll-viewport overflow-auto"
       :class="viewportClass"
+      :tabindex="regionLabel ? 0 : undefined"
+      :role="regionLabel ? 'region' : undefined"
+      :aria-label="regionLabel || undefined"
       @scroll.passive="onScroll"
     >
       <slot />
@@ -55,6 +58,10 @@ const props = defineProps({
   thumbClass: {
     type: String,
     default: 'bg-[var(--md-outline)]'
+  },
+  regionLabel: {
+    type: String,
+    default: ''
   }
 });
 

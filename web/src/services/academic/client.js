@@ -49,30 +49,24 @@ function executeRequest(url, { method = 'GET', headers = {}, body = null, referr
       const logout = pathname === '/academic/logout_security_check';
       const context = pathname === '/academic/student/currcourse/currcourse.jsdo';
       const manual = (method.toUpperCase() === 'POST' && (login || evaluation)) || logout || context;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000);
-      try {
-        const response = await PAGE_FETCH(url, {
-          method, headers: { ...headers, 'Cache-Control': 'no-cache' }, body, credentials: 'include', cache: 'no-store',
-          ...(referrer ? { referrer } : {}),
-          redirect: manual ? 'manual' : 'follow', signal: controller.signal
-        });
-        // 原站的 POST 成功响应可能跳转到不可用的 HTTPS；接收 Cookie 后只读 HTTP 状态。
-        // 评教完成与否由调用方重新读取列表核对，302 本身不等于评教成功。
-        if (manual && response.type === 'opaqueredirect') {
-          if (logout) return { ok: true, status: 202, contentType: '', buffer: new ArrayBuffer(0), finalUrl: url };
-          if (context) return executeRequest(absoluteUrl('common/security/login.jsp'));
-          if (login) return executeRequest(absoluteUrl('student/currcourse/currcourse.jsdo'));
-          return { ok: true, status: 202, contentType: '', buffer: new ArrayBuffer(0), finalUrl: url };
-        }
-        return {
-          ok: response.ok, status: response.status,
-          contentType: response.headers.get('content-type') || '',
-          buffer: await response.arrayBuffer(), finalUrl: response.url || url
-        };
-      } finally {
-        clearTimeout(timeout);
+      const response = await PAGE_FETCH(url, {
+        method, headers: { ...headers, 'Cache-Control': 'no-cache' }, body, credentials: 'include', cache: 'no-store',
+        ...(referrer ? { referrer } : {}),
+        redirect: manual ? 'manual' : 'follow', signal: AbortSignal.timeout(30000)
+      });
+      // 原站的 POST 成功响应可能跳转到不可用的 HTTPS；接收 Cookie 后只读 HTTP 状态。
+      // 评教完成与否由调用方重新读取列表核对，302 本身不等于评教成功。
+      if (manual && response.type === 'opaqueredirect') {
+        if (logout) return { ok: true, status: 202, contentType: '', buffer: new ArrayBuffer(0), finalUrl: url };
+        if (context) return executeRequest(absoluteUrl('common/security/login.jsp'));
+        if (login) return executeRequest(absoluteUrl('student/currcourse/currcourse.jsdo'));
+        return { ok: true, status: 202, contentType: '', buffer: new ArrayBuffer(0), finalUrl: url };
       }
+      return {
+        ok: response.ok, status: response.status,
+        contentType: response.headers.get('content-type') || '',
+        buffer: await response.arrayBuffer(), finalUrl: response.url || url
+      };
     })();
   }
   if (typeof GM_xmlhttpRequest === 'function') {
@@ -251,7 +245,7 @@ export async function request(path, options = {}) {
   try {
     response = await executeRequest(url, { method, headers: requestHeaders, body: requestBody, referrer });
   } catch (err) {
-    throw new Error(`网络连接失败：${err.message || '无法连接到教务系统，请确认是否处于校园网或VPN环境'}`);
+    throw new Error(`网络连接失败：${err.message || '无法连接到教务系统，请确认是否处于校园网或VPN环境'}`, { cause: err });
   }
 
   const html = await decodeResponse(response.buffer, response.contentType, encoding);
@@ -317,7 +311,7 @@ export async function postLogin(username, password, captcha) {
       body: form
     });
   } catch (err) {
-    throw new Error(`网络连接超时或被阻断：${err.message}`);
+    throw new Error(`网络连接超时或被阻断：${err.message}`, { cause: err });
   }
 
   const html = await decodeResponse(res.buffer, res.contentType, 'gbk');

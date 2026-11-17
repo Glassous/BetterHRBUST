@@ -305,23 +305,29 @@
       </UiCard>
 
       <!-- 成绩总表 -->
-      <div class="rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] overflow-x-auto">
+      <div
+        tabindex="0"
+        role="region"
+        aria-label="课程成绩表"
+        class="deferred-section rounded-[var(--shape-xl)] bg-[var(--md-surface-container-low)] overflow-x-auto"
+      >
         <div v-if="syncing && scores.length === 0" class="p-12 text-center text-[13px] text-[var(--ink-muted)]">
           <Icon name="refresh" customClass="w-5 h-5 animate-spin mx-auto mb-2 text-[var(--md-primary)]" />
           正在拉取教务成绩单...
         </div>
         <table v-else class="w-full min-w-[1040px] text-left border-collapse text-[13px]">
+          <caption class="sr-only">课程成绩明细表</caption>
           <thead>
             <tr class="border-b border-[var(--border-hairline)] bg-[var(--md-surface-container)] text-[var(--ink-secondary)] font-semibold">
-              <th class="whitespace-nowrap p-4 pl-6">学年 / 学期</th>
-              <th class="whitespace-nowrap p-4">课程代码</th>
-              <th class="whitespace-nowrap p-4">课程名称</th>
-              <th class="whitespace-nowrap p-4">课组</th>
-              <th class="whitespace-nowrap p-4 text-center">学分</th>
-              <th class="whitespace-nowrap p-4 text-center">绩点</th>
-              <th class="whitespace-nowrap p-4">属性</th>
-              <th class="whitespace-nowrap p-4">考试性质</th>
-              <th class="whitespace-nowrap p-4 pr-6 text-right font-semibold text-[var(--ink-primary)]">总评成绩</th>
+              <th scope="col" class="whitespace-nowrap p-4 pl-6">学年 / 学期</th>
+              <th scope="col" class="whitespace-nowrap p-4">课程代码</th>
+              <th scope="col" class="whitespace-nowrap p-4">课程名称</th>
+              <th scope="col" class="whitespace-nowrap p-4">课组</th>
+              <th scope="col" class="whitespace-nowrap p-4 text-center">学分</th>
+              <th scope="col" class="whitespace-nowrap p-4 text-center">绩点</th>
+              <th scope="col" class="whitespace-nowrap p-4">属性</th>
+              <th scope="col" class="whitespace-nowrap p-4">考试性质</th>
+              <th scope="col" class="whitespace-nowrap p-4 pr-6 text-right font-semibold text-[var(--ink-primary)]">总评成绩</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--border-hairline)]">

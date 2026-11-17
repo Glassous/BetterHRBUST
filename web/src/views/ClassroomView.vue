@@ -190,6 +190,7 @@
           <!-- 桌面：教室 × 12 小节矩阵（固定首列宽度，窄屏横向滚动） -->
           <UiScrollArea
             axis="both"
+            region-label="教室占用时间表"
             class="hidden max-h-[68vh] rounded-b-[var(--radius-card)] md:block"
             viewport-class="max-h-[68vh]"
           >

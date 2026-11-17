@@ -16,7 +16,7 @@ const api={
  logout:async()=>{server='';},
  getStudentContext:async()=>({studentId:ids[server],year:'2026',term:'1',courses:[]}),
  getPersonalInfo:async()=>profile(server),
- getScores:()=>{const owner=server;if(hold)return new Promise(resolve=>{hold.resolve=resolve;});return Promise.resolve({scores:[{courseName:owner+'课程'}]});},
+ getScores:()=>{const owner=server;if(hold){const {promise,resolve}=Promise.withResolvers();hold.resolve=resolve;return promise;}return Promise.resolve({scores:[{courseName:owner+'课程'}]});},
  getCurriculumPlan:async()=>({groups:[]}),getExams:async()=>[],
  getCalendarInfo:async()=>({notices:[]}),getTimetable:async()=>({cells:[],unarranged:[]})
 };

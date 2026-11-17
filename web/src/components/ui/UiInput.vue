@@ -8,7 +8,9 @@
     </div>
 
     <input
+      ref="inputRef"
       v-bind="$attrs"
+      :id="id || undefined"
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
@@ -52,11 +54,18 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import Icon from '@/components/icons/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 
+const inputRef = ref(null);
+
 defineProps({
+  id: {
+    type: String,
+    default: ''
+  },
   modelValue: {
     type: [String, Number],
     default: ''
@@ -102,4 +111,8 @@ defineProps({
 });
 
 defineEmits(['update:modelValue', 'enter', 'blur']);
+
+defineExpose({
+  focus: () => inputRef.value?.focus()
+});
 </script>

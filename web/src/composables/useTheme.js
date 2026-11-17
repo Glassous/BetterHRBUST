@@ -1,9 +1,13 @@
 import { ref, computed } from 'vue';
-import { storageGetItem, storageSetItem } from '@/services/storage.js';
+import { storageGetItem, storageRemoveItem, storageSetItem } from '@/services/storage.js';
 
 const THEME_KEY = 'better_hrbust_theme';
 
-const currentTheme = ref(storageGetItem(THEME_KEY) || 'system');
+function normalizeTheme(value) {
+  return value === 'light' || value === 'dark' ? value : 'system';
+}
+
+const currentTheme = ref(normalizeTheme(storageGetItem(THEME_KEY)));
 const mediaQuery = typeof window !== 'undefined' && window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 const systemDark = ref(mediaQuery?.matches || false);
@@ -19,8 +23,21 @@ function resolveDark(theme) {
   return theme === 'dark' || (theme === 'system' && systemDark.value);
 }
 
-/** 真正把主题类名写到 <html> 上（View Transition 的更新回调里调用） */
+function syncColorSchemeMeta(theme) {
+  if (typeof document === 'undefined' || !document.head) return;
+  let meta = document.head.querySelector('meta[name="color-scheme"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'color-scheme';
+    document.head.appendChild(meta);
+  }
+  meta.content = theme === 'light' || theme === 'dark' ? theme : 'light dark';
+}
+
+/** 真正把主题类名和 color-scheme 元信息写到文档上（View Transition 的更新回调里调用） */
 function commitTheme(theme) {
+  if (typeof document === 'undefined') return;
+  syncColorSchemeMeta(theme);
   document.documentElement.classList.toggle('dark', resolveDark(theme));
 }
 
@@ -79,6 +96,17 @@ if (mediaQuery) {
   });
 }
 
+// 跨标签页同步主题覆盖
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', event => {
+    if (event.key !== THEME_KEY) return;
+    const next = normalizeTheme(event.newValue);
+    if (next === currentTheme.value) return;
+    currentTheme.value = next;
+    applyTheme(next);
+  });
+}
+
 // Initial apply
 applyTheme(currentTheme.value);
 
@@ -91,13 +119,20 @@ export function useTheme() {
   });
 
   function setTheme(theme) {
-    currentTheme.value = theme;
-    storageSetItem(THEME_KEY, theme);
-    applyTheme(theme, { animate: true });
+    const normalized = normalizeTheme(theme);
+    currentTheme.value = normalized;
+    if (normalized === 'system') {
+      storageRemoveItem(THEME_KEY);
+    } else {
+      storageSetItem(THEME_KEY, normalized);
+    }
+    applyTheme(normalized, { animate: true });
   }
 
   function toggleTheme() {
-    setTheme(isDark.value ? 'light' : 'dark');
+    const target = isDark.value ? 'light' : 'dark';
+    // 若目标色系恰好与当前系统偏好一致，则恢复为跟随系统（避免无意中永久锁定）
+    setTheme(target === (systemDark.value ? 'dark' : 'light') ? 'system' : target);
   }
 
   return {

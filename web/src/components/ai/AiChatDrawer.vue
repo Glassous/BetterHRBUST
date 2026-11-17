@@ -141,14 +141,18 @@
           </div>
 
           <!-- 输入区 -->
-          <div
+          <form
             class="p-3.5 space-y-2"
             :style="isMobileSheet ? { paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))' } : undefined"
+            @submit.prevent="submit"
           >
+            <label :for="chatInputId" class="visually-hidden">向 AI 助手提问</label>
             <textarea
+              :id="chatInputId"
               v-model="input"
               rows="2"
               :disabled="streaming"
+              enterkeyhint="send"
               placeholder="问点什么，例如“我这学期绩点多少”“明天有什么课”（Enter 发送，Shift+Enter 换行）"
               class="w-full resize-none rounded-[var(--shape-lg)] bg-[var(--md-surface-container)] px-4 py-3 text-[13.5px] text-[var(--ink-primary)] placeholder:text-[var(--ink-muted)] outline-none border border-transparent focus:bg-[var(--bg-surface)] focus:border-[var(--md-primary)] transition-colors disabled:opacity-60"
               @keydown="onKeydown"
@@ -159,15 +163,15 @@
                 <UiButton v-else variant="ghost" size="sm" @click="cancel">停止</UiButton>
                 <span class="text-[11.5px] text-[var(--ink-muted)]">对话不保存到本地</span>
               </div>
-              <UiButton variant="primary" size="sm" :disabled="!canChat || !input.trim()" @click="submit">发送</UiButton>
+              <UiButton type="submit" variant="primary" size="sm" :disabled="!canChat || !input.trim()">发送</UiButton>
             </div>
-          </div>
+          </form>
     </aside>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import Icon from '@/components/icons/Icon.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import { renderMarkdown } from '@/utils/markdown.js';
@@ -178,6 +182,7 @@ const { open, entries, streaming, round, input, readiness, ready, provider, canC
   useAiChat();
 const { navigateTo } = useSession();
 
+const chatInputId = useId();
 const scrollRef = ref(null);
 
 /* ---------------- 手机底部抽屉 ---------------- */
@@ -292,6 +297,8 @@ function submit() {
 function onKeydown(event) {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
+    // 兼容输入法合成期间按 Enter 确认选词（含 Safari keyCode === 229 事件顺序差异）
+    if (event.isComposing || event.keyCode === 229) return;
     submit();
   }
 }

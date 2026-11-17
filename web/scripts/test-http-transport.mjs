@@ -17,7 +17,7 @@ const context = vm.createContext({
   fetch: () => { throw new Error('Sandbox fetch must not be used'); },
   GM_xmlhttpRequest: () => { throw new Error('HTTP must not use extension transport'); },
   URL, URLSearchParams, FormData, TextDecoder, ArrayBuffer, Date,
-  AbortController, setTimeout, clearTimeout
+  AbortSignal, AbortController, setTimeout, clearTimeout
 });
 vm.runInContext(source, context);
 const loginLabels = '<label>教务密码</label><label>安全验证码</label>';

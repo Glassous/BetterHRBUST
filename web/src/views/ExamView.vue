@@ -84,16 +84,17 @@
           />
         </template>
 
-        <div class="overflow-x-auto">
+        <div tabindex="0" role="region" aria-label="考试日程表" class="overflow-x-auto">
           <table class="w-full min-w-[720px] text-left border-collapse text-[13px]">
+            <caption class="sr-only">全部考试日程列表</caption>
             <thead>
               <tr class="border-b border-[var(--border-hairline)] bg-[var(--bg-subtle)]/75 text-[var(--ink-secondary)] font-semibold">
-                <th class="p-4 pl-6">课程代码</th>
-                <th class="p-4">课程名称</th>
-                <th class="p-4">考试时间</th>
-                <th class="p-4">考场地点</th>
-                <th class="p-4">性质</th>
-                <th class="p-4 pr-6 text-right">状态</th>
+                <th scope="col" class="p-4 pl-6">课程代码</th>
+                <th scope="col" class="p-4">课程名称</th>
+                <th scope="col" class="p-4">考试时间</th>
+                <th scope="col" class="p-4">考场地点</th>
+                <th scope="col" class="p-4">性质</th>
+                <th scope="col" class="p-4 pr-6 text-right">状态</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-[var(--border-hairline)]">

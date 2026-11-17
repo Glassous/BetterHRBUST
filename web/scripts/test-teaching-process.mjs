@@ -232,7 +232,7 @@ test('学期按学年学期倒序，且 id 唯一', () => {
   const ids = data.semesters.map(semester => semester.id);
   assert.equal(new Set(ids).size, ids.length);
   const values = data.semesters.map(semester => Number(semester.academicYear.slice(0, 4)) * 10 + semester.term);
-  assert.deepEqual(values, [...values].sort((left, right) => right - left));
+  assert.deepEqual(values, values.toSorted((left, right) => right - left));
   assert.equal(values[0], 20261, '最新的 2026-2027 学年第一学期必须排在最前');
 });
 
@@ -276,7 +276,7 @@ test('所有图案的字形要么在字典里，要么落在显式白名单内',
       for (const glyph of parseCell(cell).unknown) unknown.add(glyph);
     }
   }
-  assert.deepEqual([...unknown].sort(), [...UNDOCUMENTED_GLYPHS].sort());
+  assert.deepEqual([...unknown].sort(), UNDOCUMENTED_GLYPHS.toSorted());
 });
 
 test('元数据指向教务处公开页面，且带更新日期', () => {

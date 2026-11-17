@@ -65,13 +65,17 @@
 
     <!-- 反馈表单 -->
     <UiCard v-else title="写下你的反馈">
-      <form class="space-y-5" @submit.prevent="handleSubmit">
+      <form class="space-y-5" novalidate @submit.prevent="handleSubmit">
         <div>
-          <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
+          <label :for="contentId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
             反馈内容
           </label>
           <UiTextarea
+            :id="contentId"
+            ref="contentRef"
             v-model="content"
+            name="content"
+            required
             :rows="8"
             placeholder="例如：成绩页在筛选「限选」后，切换学期会保留上一次的筛选条件，希望可以自动重置。"
             :custom-class="contentOverflow ? '!border-[var(--sem-danger)]' : ''"
@@ -92,21 +96,23 @@
         >
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
-              <div class="text-[15px] font-semibold text-[var(--ink-primary)]">实名发布</div>
+              <div id="feedback-realname-label" class="text-[15px] font-semibold text-[var(--ink-primary)]">实名发布</div>
               <p class="text-[13px] text-[var(--ink-muted)] mt-1 leading-relaxed">
                 默认关闭。开启后本条反馈会带上你的姓名，便于必要时与你核对问题；
                 每次进入本页都需要重新手动开启。
               </p>
             </div>
-            <UiSwitch v-model="realNameEnabled" />
+            <UiSwitch v-model="realNameEnabled" aria-labelledby="feedback-realname-label" />
           </div>
 
           <div v-if="realNameEnabled" class="mt-4 pt-4 border-t border-[var(--border-hairline)] panel-expand">
-            <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
+            <label :for="nameId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
               姓名
             </label>
             <UiInput
               v-if="loadedRealName"
+              :id="nameId"
+              name="signature"
               :model-value="loadedRealName"
               readonly
               custom-class="opacity-80"
@@ -117,7 +123,11 @@
             </UiInput>
             <UiInput
               v-else
+              :id="nameId"
+              ref="manualNameRef"
               v-model="manualName"
+              name="signature"
+              autocomplete="name"
               placeholder="请输入姓名"
               :maxlength="limits.maxSignature"
             >
@@ -135,11 +145,13 @@
 
         <!-- 联系方式 -->
         <div>
-          <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
+          <label :for="contactId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-2">
             联系方式 <span class="text-[var(--ink-muted)] font-normal">（选填）</span>
           </label>
           <UiInput
+            :id="contactId"
             v-model="contact"
+            name="contact"
             placeholder="邮箱、手机号或 QQ / 微信，便于我们回复你"
             clearable
             :maxlength="limits.maxContact"
@@ -153,6 +165,7 @@
         <!-- 错误提示 -->
         <div
           v-if="errorMessage"
+          role="alert"
           class="p-3.5 rounded-[var(--radius-panel)] border border-[var(--sem-danger-border)] bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] text-[13px] flex items-start gap-2.5"
         >
           <Icon name="alert-triangle" customClass="w-4 h-4 shrink-0 mt-0.5" />
@@ -164,7 +177,7 @@
           <p class="text-[13px] text-[var(--ink-muted)] leading-relaxed">
             提交即表示你同意我们保存上述文本用于改进产品。
           </p>
-          <UiButton type="submit" variant="primary" :loading="submitting" :disabled="!canSubmit">
+          <UiButton type="submit" variant="primary" :loading="submitting" :disabled="submitting">
             <template #prefix>
               <Icon v-if="!submitting" name="send" customClass="w-4 h-4" />
             </template>
@@ -195,7 +208,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, useId } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiInput from '@/components/ui/UiInput.vue';
@@ -209,6 +222,12 @@ import { FEEDBACK_LIMITS, submitFeedback, textLength } from '@/services/feedback
 const limits = FEEDBACK_LIMITS;
 const { isLoggedIn, userProfile, openLoginModal, navigateTo } = useSession();
 const { showToast } = useToast();
+
+const contentId = useId();
+const nameId = useId();
+const contactId = useId();
+const contentRef = ref(null);
+const manualNameRef = ref(null);
 
 const content = ref('');
 const contact = ref('');
@@ -259,9 +278,11 @@ async function handleSubmit() {
   if (!canSubmit.value) {
     if (!contentReady.value) {
       errorMessage.value = `反馈内容需在 ${limits.minContent} - ${limits.maxContent} 字之间`;
+      contentRef.value?.focus();
       return;
     }
     errorMessage.value = '已开启实名发布，请先填写姓名或关闭该开关';
+    manualNameRef.value?.focus();
     return;
   }
 

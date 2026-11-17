@@ -13,7 +13,14 @@
  * ===========================================================================
  */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
+  /* 将 <meta name="color-scheme"> 手动覆盖映射回 CSS color-scheme */
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+  }
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+  }
   /* 自定义标题栏占位高度：浏览器环境为 0，布局零影响 */
   --tb: 0px;
 
@@ -636,37 +643,83 @@ details[open] > div {
 
 /* ---------------- 滚动条 ----------------
    原生滚动条只作为兜底（未被 v-overlay-scroll 接管的区域）：
-   细、默认透明、鼠标悬停容器时淡淡显现；真正的侧栏 / 主区域 / AI 面板
-   使用 .overlay-scroll + 覆盖式滑块，完全不占布局宽度。 */
+   优先声明标准 scrollbar-width / scrollbar-color（保持静态颜色 token，避免悬停切换触发 WebKit 闪烁），
+   仅在不支持 scrollbar-color 的浏览器下启用 ::-webkit-scrollbar 兜底。 */
+:root {
+  --scrollbar-thumb: color-mix(in srgb, var(--md-outline) 48%, transparent);
+  --scrollbar-track: transparent;
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
-*:hover {
-  scrollbar-color: color-mix(in srgb, var(--md-outline) 40%, transparent) transparent;
+@supports not (scrollbar-color: auto) {
+  * {
+    scrollbar-width: auto;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--shape-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--md-outline) 72%, transparent);
+  }
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ---------------- 原生 <dialog> 顶层与滚动约束 ---------------- */
+dialog.ui-native-dialog:modal {
+  overscroll-behavior: contain;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+dialog.ui-native-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
-::-webkit-scrollbar-thumb {
-  background: transparent;
+/* ---------------- 跳过导航链接 & 屏幕阅读器隐藏 ---------------- */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+.skip-link:focus-visible {
+  position: fixed;
+  top: calc(var(--tb) + 12px);
+  left: 16px;
+  z-index: 100;
+  padding: 10px 18px;
   border-radius: var(--shape-full);
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-float);
 }
 
-*:hover::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--md-outline) 38%, transparent);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--md-outline) 70%, transparent);
+/* ---------------- 首屏外重型区块延迟渲染 ---------------- */
+.deferred-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
 }
 
 /* 覆盖式滚动条：隐藏原生滚动条，滑块绝对定位在内容内侧 */

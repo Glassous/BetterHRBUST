@@ -1,8 +1,11 @@
 <template>
   <button
+    :id="id || undefined"
     type="button"
     role="switch"
     :aria-checked="modelValue"
+    :aria-label="ariaLabel || undefined"
+    :aria-labelledby="ariaLabelledby || undefined"
     :class="[
       'relative inline-flex shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200',
       size === 'sm' ? 'h-6 w-10' : 'h-8 w-13',
@@ -13,6 +16,7 @@
     @click="$emit('update:modelValue', !modelValue)"
   >
     <span
+      aria-hidden="true"
       :class="[
         'pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full transition-all duration-200',
         size === 'sm'
@@ -25,6 +29,10 @@
 
 <script setup>
 defineProps({
+  id: {
+    type: String,
+    default: ''
+  },
   modelValue: {
     type: Boolean,
     default: false
@@ -32,6 +40,14 @@ defineProps({
   size: {
     type: String,
     default: 'md'
+  },
+  ariaLabel: {
+    type: String,
+    default: ''
+  },
+  ariaLabelledby: {
+    type: String,
+    default: ''
   }
 });
 

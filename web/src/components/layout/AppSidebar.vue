@@ -40,6 +40,7 @@
     <!-- Navigation List：折叠时分类标题让出高度，图标放大并与相邻项贴合 -->
     <nav
       v-overlay-scroll
+      aria-label="主导航"
       :class="[
         'flex-1 overflow-y-auto overflow-x-hidden pb-4 transition-[padding] duration-300 ease-[cubic-bezier(0.2,0,0,1)]',
         isCollapsedState ? 'px-3.5' : 'px-3'

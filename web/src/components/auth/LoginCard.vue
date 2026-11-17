@@ -39,6 +39,7 @@
     <!-- Error Alert -->
     <div
       v-if="errorMessage"
+      role="alert"
       class="mb-5 p-3.5 rounded-[var(--radius-panel)] border border-[var(--sem-danger-border)] bg-[var(--sem-danger-soft)] text-[var(--sem-danger)] text-[13px] flex items-center gap-2 animate-shake"
     >
       <Icon name="warning" customClass="w-4 h-4 shrink-0" />
@@ -46,12 +47,21 @@
     </div>
 
     <!-- Form -->
-    <form @submit.prevent="handleLoginSubmit" class="space-y-4.5">
+    <form @submit.prevent="handleLoginSubmit" novalidate class="space-y-4.5">
       <!-- Username -->
       <div>
-        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">学号</label>
+        <label :for="usernameId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">学号</label>
         <UiInput
+          :id="usernameId"
+          ref="usernameInputRef"
           v-model="form.username"
+          name="username"
+          required
+          spellcheck="false"
+          autocorrect="off"
+          autocapitalize="none"
+          inputmode="numeric"
+          enterkeyhint="next"
           @blur="prepareAccount"
           placeholder="请输入教务学号 (如 2401234567)"
           autocomplete="username"
@@ -66,10 +76,15 @@
 
       <!-- Password -->
       <div>
-        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">密码</label>
+        <label :for="passwordId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">密码</label>
         <div class="relative">
           <UiInput
+            :id="passwordId"
+            ref="passwordInputRef"
             v-model="form.password"
+            name="password"
+            required
+            enterkeyhint="next"
             :type="showPassword ? 'text' : 'password'"
             placeholder="请输入教务在线密码"
             autocomplete="current-password"
@@ -83,6 +98,7 @@
                 type="button"
                 class="p-1 text-[var(--ink-muted)] hover:text-[var(--ink-primary)] cursor-pointer transition-colors"
                 :aria-label="showPassword ? '隐藏密码' : '显示密码'"
+                :aria-pressed="showPassword"
                 @click="showPassword = !showPassword"
               >
                 <Icon :name="showPassword ? 'eye-off' : 'eye'" customClass="w-4 h-4" />
@@ -94,11 +110,19 @@
 
       <!-- Captcha -->
       <div>
-        <label class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">验证码</label>
+        <label :for="captchaId" class="block text-[13px] font-medium text-[var(--ink-secondary)] mb-1.5">验证码</label>
         <div class="flex items-center gap-3">
           <div class="flex-1">
             <UiInput
+              :id="captchaId"
+              ref="captchaInputRef"
               v-model="form.captcha"
+              name="captcha"
+              required
+              spellcheck="false"
+              autocorrect="off"
+              autocapitalize="none"
+              enterkeyhint="done"
               placeholder="4 位验证码"
               maxlength="4"
               :disabled="isLoggingIn"
@@ -110,15 +134,17 @@
           </div>
 
           <!-- Captcha image container -->
-          <div
-            class="relative h-[42px] w-30 bg-[var(--bg-subtle)] rounded-[var(--radius-control)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] overflow-hidden flex items-center justify-center cursor-pointer select-none transition-colors"
+          <button
+            type="button"
+            aria-label="刷新验证码"
+            class="relative h-[42px] w-30 bg-[var(--bg-subtle)] rounded-[var(--radius-control)] border border-[var(--border-hairline)] hover:border-[var(--border-strong)] overflow-hidden flex items-center justify-center cursor-pointer select-none transition-colors p-0"
             title="点击更换验证码"
             @click="refreshCaptcha"
           >
             <img
               v-if="captchaImgUrl"
               :src="captchaImgUrl"
-              alt="验证码"
+              alt="登录验证码"
               class="w-full h-full object-cover transition-opacity"
               :class="{ 'opacity-40': captchaLoading }"
               @load="captchaLoading = false"
@@ -136,7 +162,7 @@
             >
               加载失败点击重试
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -164,7 +190,7 @@
           block
           size="lg"
           :loading="isLoggingIn"
-          :disabled="!canSubmit"
+          :disabled="isLoggingIn"
         >
           {{ isLoggingIn ? '正在验证身份...' : (isLoggedIn ? '重新认证 / 切换登录' : '登录教务在线') }}
         </UiButton>
@@ -179,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, useId, watch } from 'vue';
 import UiInput from '@/components/ui/UiInput.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import Icon from '@/components/icons/Icon.vue';
@@ -196,6 +222,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['success']);
+
+const usernameId = useId();
+const passwordId = useId();
+const captchaId = useId();
+const usernameInputRef = ref(null);
+const passwordInputRef = ref(null);
+const captchaInputRef = ref(null);
 
 const { isLoggingIn, isPreparingAccount, loginError, login, prepareLoginAccount, studentNumber, isLoggedIn, userProfile, showLoginPageExpiredHint } =
   useSession();
@@ -251,7 +284,26 @@ function onCaptchaLoadError() {
 }
 
 async function handleLoginSubmit() {
-  if (!canSubmit.value || isLoggingIn.value) return;
+  if (isLoggingIn.value) return;
+  if (!form.username.trim()) {
+    errorMessage.value = '请输入教务学号';
+    usernameInputRef.value?.focus();
+    return;
+  }
+  if (!form.password.trim()) {
+    errorMessage.value = '请输入教务在线密码';
+    passwordInputRef.value?.focus();
+    return;
+  }
+  if (form.captcha.trim().length !== 4) {
+    errorMessage.value = '请输入 4 位验证码';
+    captchaInputRef.value?.focus();
+    return;
+  }
+  if (isPreparingAccount.value || captchaLoading.value || captchaError.value) {
+    errorMessage.value = captchaError.value ? '验证码加载失败，请点击刷新后重试' : '验证码正在加载，请稍候再试';
+    return;
+  }
   errorMessage.value = '';
 
   const res = await login({

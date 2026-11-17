@@ -18,6 +18,7 @@ import AppLayout from '@/components/layout/AppLayout.vue';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useUpdate } from '@/composables/useUpdate.js';
+import { TAB_TITLES } from '@/utils/tabTitles.js';
 import DashboardView from '@/views/DashboardView.vue';
 import TimetableView from '@/views/TimetableView.vue';
 import ScoreView from '@/views/ScoreView.vue';
@@ -91,4 +92,14 @@ const views = {
 };
 
 const currentViewComponent = computed(() => views[activeTab.value] || DashboardView);
+
+watch(
+  activeTab,
+  tab => {
+    if (typeof document === 'undefined') return;
+    const title = TAB_TITLES[tab];
+    document.title = title ? `${title} · BetterHRBUST` : 'BetterHRBUST';
+  },
+  { immediate: true }
+);
 </script>

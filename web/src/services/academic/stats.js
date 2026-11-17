@@ -233,7 +233,7 @@ export function dedupeScores(scores) {
   order.forEach(key => {
     const { items } = groups.get(key);
     // 通过优先，其次折算分高
-    const sorted = [...items].sort((a, b) => {
+    const sorted = items.toSorted((a, b) => {
       if (a.passed !== b.passed) return a.passed ? -1 : 1;
       return (parseScoreValue(b.score).estimated || 0) - (parseScoreValue(a.score).estimated || 0);
     });

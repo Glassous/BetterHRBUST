@@ -413,8 +413,7 @@ function isRecentExam(exam) {
 const upcomingExams = computed(() => {
   return (exams.value || [])
     .filter(isRecentExam)
-    .slice()
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const ta = parseExamDateTime(a.time)?.date.getTime() || 0;
       const tb = parseExamDateTime(b.time)?.date.getTime() || 0;
       return ta - tb;

@@ -17,14 +17,14 @@
       <!-- 主开关 -->
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <div class="text-[15px] font-semibold text-[var(--ink-primary)]">AI 对话</div>
+          <div id="ai-enabled-label" class="text-[15px] font-semibold text-[var(--ink-primary)]">AI 对话</div>
           <div class="text-[13px] text-[var(--ink-muted)] mt-1 leading-relaxed">
             打开后按 <kbd class="px-1.5 py-0.5 rounded bg-[var(--bg-hover)] text-[11.5px]">Ctrl</kbd> +
             <kbd class="px-1.5 py-0.5 rounded bg-[var(--bg-hover)] text-[11.5px]">J</kbd>
             或点侧栏底部用户信息右侧的 AI 按钮；打开时会同时确认数据出网。
           </div>
         </div>
-        <UiSwitch :modelValue="form.enabled" @update:modelValue="requestToggleEnabled" />
+        <UiSwitch :modelValue="form.enabled" aria-labelledby="ai-enabled-label" @update:modelValue="requestToggleEnabled" />
       </div>
 
       <!-- 出网确认 -->
@@ -45,17 +45,21 @@
       <!-- 允许数据出网 -->
       <div class="flex items-center justify-between gap-4">
         <div>
-          <div class="text-[14px] font-medium text-[var(--ink-primary)]">允许数据出网</div>
+          <div id="ai-consent-label" class="text-[14px] font-medium text-[var(--ink-primary)]">允许数据出网</div>
           <div class="text-[12.5px] text-[var(--ink-muted)] mt-0.5">关闭后立即停止发送任何内容</div>
         </div>
-        <UiSwitch :modelValue="form.consent" @update:modelValue="save({ consent: $event })" />
+        <UiSwitch :modelValue="form.consent" aria-labelledby="ai-consent-label" @update:modelValue="save({ consent: $event })" />
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2">
-          <label class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">接口地址</label>
+          <label :for="baseUrlId" class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">接口地址</label>
           <UiInput
+            :id="baseUrlId"
             v-model="form.base_url"
+            spellcheck="false"
+            autocorrect="off"
+            autocapitalize="none"
             placeholder="https://api.deepseek.com/v1"
             @enter="saveForm"
           />
@@ -67,13 +71,14 @@
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">模型</label>
-          <UiInput v-model="form.model" placeholder="deepseek-flash" @enter="saveForm" />
+          <label :for="modelId" class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">模型</label>
+          <UiInput :id="modelId" v-model="form.model" spellcheck="false" autocorrect="off" autocapitalize="none" placeholder="deepseek-flash" @enter="saveForm" />
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">API Key</label>
+          <label :for="apiKeyId" class="block text-[13px] font-medium text-[var(--ink-primary)] mb-1.5">API Key</label>
           <UiInput
+            :id="apiKeyId"
             v-model="form.apiKey"
             type="password"
             :placeholder="view?.hasKey ? view.apiKeyMasked : '未设置'"
@@ -113,12 +118,12 @@
 
         <div class="flex items-center justify-between gap-4">
           <div class="min-w-0">
-            <div class="text-[13.5px] font-medium text-[var(--ink-primary)]">发送学籍</div>
+            <div id="ai-send-profile-label" class="text-[13.5px] font-medium text-[var(--ink-primary)]">发送学籍</div>
             <div class="text-[12px] text-[var(--ink-muted)] mt-0.5 leading-relaxed">
               关闭时模型看不到学籍；即使打开，证件号与手机号也已打码
             </div>
           </div>
-          <UiSwitch :modelValue="form.send_profile" @update:modelValue="save({ send_profile: $event })" />
+          <UiSwitch :modelValue="form.send_profile" aria-labelledby="ai-send-profile-label" @update:modelValue="save({ send_profile: $event })" />
         </div>
       </div>
 
@@ -151,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, useId, watch } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiSwitch from '@/components/ui/UiSwitch.vue';
 import UiInput from '@/components/ui/UiInput.vue';
@@ -161,6 +166,10 @@ import { useAiChat } from '@/composables/useAiChat.js';
 import { DEFAULT_AI_CONFIG, TEMPERATURE_OPTIONS, TIMEOUT_OPTIONS, TOOL_ROUND_OPTIONS } from '@/services/ai/config.js';
 
 const { view, readiness, ready, provider, applyConfig, clearConfig, refreshConfig } = useAiChat();
+
+const baseUrlId = useId();
+const modelId = useId();
+const apiKeyId = useId();
 
 const saving = ref(false);
 const errorMessage = ref('');

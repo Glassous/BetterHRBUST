@@ -286,7 +286,7 @@ export function isRoomFreeAllWeek(room, options = {}) {
 
 /** 按空闲时段数量降序、占用数升序排列（空闲最多的教室排前面） */
 export function sortByFreeTime(rooms) {
-  return [...(Array.isArray(rooms) ? rooms : [])].sort((a, b) => {
+  return (Array.isArray(rooms) ? rooms : []).toSorted((a, b) => {
     const spanDiff = totalFreeSpan(b) - totalFreeSpan(a);
     if (spanDiff !== 0) return spanDiff;
     return (a.occupiedCount || 0) - (b.occupiedCount || 0);

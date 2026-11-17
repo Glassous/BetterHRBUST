@@ -25,7 +25,7 @@ const STALE_DAYS = 210;
 const data = raw;
 
 /** 学期按学年学期倒序，最新的在前 */
-const semesters = [...data.semesters].sort(
+const semesters = data.semesters.toSorted(
   (left, right) => Number(right.academicYear.slice(0, 4)) - Number(left.academicYear.slice(0, 4)) || right.term - left.term
 );
 

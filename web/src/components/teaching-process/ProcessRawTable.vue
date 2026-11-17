@@ -1,16 +1,18 @@
 <template>
   <div>
     <!-- 桌面：与教务处原表逐格对应的周网格 -->
-    <UiScrollArea axis="both" class="hidden rounded-[var(--radius-panel)] border border-[var(--border-hairline)] md:block" viewport-class="max-h-[70vh]">
+    <UiScrollArea axis="both" region-label="本科教学进程周网格表" class="hidden rounded-[var(--radius-panel)] border border-[var(--border-hairline)] md:block" viewport-class="max-h-[70vh]">
       <table class="w-full min-w-[1080px] border-collapse text-[11px] leading-none">
+        <caption class="sr-only">本科教学进程周网格表</caption>
         <thead class="sticky top-0 z-20 bg-[var(--bg-surface)]">
           <tr class="border-b border-[var(--border-hairline)]">
-            <th rowspan="3" class="sticky left-0 z-30 w-32 bg-[var(--bg-surface)] px-3 py-2 text-left text-[12px] font-semibold text-[var(--ink-secondary)]">
+            <th scope="col" rowspan="3" class="sticky left-0 z-30 w-32 bg-[var(--bg-surface)] px-3 py-2 text-left text-[12px] font-semibold text-[var(--ink-secondary)]">
               班级 / 周次
             </th>
             <th
               v-for="week in weeks"
               :key="`w-${week.w}`"
+              scope="col"
               :class="[
                 'px-1 py-1.5 text-center font-medium num-tabular',
                 week.w === currentWeek
@@ -43,6 +45,7 @@
         <tbody>
           <tr v-for="row in rows" :key="row.name" class="border-b border-[var(--border-hairline)] last:border-0">
             <th
+              scope="row"
               :class="[
                 'sticky left-0 z-10 max-w-[11rem] truncate bg-[var(--bg-surface)] px-3 py-1.5 text-left text-[12px] font-medium',
                 row.name === mine ? 'text-[var(--accent)]' : 'text-[var(--ink-primary)]'
