@@ -33,6 +33,7 @@ poster/
    ├─ App.vue                      # 工具条 + 预览缩放 + 导出逻辑
    ├─ posters/registry.ts          # 海报清单
    ├─ posters/Release140Poster.vue # v1.3.0 → v1.4.0 海报（内容硬编码）
+   ├─ posters/PlatformQaPoster.vue # 平台答疑海报（MacOS / iOS / 鸿蒙 / 网页版）
    └─ assets/                      # Android 图标与下载二维码
 ```
 

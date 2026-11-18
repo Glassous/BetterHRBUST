@@ -1,5 +1,6 @@
 import type { Component } from 'vue'
 import Release140Poster from './Release140Poster.vue'
+import PlatformQaPoster from './PlatformQaPoster.vue'
 
 export interface PosterItem {
   /** 唯一 id，同时用作组件 key */
@@ -27,5 +28,14 @@ export const posters: PosterItem[] = [
     height: 1600,
     fileName: 'BetterHRBUST-v1.4.0-上课提示与命令行.png',
     component: Release140Poster
+  },
+  {
+    id: 'qa-platforms',
+    name: '平台答疑 · MacOS / iOS / 鸿蒙 / 网页',
+    meta: 'Q&A · 平台支持',
+    width: 1200,
+    height: 1600,
+    fileName: 'BetterHRBUST-平台答疑.png',
+    component: PlatformQaPoster
   }
 ]
