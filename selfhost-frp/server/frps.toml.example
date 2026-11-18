@@ -1,0 +1,28 @@
+# BetterHRBUST frps 配置示例
+#
+# 复制到 /etc/frp/frps.toml 后，把 <FRP_TOKEN> 替换成随机长串：
+#   openssl rand -hex 32
+# 服务器与校内机器的 frpc.toml 必须使用同一个 token。
+
+bindPort = 7000
+
+# 关键：frp 建立的 remotePort（18080）只绑定回环地址，
+# 只允许同机的 Caddy 访问，公网无法直连。
+proxyBindAddr = "127.0.0.1"
+
+auth.method = "token"
+auth.token = "<FRP_TOKEN>"
+
+# frpc 与 frps 之间的传输加密。证书由 server/certs/gen-certs.sh 生成，
+# 并复制到 /etc/frp/certs/。
+transport.tls.force = true
+transport.tls.certFile = "/etc/frp/certs/server.crt"
+transport.tls.keyFile = "/etc/frp/certs/server.key"
+
+# 只允许客户端申请 18080 一个 remotePort
+allowPorts = [{ single = 18080 }]
+
+log.to = "console"
+log.level = "info"
+# journald / 日志文件里不要 ANSI 颜色转义
+log.disablePrintColor = true

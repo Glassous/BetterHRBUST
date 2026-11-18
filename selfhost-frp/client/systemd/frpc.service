@@ -1,0 +1,16 @@
+[Unit]
+Description=BetterHRBUST frp client (jwzx campus tunnel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# frpc.toml 里的 trustedCaFile = "ca.crt" 是相对路径，依赖这个工作目录
+WorkingDirectory=/opt/betterhrbust-frpc
+ExecStart=/usr/local/bin/frpc -c /opt/betterhrbust-frpc/frpc.toml
+Restart=always
+RestartSec=10
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

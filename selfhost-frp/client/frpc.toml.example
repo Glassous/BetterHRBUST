@@ -1,0 +1,33 @@
+# BetterHRBUST frpc 配置示例（校内机器）
+#
+# 复制为 frpc.toml，然后替换：
+#   <VPS_IP>     公网服务器地址
+#   <FRP_TOKEN>  与服务器 /etc/frp/frps.toml 完全一致的 token
+#
+# ca.crt 由服务器执行 server/certs/gen-certs.sh 生成后复制到本目录。
+
+serverAddr = "<VPS_IP>"
+serverPort = 7000
+loginFailExit = false
+
+auth.method = "token"
+auth.token = "<FRP_TOKEN>"
+auth.additionalScopes = ["HeartBeats", "NewWorkConns"]
+
+transport.tls.enable = true
+# 相对路径以本文件所在目录为基准（start.ps1 / systemd 都会设置工作目录）
+transport.tls.trustedCaFile = "ca.crt"
+# 必须与服务器证书的 SAN 一致
+transport.tls.serverName = "jwzx-frps"
+
+log.level = "info"
+# start.ps1 会把 stdout/stderr 重定向到日志文件，关掉颜色转义更易读
+log.disablePrintColor = true
+
+[[proxies]]
+name = "jwzx-campus"
+type = "tcp"
+# 校内机器能访问的教务地址；校外经 WebVPN 时改成对应入口
+localIP = "jwzx.hrbust.edu.cn"
+localPort = 80
+remotePort = 18080

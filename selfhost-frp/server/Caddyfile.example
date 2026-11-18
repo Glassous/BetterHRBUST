@@ -1,0 +1,47 @@
+# BetterHRBUST 服务器侧 Caddyfile 示例
+#
+# 复制到 /etc/caddy/Caddyfile 后替换：
+#   <DOMAIN>      解析到本机的域名
+#   <ACME_EMAIL>  Let's Encrypt 通知邮箱（可留空但建议填写）
+{
+	email <ACME_EMAIL>
+}
+
+<DOMAIN> {
+	encode gzip
+
+	# 教务在线：frp 隧道在本机的出口
+	handle /academic/* {
+		reverse_proxy 127.0.0.1:18080 {
+			# 教务站按 Host / Referer 识别请求
+			header_up Host jwzx.hrbust.edu.cn
+			header_up Referer http://jwzx.hrbust.edu.cn/academic/
+
+			# 自部署版固定走隧道，忽略前端「自定义教务地址」的提示头
+			header_up -X-Betterhrbust-Academic-Base
+
+			# 教务 302 返回绝对地址，必须收敛回本地相对路径，
+			# 否则浏览器会跳到 http://jwzx... 并被混合内容拦截
+			header_down Location "(?i)http://jwzx[.]hrbust[.]edu[.]cn/academic/" "/academic/"
+
+			transport http {
+				read_timeout 60s
+				write_timeout 60s
+			}
+		}
+	}
+
+	# 本方案不部署意见反馈后端：明确返回 JSON 503，
+	# 避免 SPA 回退把 index.html 当成接口响应
+	handle /api/* {
+		header Content-Type application/json
+		respond `{"code":503,"message":"feedback service is not deployed"}` 503
+	}
+
+	# 前端静态资源
+	handle {
+		root * /srv/betterhrbust/web/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

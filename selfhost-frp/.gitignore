@@ -1,0 +1,18 @@
+# 实际部署配置（含服务器地址与 token）
+frpc.toml
+frps.toml
+
+# 证书与私钥（由 server/certs/gen-certs.sh 生成或从服务器复制）
+*.crt
+*.key
+*.csr
+*.srl
+
+# 客户端二进制与运行产物
+frpc.exe
+frps.exe
+*.log
+*.pid
+
+# 示例文件照常入库
+!*.example
