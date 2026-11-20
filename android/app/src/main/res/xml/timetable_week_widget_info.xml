@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  周视图课表小部件：桌面占位 4 列 × 4 行（约 250dp × 250dp），固定尺寸、不可缩放。
-  minWidth / minHeight 为 API 30 的兜底尺寸，targetCellWidth / targetCellHeight 供 API 31+ 精确占位。
+  周视图课表小部件：桌面占位 4 列 × 4 行（280dp × 280dp），固定尺寸、不可缩放。
+  minWidth / minHeight 按 vivo 原子组件 4×4 规范取值（建议 280dp，范围 240–320dp），
+  同时也是 API 30 的兜底尺寸；targetCellWidth / targetCellHeight 供 API 31+ 精确占位。
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:description="@string/widget_week_description"
     android:initialLayout="@layout/widget_loading"
-    android:minHeight="250dp"
-    android:minWidth="250dp"
-    android:previewImage="@mipmap/ic_launcher"
+    android:minHeight="280dp"
+    android:minWidth="280dp"
+    android:previewImage="@drawable/widget_thumbnail_week"
     android:previewLayout="@layout/widget_preview_week"
     android:resizeMode="none"
     android:targetCellHeight="4"
     android:targetCellWidth="4"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="43200000"
     android:widgetCategory="home_screen"
     tools:targetApi="s" />

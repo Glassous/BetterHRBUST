@@ -10,7 +10,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.Alignment
@@ -75,7 +74,7 @@ class TimetableWeekWidget : GlanceAppWidget() {
 }
 
 /** 周视图小部件的系统入口（Manifest 中声明）。 */
-class TimetableWeekWidgetReceiver : GlanceAppWidgetReceiver() {
+class TimetableWeekWidgetReceiver : TimetableGlanceReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TimetableWeekWidget()
 }
 

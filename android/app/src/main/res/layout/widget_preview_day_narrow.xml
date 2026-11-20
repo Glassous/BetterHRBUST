@@ -1,204 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  日视图（窄版）小部件的选择器预览图（API 31+ 由 previewLayout 渲染，低版本回退 previewImage）。
+  日视图（窄版）2×3 小部件的选择器预览图（API 31+ 由 previewLayout 渲染，低版本回退 previewImage）。
   仅作示意：固定文案与固定配色，不参与真实渲染。
 
   注意：该布局由桌面端以小部件白名单充气器加载，只能使用允许的控件
   （LinearLayout / FrameLayout / TextView 等）；`android.view.View`、`android.widget.Space`
-  均不在白名单内，色块与空白占位一律使用空的 `TextView`。
+  均不在白名单内，空白占位一律使用空的 `TextView`。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_preview_surface"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:padding="12dp">
 
-    <!-- 顶部：窄版两行（今天 / 教学周） -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="今天 · 周三"
-        android:textColor="#18181B"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="第 3 周"
-        android:textColor="#71717A"
-        android:textSize="9sp" />
-
-    <!-- 内容面板：与「双日课表」的面板同款（18dp 圆角 + 中性底色，不对今天做高亮） -->
+    <!-- 顶部：日期 + 星期；右侧教学周 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="4dp"
-        android:layout_weight="1"
-        android:background="@drawable/widget_preview_panel_neutral"
-        android:orientation="vertical"
-        android:padding="3dp">
-
-    <!-- 第 1 大节 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="4dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="11/20 周五"
             android:textColor="#18181B"
-            android:textSize="9sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="第 3 周"
+            android:textColor="#71717A"
+            android:textSize="8sp" />
+    </LinearLayout>
+
+    <!-- 今日剩余课程：3 条紧凑卡片，不再保留左侧节次数字列 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="4dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginBottom="3dp"
             android:layout_weight="1"
             android:background="@drawable/widget_preview_cell"
             android:backgroundTint="#D8E4F8"
-            android:padding="4dp"
-            android:text="高等数学"
-            android:textColor="#3A4A63"
-            android:textSize="10sp" />
-    </LinearLayout>
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp">
 
-    <!-- 第 2 大节 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="高等数学"
+                android:textColor="#3A4A63"
+                android:textSize="10sp" />
 
-        <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="2"
-            android:textColor="#18181B"
-            android:textSize="9sp"
-            android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="08:10 · 教1-302"
+                android:textColor="#B33A4A63"
+                android:textSize="8sp" />
+        </LinearLayout>
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginBottom="3dp"
             android:layout_weight="1"
             android:background="@drawable/widget_preview_cell"
             android:backgroundTint="#F8E3D8"
-            android:padding="4dp"
-            android:text="大学物理"
-            android:textColor="#5A4034"
-            android:textSize="10sp" />
-    </LinearLayout>
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp">
 
-    <!-- 第 3 大节 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="大学物理"
+                android:textColor="#5A4034"
+                android:textSize="10sp" />
 
-        <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="3"
-            android:textColor="#18181B"
-            android:textSize="9sp"
-            android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="10:10 · 教2-105"
+                android:textColor="#B35A4034"
+                android:textSize="8sp" />
+        </LinearLayout>
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
             android:background="@drawable/widget_preview_cell"
             android:backgroundTint="#DDF0E3"
-            android:padding="4dp"
-            android:text="程序设计"
-            android:textColor="#2F4A38"
-            android:textSize="10sp" />
-    </LinearLayout>
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp">
 
-    <!-- 第 4 大节 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="程序设计"
+                android:textColor="#2F4A38"
+                android:textSize="10sp" />
 
-        <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="4"
-            android:textColor="#18181B"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_preview_cell"
-            android:backgroundTint="#EDE0F8"
-            android:padding="4dp"
-            android:text="线性代数"
-            android:textColor="#463354"
-            android:textSize="10sp" />
-    </LinearLayout>
-
-    <!-- 第 5 / 6 大节：今天无课，收窄显示 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="18dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="5"
-            android:textColor="#A1A1AA"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
-            android:layout_weight="1" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="18dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="22dp"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:text="6"
-            android:textColor="#A1A1AA"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_margin="1dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="13:30 · 实训402"
+                android:textColor="#B32F4A38"
+                android:textSize="8sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- 页脚：更新时刻 + 今日已上进度 -->
@@ -214,14 +137,14 @@
             android:layout_weight="1"
             android:text="08:30"
             android:textColor="#71717A"
-            android:textSize="9sp" />
+            android:textSize="8sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3/6 节"
+            android:text="1/3 节"
             android:textColor="#18181B"
-            android:textSize="10sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>

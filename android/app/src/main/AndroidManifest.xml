@@ -57,6 +57,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/timetable_week_widget_info" />
+            <!--
+              vivo 原子组件标识：仅在通过 vivo 原子组件平台审核后启用。
+              未审核时声明 vivo_widget=true，OriginOS 会把它从「应用挂件」列表移出，
+              改由「原子组件」库承载；该库只收录已审核组件，结果是无处可添加。
+              审核通过后取消注释，vivoWidgetVersion 从 1 开始且只能升。
+            <meta-data android:name="vivo_widget" android:value="true" />
+            <meta-data android:name="vivoWidgetVersion" android:value="1" />
+            <meta-data
+                android:name="vivo.widget.description"
+                android:resource="@string/widget_week_vivo_description" />
+            -->
         </receiver>
 
         <!-- ================= 桌面课表小部件（日视图 2×4） ================= -->
@@ -70,6 +81,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/timetable_day_narrow_widget_info" />
+            <!--
+              vivo 原子组件标识：仅在通过 vivo 原子组件平台审核后启用。
+              未审核时声明 vivo_widget=true，OriginOS 会把它从「应用挂件」列表移出，
+              改由「原子组件」库承载；该库只收录已审核组件，结果是无处可添加。
+              审核通过后取消注释，vivoWidgetVersion 从 1 开始且只能升。
+            <meta-data android:name="vivo_widget" android:value="true" />
+            <meta-data android:name="vivoWidgetVersion" android:value="1" />
+            <meta-data
+                android:name="vivo.widget.description"
+                android:resource="@string/widget_day_narrow_vivo_description" />
+            -->
         </receiver>
 
         <!-- ================= 桌面课表小部件（日视图 4×4） ================= -->
@@ -83,6 +105,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/timetable_day_wide_widget_info" />
+            <!--
+              vivo 原子组件标识：仅在通过 vivo 原子组件平台审核后启用。
+              未审核时声明 vivo_widget=true，OriginOS 会把它从「应用挂件」列表移出，
+              改由「原子组件」库承载；该库只收录已审核组件，结果是无处可添加。
+              审核通过后取消注释，vivoWidgetVersion 从 1 开始且只能升。
+            <meta-data android:name="vivo_widget" android:value="true" />
+            <meta-data android:name="vivoWidgetVersion" android:value="1" />
+            <meta-data
+                android:name="vivo.widget.description"
+                android:resource="@string/widget_day_wide_vivo_description" />
+            -->
         </receiver>
 
         <!--

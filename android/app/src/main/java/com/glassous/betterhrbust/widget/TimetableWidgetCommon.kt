@@ -235,6 +235,7 @@ internal class WidgetStrings(private val context: Context) {
     val notCurrentWeek: String = context.getString(R.string.widget_not_current_week)
     val weekEmpty: String = context.getString(R.string.widget_week_empty)
     val dayEmpty: String = context.getString(R.string.widget_day_empty)
+    val dayFinished: String = context.getString(R.string.widget_day_finished)
     val noSessionTitle: String = context.getString(R.string.widget_no_session_title)
     val noSessionHint: String = context.getString(R.string.widget_no_session_hint)
 

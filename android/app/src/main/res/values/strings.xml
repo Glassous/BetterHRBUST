@@ -6,9 +6,14 @@
     <string name="widget_week_name">课表 · 周视图</string>
     <string name="widget_week_description">4×4 周视图课表，展示当前教学周（自动隐藏无课的节次与星期）</string>
     <string name="widget_day_narrow_name">课表 · 日视图（窄）</string>
-    <string name="widget_day_narrow_description">2×4 日视图课表，展示今天的课程</string>
+    <string name="widget_day_narrow_description">2×3 日视图课表，展示今天剩余课程与上课时间</string>
     <string name="widget_day_wide_name">课表 · 日视图（宽）</string>
     <string name="widget_day_wide_description">4×4 日视图课表，展示今天课程与地点、教师</string>
+
+    <!-- vivo 原子组件库详情页描述（位于组件名称下方、预览图上方，需短于系统选择器说明） -->
+    <string name="widget_week_vivo_description">当前教学周课表，自动隐藏无课的行与列</string>
+    <string name="widget_day_narrow_vivo_description">今天的剩余课程，紧凑列表</string>
+    <string name="widget_day_wide_vivo_description">今天的课程、教室与教师</string>
 
     <!-- 标题 -->
     <string name="widget_week_title">第 %1$d 周</string>
@@ -18,6 +23,7 @@
     <string name="widget_not_current_week">非本周</string>
     <string name="widget_week_empty">本周暂无课程</string>
     <string name="widget_day_empty">今天没有课</string>
+    <string name="widget_day_finished">今天的课已结束</string>
     <string name="widget_no_session_title">暂无课表数据</string>
     <string name="widget_no_session_hint">点击打开应用同步</string>
 
