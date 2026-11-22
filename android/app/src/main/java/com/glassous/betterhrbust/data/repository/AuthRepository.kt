@@ -1,6 +1,7 @@
 package com.glassous.betterhrbust.data.repository
 
 import com.glassous.betterhrbust.core.database.AppDatabase
+import com.glassous.betterhrbust.core.database.CurrentCoursesEntity
 import com.glassous.betterhrbust.core.database.ProfileEntity
 import androidx.room.withTransaction
 import kotlinx.serialization.encodeToString
@@ -201,6 +202,15 @@ class AuthRepository(
                 database.scoreDao().clear(studentContext.studentId)
                 database.examDao().clear(studentContext.studentId)
                 database.curriculumDao().clear(studentContext.studentId)
+                database.currentCoursesDao().clear(studentContext.studentId)
+                if (studentContext.courses.isNotEmpty()) {
+                    database.currentCoursesDao().insert(
+                        CurrentCoursesEntity(
+                            studentId = studentContext.studentId,
+                            json = kotlinx.serialization.json.Json.encodeToString(studentContext.courses)
+                        )
+                    )
+                }
                 database.profileDao().insert(ProfileEntity(studentNumber = username, json = kotlinx.serialization.json.Json.encodeToString(profile)))
             }
             _isSessionExpired.value = false
@@ -251,6 +261,7 @@ class AuthRepository(
                 database.scoreDao().clear(studentId)
                 database.examDao().clear(studentId)
                 database.curriculumDao().clear(studentId)
+                database.currentCoursesDao().clear(studentId)
             }
             database.profileDao().clearAll()
             database.noticeDao().clearAll()

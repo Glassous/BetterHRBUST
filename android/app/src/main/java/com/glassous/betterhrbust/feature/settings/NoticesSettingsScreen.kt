@@ -697,6 +697,7 @@ fun NoticesSettingsScreen(
                                 database.scoreDao().clear(snapshot.studentId)
                                 database.examDao().clear(snapshot.studentId)
                                 database.curriculumDao().clear(snapshot.studentId)
+                                database.currentCoursesDao().clear(snapshot.studentId)
                             }
                             if (snapshot != null && snapshot.username.isNotEmpty()) {
                                 database.profileDao().clear(snapshot.username)

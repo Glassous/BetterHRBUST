@@ -46,3 +46,10 @@ data class CurriculumPlanEntity(
     val json: String,
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "current_courses_cache")
+data class CurrentCoursesEntity(
+    @PrimaryKey val studentId: String,
+    val json: String,
+    val updatedAt: Long = System.currentTimeMillis()
+)

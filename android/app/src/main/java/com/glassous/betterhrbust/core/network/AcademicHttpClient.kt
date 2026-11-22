@@ -29,7 +29,7 @@ class AcademicHttpClient(
         .retryOnConnectionFailure(false)
         .cookieJar(cookieJar)
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .addInterceptor(Interceptor { chain ->
             val original = chain.request()

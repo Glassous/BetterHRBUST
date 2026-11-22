@@ -103,6 +103,7 @@ class AcademicSyncManager(
                 val studentId = snapshot.studentId
                 val results = coroutineScope {
                     val tasks = mutableListOf(
+                        async { academicRepo.getCurrentCourses(studentId, forceRefresh = true).last() },
                         async { academicRepo.getScores(studentId, forceRefresh = true).last() },
                         async { academicRepo.getCurriculumPlan(studentId, forceRefresh = true).last() },
                         async { academicRepo.getExams(studentId, forceRefresh = true).last() },

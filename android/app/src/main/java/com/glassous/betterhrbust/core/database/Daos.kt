@@ -85,3 +85,15 @@ interface CurriculumDao {
     @Query("DELETE FROM curriculum_cache WHERE studentId = :studentId")
     suspend fun clear(studentId: String)
 }
+
+@Dao
+interface CurrentCoursesDao {
+    @Query("SELECT * FROM current_courses_cache WHERE studentId = :studentId")
+    fun getCurrentCourses(studentId: String): Flow<CurrentCoursesEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: CurrentCoursesEntity)
+
+    @Query("DELETE FROM current_courses_cache WHERE studentId = :studentId")
+    suspend fun clear(studentId: String)
+}

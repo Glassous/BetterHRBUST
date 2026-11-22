@@ -32,6 +32,139 @@ class AcademicParsersTest {
     }
 
     @Test
+    fun curriculumPlanParsesRealTableColumnsAndAssignsCoursesToGroups() {
+        val jumpHtml = """
+            <a href="/academic/manager/studyschedule/scheduleJump.jsp?link=studentScheduleLineShow.do&studentId=LINE_ID&classId=111">平铺</a>
+            <a href="/academic/manager/studyschedule/scheduleJump.jsp?link=studentScheduleShowByTerm.do&studentId=TERM_ENC_ID%2B1&classId=28008">学期</a>
+        """.trimIndent()
+        val (encId, classId) = AcademicParsers.parseCurriculumJumpParams(jumpHtml)
+        assertEquals("TERM_ENC_ID%2B1", encId)
+        assertEquals("28008", classId)
+
+        val planHtml = """
+            <table class="datalist output_ctx" id="output_ctx">
+              <tr><td colspan="10">
+                <select id="syt12">
+                  <option value="229885117">第二课堂（2023） 选课属性：必修 学分要求=2.0 门数要求=2</option>
+                  <option value="229885118">学科基础课程（2023） 选课属性：必修 学分要求=26.5 门数要求=8</option>
+                  <option value="229885127">专业选修课（2023） 选课属性：限选 学分要求=8.0 门数要求=4</option>
+                </select>
+              </td></tr>
+              <tr>
+                <th>课程号</th><th>课程名</th><th>考核方式</th><th>学分</th><th>学时</th><th>课程类别</th><th>课组</th><th>课组要求</th><th>专业方向</th><th>删除</th>
+              </tr>
+              <tr>
+                <td>U960123dW10N1</td>
+                <td>国家安全教育（网络）</td>
+                <td>分散（55）</td>
+                <td>1</td>
+                <td>16</td>
+                <td>非学位课</td>
+                <td><a href="./scheduleGroupContent.do?sgid=229885117">第二课堂（2023）</a></td>
+                <td>必修</td>
+                <td>&nbsp;</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>U040023XN01W1</td>
+                <td>程序设计基础</td>
+                <td>集中（46）</td>
+                <td>4</td>
+                <td>64</td>
+                <td>学位课</td>
+                <td><a href="./scheduleGroupContent.do?sgid=229885118">学科基础课程（2023）</a></td>
+                <td>必修</td>
+                <td>&nbsp;</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>U040323ZN09W6</td>
+                <td>后端服务开发基础</td>
+                <td>分散（46）</td>
+                <td>2</td>
+                <td>32</td>
+                <td>非学位课</td>
+                <td><a href="./scheduleGroupContent.do?sgid=229885127">专业选修课（2023）</a></td>
+                <td>限选</td>
+                <td>&nbsp;</td>
+                <td></td>
+              </tr>
+            </table>
+        """.trimIndent()
+
+        val plan = AcademicParsers.parseCurriculumPlan(planHtml)
+        assertEquals(3, plan.groups.size)
+
+        val secondClass = plan.groups[0]
+        assertEquals(1, secondClass.courses.size)
+        assertEquals("U960123dW10N1", secondClass.courses[0].code)
+        assertEquals("国家安全教育（网络）", secondClass.courses[0].name)
+        assertEquals("必修", secondClass.courses[0].property)
+
+        val foundation = plan.groups[1]
+        assertEquals(1, foundation.courses.size)
+        assertEquals("U040023XN01W1", foundation.courses[0].code)
+        assertEquals("程序设计基础", foundation.courses[0].name)
+        assertEquals(4.0, foundation.courses[0].credit, 0.001)
+        assertEquals(64, foundation.courses[0].hours)
+        assertEquals("必修", foundation.courses[0].property)
+
+        val elective = plan.groups[2]
+        assertEquals(1, elective.courses.size)
+        assertEquals("U040323ZN09W6", elective.courses[0].code)
+        assertEquals("后端服务开发基础", elective.courses[0].name)
+        assertEquals("限选", elective.courses[0].property)
+    }
+
+    @Test
+    fun parseCourseListMapsHeadersAndSkipsPagingRow() {
+        val html = """
+            <table class="datalist">
+              <tr><th>课程号</th><th>课程名</th><th>学分</th><th>总学时</th><th>开课院系</th><th>考核方式</th></tr>
+              <tr><td>U040023XN01W1</td><td>程序设计基础</td><td>4.0</td><td>64</td><td>计算机科学与技术学院</td><td>考试</td></tr>
+              <tr class="classicLookPagingTag PagingTag"><td colspan="6">共1条</td></tr>
+            </table>
+        """.trimIndent()
+        val list = AcademicParsers.parseCourseList(html)
+        assertEquals(1, list.size)
+        assertEquals("U040023XN01W1", list[0].courseId)
+        assertEquals("程序设计基础", list[0].courseName)
+        assertEquals(4.0, list[0].credit, 0.001)
+        assertEquals(64, list[0].hours)
+        assertEquals("计算机科学与技术学院", list[0].department)
+        assertEquals("考试", list[0].examWay)
+    }
+
+    @Test
+    fun curriculumPlanSupportsLaterSelectAndTableOnlyFallback() {
+        val multiSelectHtml = """
+            <select id="syt12"></select>
+            <select id="syt21">
+              <option value="G1">专业必修课 选课属性：必修 学分要求=17.0 门数要求=8</option>
+            </select>
+            <table id="output_ctx">
+              <tr><th>课程号</th><th>课程名</th><th>考核方式</th><th>学分</th><th>学时</th><th>课程类别</th><th>课组</th><th>课组要求</th></tr>
+              <tr><td>U0401</td><td>操作系统</td><td>考试</td><td>4</td><td>64</td><td>学位课</td><td>专业必修课</td><td>必修</td></tr>
+            </table>
+        """.trimIndent()
+        val plan1 = AcademicParsers.parseCurriculumPlan(multiSelectHtml)
+        assertEquals(1, plan1.groups.size)
+        assertEquals("专业必修课", plan1.groups[0].name)
+        assertEquals("操作系统", plan1.groups[0].courses[0].name)
+
+        val tableOnlyHtml = """
+            <table id="output_ctx">
+              <tr><th>课程号</th><th>课程名</th><th>考核方式</th><th>学分</th><th>学时</th><th>课程类别</th><th>课组</th><th>课组要求</th></tr>
+              <tr><td>U0402</td><td>编译原理</td><td>考试</td><td>3.5</td><td>56</td><td>学位课</td><td>专业必修课</td><td>必修</td></tr>
+            </table>
+        """.trimIndent()
+        val plan2 = AcademicParsers.parseCurriculumPlan(tableOnlyHtml)
+        assertEquals(1, plan2.groups.size)
+        assertEquals("专业必修课", plan2.groups[0].name)
+        assertEquals("编译原理", plan2.groups[0].courses[0].name)
+    }
+
+    @Test
     fun loginLabelsDoNotOverrideTheActualFailure() {
         val labels = "<form><label>教务密码</label><label>安全验证码</label></form>"
         assertEquals("学号或密码错误", AcademicParsers.parseLoginFailureReason(labels + "<p>密码输入错误</p>"))

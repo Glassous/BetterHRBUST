@@ -671,70 +671,169 @@ object AcademicParsers {
         }
     }
 
-    fun parseCurriculumPlan(html: String): CurriculumPlanResult {
-        val doc: Document = Jsoup.parse(html)
-        val groups = mutableListOf<CurriculumGroup>()
+    /**
+     * 从 `studentSelfSchedule.jsdo` 页面提取跳转 `studentScheduleShowByTerm.do` 所需的加密 `studentId` 与 `classId`。
+     * 与 Web 端 `api.js` 保持一致：优先匹配指向 `studentScheduleShowByTerm.do` 的跳转链接，
+     * 若未命中或参数为空则回退扫描页面内任意 `studentId=...`。
+     */
+    fun parseCurriculumJumpParams(html: String): Pair<String, String?> {
+        val doc = Jsoup.parse(stripHtmlComments(html))
+        val links = doc.select("a[href]")
+        val preferredHref = links
+            .firstOrNull { it.attr("href").contains("studentScheduleShowByTerm.do", ignoreCase = true) }
+            ?.attr("href")
+            ?: links.firstOrNull { it.attr("href").contains("studentId=") }?.attr("href")
 
-        val select = doc.selectFirst("select#syt12") ?: doc.selectFirst("select[name=syt]")
-        if (select != null) {
-            val options = select.select("option")
-            for (opt in options) {
+        val studentIdPattern = Regex("""studentId=([^&"'<>\s]+)""")
+        val classIdPattern = Regex("""classId=([^&"'<>\s]*)""")
+        val encId = preferredHref?.let { studentIdPattern.find(it)?.groupValues?.get(1)?.trim() }
+            ?.takeIf { it.isNotEmpty() }
+            ?: studentIdPattern.find(html)?.groupValues?.get(1)?.trim().orEmpty()
+        val classId = (preferredHref?.let { classIdPattern.find(it)?.groupValues?.get(1)?.trim() }
+            ?: classIdPattern.find(html)?.groupValues?.get(1)?.trim())
+            ?.takeIf { it.isNotEmpty() }
+        return encId to classId
+    }
+
+    fun parseCurriculumPlan(html: String): CurriculumPlanResult {
+        val doc: Document = Jsoup.parse(stripHtmlComments(html))
+        val groups = mutableListOf<CurriculumGroup>()
+        val groupCoursesByKey = LinkedHashMap<String, MutableList<PlanCourseDetail>>()
+        val seenCourseKeysByGroup = HashMap<String, MutableSet<String>>()
+
+        val optionPattern = Regex("""^(.*?)\s+选课属性\s*[：:]\s*(.*?)?\s*学分要求\s*[=：:]\s*([\d.]+)\s*门数要求\s*[=：:]\s*(\d+)""")
+        val selects = doc.select("select#syt12, select[id^=syt], select[name=syt]")
+        for (select in selects) {
+            for (opt in select.select("option")) {
                 val text = opt.text().trim()
-                val m = Regex("""^(.*?)\s+选课属性：(.*?)?\s*学分要求=([\d.]+)\s*门数要求=(\d+)""").find(text)
+                val m = optionPattern.find(text)
                 if (m != null) {
-                    groups.add(
-                        CurriculumGroup(
-                            id = opt.`val`(),
-                            name = m.groupValues[1].trim(),
-                            property = m.groupValues[2].trim().ifEmpty { "必修" },
-                            requiredCredits = m.groupValues[3].toDoubleOrNull() ?: 0.0,
-                            requiredCourses = m.groupValues[4].toIntOrNull() ?: 0,
-                            courses = mutableListOf()
+                    val id = opt.`val`().trim()
+                    val name = m.groupValues[1].trim()
+                    val key = id.ifBlank { name }
+                    if (!groupCoursesByKey.containsKey(key)) {
+                        groupCoursesByKey[key] = mutableListOf()
+                        seenCourseKeysByGroup[key] = mutableSetOf()
+                        groups.add(
+                            CurriculumGroup(
+                                id = id,
+                                name = name,
+                                property = m.groupValues[2].trim().ifEmpty { "必修" },
+                                requiredCredits = m.groupValues[3].toDoubleOrNull() ?: 0.0,
+                                requiredCourses = m.groupValues[4].toIntOrNull() ?: 0,
+                                courses = emptyList()
+                            )
                         )
-                    )
+                    }
                 }
             }
+        }
+
+        fun findTargetGroup(sgid: String, groupName: String): CurriculumGroup? {
+            if (sgid.isNotEmpty()) {
+                groups.firstOrNull { it.id == sgid }?.let { return it }
+            }
+            if (groupName.isNotEmpty()) {
+                groups.firstOrNull { it.name == groupName }?.let { return it }
+                val normalized = groupName.replace(Regex("\\s+"), "")
+                groups.firstOrNull { it.name.replace(Regex("\\s+"), "") == normalized }?.let { return it }
+            }
+            return null
         }
 
         val detailTable = doc.selectFirst("table#output_ctx") ?: doc.selectFirst("table.output_ctx")
         if (detailTable != null) {
             val rows = detailTable.select("tr")
             var currentGroupName = ""
+            // 默认列序与教务 studentScheduleShowByTerm.do 保持一致：
+            // 0=课程号, 1=课程名, 2=考核方式, 3=学分, 4=学时, 5=课程类别, 6=课组, 7=课组要求
+            var colCode = 0
+            var colName = 1
+            var colCredit = 3
+            var colHours = 4
+            var colGroup = 6
+            var colProp = 7
 
             for (tr in rows) {
-                val th = tr.selectFirst("th")
-                if (th != null && th.text().contains("课组")) {
-                    currentGroupName = th.text().replace(Regex(".*课组[：:]\\s*"), "").trim()
+                val ths = tr.select("th")
+                if (ths.isNotEmpty()) {
+                    val headers = ths.map { it.text().trim() }
+                    if (headers.any { it.contains("课程号") || it.contains("课程名") }) {
+                        headers.indexOfFirst { it.contains("课程号") || it.contains("课程代码") }.takeIf { it >= 0 }?.let { colCode = it }
+                        headers.indexOfFirst { it.contains("课程名") }.takeIf { it >= 0 }?.let { colName = it }
+                        headers.indexOfFirst { it == "学分" || it.contains("学分") }.takeIf { it >= 0 }?.let { colCredit = it }
+                        headers.indexOfFirst { it == "学时" || it.contains("学时") }.takeIf { it >= 0 }?.let { colHours = it }
+                        headers.indexOfFirst { it == "课组" }.takeIf { it >= 0 }?.let { colGroup = it }
+                        colProp = headers.indexOfFirst { it.contains("课组要求") || it.contains("选课属性") }
+                            .takeIf { it >= 0 }
+                            ?: headers.indexOfFirst { it.contains("课程类别") }.takeIf { it >= 0 }
+                            ?: colProp
+                    } else if (ths.size == 1 && ths[0].text().contains("课组")) {
+                        currentGroupName = ths[0].text().replace(Regex(".*课组[：:]\\s*"), "").trim()
+                    }
+                    continue
                 }
 
                 val tds = tr.select("td")
-                if (tds.size >= 7) {
-                    val cCode = tds[1].text().trim()
-                    val cName = tds[2].text().trim()
-                    val cCredit = tds[3].text().trim().toDoubleOrNull() ?: 0.0
-                    val cHours = tds[4].text().trim().toIntOrNull() ?: 0
-                    val cProp = tds[5].text().trim()
+                if (tds.size < 5) continue
 
-                    if (cCode.isNotEmpty() && cName.isNotEmpty()) {
-                        val group = groups.find { it.name == currentGroupName } ?: groups.firstOrNull()
-                        if (group != null) {
-                            (group.courses as? MutableList<PlanCourseDetail>)?.add(
-                                PlanCourseDetail(
-                                    code = cCode,
-                                    name = cName,
-                                    credit = cCredit,
-                                    hours = cHours,
-                                    property = cProp
-                                )
-                            )
-                        }
-                    }
+                val cCode = tds.getOrNull(colCode)?.text()?.trim().orEmpty()
+                val cName = tds.getOrNull(colName)?.text()?.trim().orEmpty()
+                val cCredit = tds.getOrNull(colCredit)?.text()?.trim()?.toDoubleOrNull() ?: continue
+                val rawHours = tds.getOrNull(colHours)?.text()?.trim().orEmpty()
+                val cHours = rawHours.toIntOrNull()
+                    ?: if (!rawHours.contains("周")) Regex("""\d+""").find(rawHours)?.value?.toIntOrNull() ?: 0 else 0
+                val groupTd = tds.getOrNull(colGroup)
+                val rowGroupName = groupTd?.text()?.trim().orEmpty().ifEmpty { currentGroupName }
+                val sgid = groupTd?.selectFirst("a[href]")?.attr("href")
+                    ?.let { Regex("""sgid=([^&"']+)""").find(it)?.groupValues?.get(1)?.trim() }
+                    .orEmpty()
+
+                if (cCode.isEmpty() || cName.isEmpty()) continue
+                var targetGroup = findTargetGroup(sgid, rowGroupName)
+                if (targetGroup == null && groups.isEmpty() && rowGroupName.isNotEmpty()) {
+                    // 兜底：若部分年级页面未渲染选课下拉框，则按行内「课组」列兜底构建课组
+                    val fallbackKey = sgid.ifBlank { rowGroupName }
+                    val rowProp = tds.getOrNull(colProp)?.text()?.trim().orEmpty().ifEmpty { "必修" }
+                    targetGroup = CurriculumGroup(
+                        id = sgid,
+                        name = rowGroupName,
+                        property = rowProp,
+                        requiredCredits = 0.0,
+                        requiredCourses = 0,
+                        courses = emptyList()
+                    )
+                    groupCoursesByKey[fallbackKey] = mutableListOf()
+                    seenCourseKeysByGroup[fallbackKey] = mutableSetOf()
+                    groups.add(targetGroup)
+                }
+                val resolvedGroup = targetGroup ?: groups.firstOrNull() ?: continue
+                val cProp = tds.getOrNull(colProp)?.text()?.trim().orEmpty().ifEmpty { resolvedGroup.property }
+
+                val groupKey = resolvedGroup.id.ifBlank { resolvedGroup.name }
+                val dedupeKey = "${cCode}#${cName}"
+                val seen = seenCourseKeysByGroup.getOrPut(groupKey) { mutableSetOf() }
+                if (seen.add(dedupeKey)) {
+                    groupCoursesByKey.getOrPut(groupKey) { mutableListOf() }.add(
+                        PlanCourseDetail(
+                            code = cCode,
+                            name = cName,
+                            credit = cCredit,
+                            hours = cHours,
+                            property = cProp
+                        )
+                    )
                 }
             }
         }
 
-        val total = Regex("""(?:方案总学分|毕业总学分|总学分要求|要求总学分|总学分)\s*[：:=]?\s*([0-9]+(?:\.[0-9]+)?)""").find(doc.text())?.groupValues?.get(1)?.toDoubleOrNull()
-        return CurriculumPlanResult(groups = groups.distinctBy { it.id.ifBlank { it.name } }, totalRequiredCredits = total)
+        val populatedGroups = groups.map { group ->
+            val key = group.id.ifBlank { group.name }
+            group.copy(courses = groupCoursesByKey[key].orEmpty())
+        }
+        val total = Regex("""(?:方案总学分|毕业总学分|总学分要求|要求总学分|教学计划学分要求|总学分)\s*[：:=]?\s*([0-9]+(?:\.[0-9]+)?)""")
+            .find(doc.text())?.groupValues?.get(1)?.toDoubleOrNull()
+        return CurriculumPlanResult(groups = populatedGroups, totalRequiredCredits = total)
     }
 
     /** 读取下拉选项，过滤「请选择」占位项（value=-1） */
@@ -935,25 +1034,46 @@ object AcademicParsers {
     }
 
     fun parseCourseList(html: String): List<CourseSearchItem> {
-        val doc: Document = Jsoup.parse(html)
+        val doc: Document = Jsoup.parse(stripHtmlComments(html))
         val list = mutableListOf<CourseSearchItem>()
 
-        val table = doc.selectFirst("table.datalist") ?: doc.selectFirst("table.infolist_tab")
+        val table = doc.selectFirst("table.datalist")
+            ?: doc.selectFirst("table.infolist_tab")
+            ?: doc.selectFirst("table.classicLook0")
+            ?: doc.select("table").firstOrNull { t ->
+                t.select("tr").any { it.select("td").size >= 4 && !it.className().contains("PagingTag") }
+            }
         if (table != null) {
             val rows = table.select("tr")
-            for (i in 1 until rows.size) {
-                val tds = rows[i].select("td")
-                if (tds.size >= 4) {
-                    list.add(
-                        CourseSearchItem(
-                            courseId = tds[0].text().trim(),
-                            courseName = tds[1].text().trim(),
-                            credit = tds.getOrNull(2)?.text()?.trim()?.toDoubleOrNull() ?: 0.0,
-                            hours = tds.getOrNull(3)?.text()?.trim()?.toIntOrNull() ?: 0,
-                            department = tds.getOrNull(4)?.text()?.trim() ?: "",
-                            examWay = tds.getOrNull(5)?.text()?.trim() ?: ""
+            val headerIdx = rows.indexOfFirst { it.select("th").isNotEmpty() }
+            if (headerIdx >= 0) {
+                val headers = rows[headerIdx].select("th").map { it.text().trim() }
+                val colCode = headers.indexOfFirst { it.contains("课程号") || it.contains("课程代码") }.let { if (it >= 0) it else 0 }
+                val colName = headers.indexOfFirst { it.contains("课程名") }.let { if (it >= 0) it else 1 }
+                val colCredit = headers.indexOfFirst { it.contains("学分") }.let { if (it >= 0) it else 2 }
+                val colHours = headers.indexOfFirst { it.contains("总学时") || it.contains("学时") }.let { if (it >= 0) it else 3 }
+                val colDep = headers.indexOfFirst { it.contains("院系") || it.contains("系所") || it.contains("部门") }.let { if (it >= 0) it else 4 }
+                val colExam = headers.indexOfFirst { it.contains("考核") || it.contains("考试方式") }.let { if (it >= 0) it else 5 }
+
+                for (i in headerIdx + 1 until rows.size) {
+                    val tr = rows[i]
+                    if (tr.className().contains("PagingTag")) continue
+                    val tds = tr.select("td")
+                    if (tds.size >= 4) {
+                        val courseId = tds.getOrNull(colCode)?.text()?.trim().orEmpty()
+                        val courseName = tds.getOrNull(colName)?.text()?.trim().orEmpty()
+                        if (courseId.isEmpty() && courseName.isEmpty()) continue
+                        list.add(
+                            CourseSearchItem(
+                                courseId = courseId,
+                                courseName = courseName,
+                                credit = tds.getOrNull(colCredit)?.text()?.trim()?.toDoubleOrNull() ?: 0.0,
+                                hours = tds.getOrNull(colHours)?.text()?.trim()?.toIntOrNull() ?: 0,
+                                department = tds.getOrNull(colDep)?.text()?.trim().orEmpty(),
+                                examWay = tds.getOrNull(colExam)?.text()?.trim().orEmpty()
+                            )
                         )
-                    )
+                    }
                 }
             }
         }

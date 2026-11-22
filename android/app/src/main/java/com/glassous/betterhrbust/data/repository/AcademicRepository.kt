@@ -38,20 +38,110 @@ class AcademicRepository(
     }
 
     /**
-     * 本学期课程列表（仅用于补齐课表学分）。
+     * 本学期课程列表（用于补齐课表学分，并同步落库供「我的课程名录」离线使用）。
      *
      * 该请求失败不应拖垮课表本身，因此除协程取消外一律退化为空列表；
      * 会话失效仍由 Http 客户端的回调统一上报。
      */
-    private suspend fun fetchCurrentCourses(): List<CurrentCourseItem> {
+    private suspend fun fetchCurrentCourses(
+        session: com.glassous.betterhrbust.core.datastore.AppPreferences? = null,
+        studentId: String = ""
+    ): List<CurrentCourseItem> {
         return try {
             val html = client.get("student/currcourse/currcourse.jsdo", preferredCharset = CharsetDecoderHelper.GBK)
-            if (AcademicParsers.isLoginPage(html)) emptyList()
-            else AcademicParsers.parseStudentContext(html).courses
+            if (AcademicParsers.isLoginPage(html)) {
+                emptyList()
+            } else {
+                val courses = AcademicParsers.parseStudentContext(html).courses
+                if (courses.isNotEmpty() && studentId.isNotEmpty() && session != null) {
+                    requireCurrentSession(session)
+                    database.currentCoursesDao().insert(
+                        CurrentCoursesEntity(studentId = studentId, json = json.encodeToString(courses))
+                    )
+                }
+                courses
+            }
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
+        } catch (switched: AccountSwitchedException) {
+            throw switched
         } catch (_: Exception) {
             emptyList()
+        }
+    }
+
+    /**
+     * 获取本学期在修课程（与成绩单共同构成「我的课程名录」）。
+     */
+    fun getCurrentCourses(
+        studentId: String,
+        forceRefresh: Boolean = false,
+        cacheOnly: Boolean = false
+    ): Flow<Resource<List<CurrentCourseItem>>> = flow {
+        val session = prefs.preferencesFlow.firstOrNull()
+        if (session?.studentId != studentId) throw AccountSwitchedException("请求账号已失效")
+        emit(Resource.Loading)
+
+        val localEntity = database.currentCoursesDao().getCurrentCourses(studentId).firstOrNull()
+        if (localEntity != null && !forceRefresh) {
+            try {
+                val cached = json.decodeFromString<List<CurrentCourseItem>>(localEntity.json)
+                requireCurrentSession(session)
+                emit(Resource.Success(cached, isOfflineCache = true))
+                if (cacheOnly) return@flow
+            } catch (switched: AccountSwitchedException) {
+                throw switched
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {}
+        }
+
+        if (cacheOnly) {
+            emit(Resource.Error("本地暂无本学期课程缓存，请在顶部刷新数据"))
+            return@flow
+        }
+
+        try {
+            val html = client.get("student/currcourse/currcourse.jsdo", preferredCharset = CharsetDecoderHelper.GBK)
+            if (AcademicParsers.isLoginPage(html)) {
+                throw SessionExpiredException("会话已过期，请重新登录")
+            }
+            AcademicParsers.parseUrupErrorMessage(html)?.let { throw java.io.IOException(it) }
+            val parsed = AcademicParsers.parseStudentContext(html).courses
+
+            if (parsed.isEmpty() && localEntity != null) {
+                val cached = json.decodeFromString<List<CurrentCourseItem>>(localEntity.json)
+                if (cached.isNotEmpty()) {
+                    requireCurrentSession(session)
+                    emit(Resource.Success(cached, isOfflineCache = true))
+                    return@flow
+                }
+            }
+
+            val encoded = json.encodeToString(parsed)
+            requireCurrentSession(session)
+            database.currentCoursesDao().insert(CurrentCoursesEntity(studentId = studentId, json = encoded))
+
+            requireCurrentSession(session)
+            emit(Resource.Success(parsed, isOfflineCache = false))
+        } catch (switched: AccountSwitchedException) {
+            throw switched
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (e: Exception) {
+            if (localEntity != null) {
+                try {
+                    val cached = json.decodeFromString<List<CurrentCourseItem>>(localEntity.json)
+                    requireCurrentSession(session)
+                    emit(Resource.Success(cached, isOfflineCache = true))
+                    return@flow
+                } catch (switched: AccountSwitchedException) {
+                    throw switched
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {}
+            }
+            emit(Resource.Error(e.message ?: "获取本学期课程失败", e))
         }
     }
 
@@ -105,7 +195,7 @@ class AcademicRepository(
             }
 
             // 课表页不提供学分，落缓存前用本学期课程列表补齐（请求失败时保持原样）
-            val courses = fetchCurrentCourses()
+            val courses = fetchCurrentCourses(session = session, studentId = studentId)
             val enriched = if (courses.isEmpty()) parsed
             else parsed.copy(cells = AcademicParsers.enrichTimetableCredits(parsed.cells, courses))
 
@@ -383,6 +473,55 @@ class AcademicRepository(
         }
     }
 
+    companion object {
+        /** 与 JS `decodeURIComponent` 一致：保留 `+` 原义，避免 Base64 加密串中的 `+` 被误解码为空格。 */
+        internal fun decodeUriComponent(raw: String): String =
+            runCatching { java.net.URLDecoder.decode(raw.replace("+", "%2B"), "UTF-8") }.getOrDefault(raw)
+
+        /** 与 JS `encodeURIComponent` 一致：将 `+` 编码为 `%2B`、空格编码为 `%20`。 */
+        internal fun encodeUriComponent(value: String): String =
+            java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+        internal fun buildCurriculumPlanUrl(rawEncId: String, classId: String? = null): String {
+            val encodedId = encodeUriComponent(decodeUriComponent(rawEncId))
+            val classQuery = classId?.takeIf { it.isNotBlank() }?.let {
+                "&classId=${encodeUriComponent(decodeUriComponent(it))}"
+            }.orEmpty()
+            return "manager/studyschedule/studentScheduleShowByTerm.do?z=z&studentId=$encodedId$classQuery"
+        }
+    }
+
+    private fun isValidPlan(plan: CurriculumPlanResult): Boolean =
+        plan.groups.isNotEmpty() || plan.totalRequiredCredits != null
+
+    private suspend fun fetchCurriculumPlanHtml(rawEncId: String, rawClassId: String?): String {
+        // 与 Web 端 api.js 完全对齐：首选只带 z=z&studentId=...（不附带 classId）
+        val primaryHtml = client.get(
+            buildCurriculumPlanUrl(rawEncId, classId = null),
+            preferredCharset = CharsetDecoderHelper.GBK
+        )
+        if (AcademicParsers.isLoginPage(primaryHtml)) {
+            throw SessionExpiredException("会话已过期，请重新登录")
+        }
+        val primaryErr = AcademicParsers.parseUrupErrorMessage(primaryHtml)
+        if (primaryErr == null) {
+            return primaryHtml
+        }
+        if (rawClassId.isNullOrBlank()) {
+            throw java.io.IOException(primaryErr)
+        }
+        // 兜底：部分部署要求补全链接里的 classId 参数
+        val fallbackHtml = client.get(
+            buildCurriculumPlanUrl(rawEncId, classId = rawClassId),
+            preferredCharset = CharsetDecoderHelper.GBK
+        )
+        if (AcademicParsers.isLoginPage(fallbackHtml)) {
+            throw SessionExpiredException("会话已过期，请重新登录")
+        }
+        AcademicParsers.parseUrupErrorMessage(fallbackHtml)?.let { throw java.io.IOException(it) }
+        return fallbackHtml
+    }
+
     fun getCurriculumPlan(
         studentId: String,
         forceRefresh: Boolean = false,
@@ -396,10 +535,12 @@ class AcademicRepository(
         if (localEntity != null && !forceRefresh) {
             try {
                 val cached = json.decodeFromString<CurriculumPlanResult>(localEntity.json)
-                requireCurrentSession(session)
-                emit(Resource.Success(cached, isOfflineCache = true))
-                // 离线只读模式：命中缓存后不再联网
-                if (cacheOnly) return@flow
+                if (isValidPlan(cached)) {
+                    requireCurrentSession(session)
+                    emit(Resource.Success(cached, isOfflineCache = true))
+                    // 离线只读模式：命中有效缓存后不再联网
+                    if (cacheOnly) return@flow
+                }
             } catch (switched: AccountSwitchedException) {
                 throw switched
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -413,27 +554,51 @@ class AcademicRepository(
         }
 
         try {
-            // Step 1: Query studentSelfSchedule.jsdo to extract encrypted studentId
+            // Step 1: Query studentSelfSchedule.jsdo to extract encrypted studentId (and optional classId)
             val jumpHtml = client.get("manager/studyschedule/studentSelfSchedule.jsdo", preferredCharset = CharsetDecoderHelper.GBK)
-            val encIdMatch = Regex("""studentId=([^&"']+)""").find(jumpHtml)
-            val encStudentId = encIdMatch?.groupValues?.get(1) ?: studentId
+            if (AcademicParsers.isLoginPage(jumpHtml)) {
+                throw SessionExpiredException("会话已过期，请重新登录")
+            }
+            AcademicParsers.parseUrupErrorMessage(jumpHtml)?.let { throw java.io.IOException(it) }
 
-            // Step 2: Query studentScheduleShowByTerm.do
-            val planHtml = client.get(
-                "manager/studyschedule/studentScheduleShowByTerm.do?z=z&studentId=$encStudentId",
-                preferredCharset = CharsetDecoderHelper.GBK
-            )
-            val parsed = AcademicParsers.parseCurriculumPlan(planHtml)
+            val (rawEncId, rawClassId) = AcademicParsers.parseCurriculumJumpParams(jumpHtml)
+            if (rawEncId.isBlank()) {
+                throw java.io.IOException("培养方案未返回学生查询参数，请重新同步")
+            }
 
-            // 远端返回空（异常页 / 登录页被解析为空结果）时保留既有缓存，
-            // 避免一次失败的刷新把已持久化的培养方案永久覆盖为空
-            if (parsed.groups.isEmpty() && localEntity != null) {
-                val cached = json.decodeFromString<CurriculumPlanResult>(localEntity.json)
-                if (cached.groups.isNotEmpty()) {
-                    requireCurrentSession(session)
-                    emit(Resource.Success(cached, isOfflineCache = true))
-                    return@flow
+            // Step 2: Query studentScheduleShowByTerm.do (aligned with Web api.js)
+            var planHtml = fetchCurriculumPlanHtml(rawEncId, rawClassId)
+            var parsed = AcademicParsers.parseCurriculumPlan(planHtml)
+            if (!isValidPlan(parsed) && !rawClassId.isNullOrBlank()) {
+                val retryHtml = client.get(
+                    buildCurriculumPlanUrl(rawEncId, classId = rawClassId),
+                    preferredCharset = CharsetDecoderHelper.GBK
+                )
+                if (AcademicParsers.isLoginPage(retryHtml)) {
+                    throw SessionExpiredException("会话已过期，请重新登录")
                 }
+                if (AcademicParsers.parseUrupErrorMessage(retryHtml) == null) {
+                    val retryParsed = AcademicParsers.parseCurriculumPlan(retryHtml)
+                    if (isValidPlan(retryParsed)) {
+                        planHtml = retryHtml
+                        parsed = retryParsed
+                    }
+                }
+            }
+
+            // 远端返回空（异常页 / 登录页 / 未返回课组要求）时保留既有有效缓存，
+            // 避免一次失败的刷新把已持久化的培养方案覆盖为空，也不把空方案当成成功写入缓存
+            if (!isValidPlan(parsed)) {
+                if (localEntity != null) {
+                    val cached = json.decodeFromString<CurriculumPlanResult>(localEntity.json)
+                    if (isValidPlan(cached)) {
+                        requireCurrentSession(session)
+                        emit(Resource.Success(cached, isOfflineCache = true))
+                        return@flow
+                    }
+                }
+                emit(Resource.Error("学校未返回培养方案学分要求，请稍后重试"))
+                return@flow
             }
 
             val encoded = json.encodeToString(parsed)
@@ -450,9 +615,11 @@ class AcademicRepository(
             if (localEntity != null) {
                 try {
                     val cached = json.decodeFromString<CurriculumPlanResult>(localEntity.json)
-                    requireCurrentSession(session)
-                    emit(Resource.Success(cached, isOfflineCache = true))
-                    return@flow
+                    if (isValidPlan(cached)) {
+                        requireCurrentSession(session)
+                        emit(Resource.Success(cached, isOfflineCache = true))
+                        return@flow
+                    }
                 } catch (switched: AccountSwitchedException) {
                     throw switched
                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
@@ -576,10 +743,23 @@ class AcademicRepository(
         emit(Resource.Loading)
         try {
             val form = mapOf(
-                "keyvalue" to keyword,
                 "depid" to "1",
-                "terms" to "",
-                "status" to ""
+                "depname" to "哈尔滨理工大学",
+                "trgroup" to "-2",
+                "trgroupname" to "全部",
+                "keyword" to "coursename",
+                "keywordname" to "课程名",
+                "keyvalue" to keyword,
+                "roomsort" to "-2",
+                "roomsortname" to "全部",
+                "emanner" to "-2",
+                "emannername" to "全部",
+                "emode" to "-2",
+                "emodename" to "全部",
+                "status" to "-2",
+                "statusname" to "全部",
+                "orderby" to "0",
+                "orderseq" to "0"
             )
             val html = client.post(
                 "manager/querycourse/course_list.jsdo",
@@ -587,12 +767,21 @@ class AcademicRepository(
                 preferredCharset = CharsetDecoderHelper.GBK,
                 encodeFormWithGbk = true
             )
+            if (AcademicParsers.isLoginPage(html)) {
+                throw SessionExpiredException("会话已过期，请重新登录")
+            }
+            AcademicParsers.parseUrupErrorMessage(html)?.let {
+                emit(Resource.Error(it))
+                return@flow
+            }
             val list = AcademicParsers.parseCourseList(html)
             emit(Resource.Success(list))
         } catch (switched: AccountSwitchedException) {
             throw switched
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             throw cancelled
+        } catch (expired: SessionExpiredException) {
+            throw expired
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "课程检索失败", e))
         }
