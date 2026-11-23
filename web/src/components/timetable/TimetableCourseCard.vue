@@ -35,6 +35,7 @@
     <div
       ref="cardRef"
       class="tt-card"
+      :draggable="rescheduleMode && active && !expanded && !closing"
       :class="[
         active ? 'course-card' : COURSE_MUTED,
         {
@@ -42,7 +43,8 @@
           'is-open': expanded,
           'is-reschedule-selectable': rescheduleMode && active && !expanded,
           'is-reschedule-selected': rescheduleMode && selectedForReschedule && !expanded,
-          'is-reschedule-disabled': rescheduleMode && !active && !expanded
+          'is-reschedule-disabled': rescheduleMode && !active && !expanded,
+          'is-dragging': dragging
         }
       ]"
       :style="cardStyle"
@@ -51,6 +53,8 @@
       :aria-modal="expanded ? 'true' : null"
       :aria-label="expanded ? `${course.courseName} 课程详情` : cardAriaLabel"
       @click="onCardClick"
+      @dragstart="onDragStart"
+      @dragend="onDragEnd"
       @keydown.enter.prevent="!expanded && onCardClick()"
       @keydown.space.prevent="!expanded && onCardClick()"
       @keydown.esc.stop="requestClose"
@@ -171,6 +175,8 @@ const emit = defineEmits([
   'open',
   'close',
   'select-reschedule',
+  'drag-start',
+  'drag-end',
   'open-moved-out',
   'edit',
   'reschedule',
@@ -205,6 +211,7 @@ const MINI_TYPE = { title: [14, '18px'], sub: [12, '16px'], teacher: [11, '14px'
 const OPEN_TYPE = { title: [22, '28px'], sub: [15, '20px'], teacher: [15, '20px'] };
 
 const closing = ref(false);
+const dragging = ref(false);
 /** 展开前的 First 状态（点击瞬间从小卡上量取） */
 let pendingState = null;
 /** 小卡在网格中的位置：退场时作为归位目标 */
@@ -304,6 +311,24 @@ function pinCentered(el) {
 
 function onMovedOutClick() {
   emit('open-moved-out', props.course);
+}
+
+function onDragStart(event) {
+  if (!props.rescheduleMode || !props.active || props.expanded || closing.value) {
+    event.preventDefault();
+    return;
+  }
+  dragging.value = true;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', props.course.courseName || 'course');
+  }
+  emit('drag-start', props.course);
+}
+
+function onDragEnd() {
+  dragging.value = false;
+  emit('drag-end');
 }
 
 function triggerAction(eventName, course) {
@@ -559,9 +584,18 @@ onBeforeUnmount(() => {
   transform: scale(0.985);
 }
 
+.tt-card.is-reschedule-selectable {
+  cursor: grab;
+}
+
 .tt-card.is-reschedule-selectable:hover {
   outline: 2px dashed var(--md-primary);
   outline-offset: -2px;
+}
+
+.tt-card.is-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
 }
 
 .tt-card.is-reschedule-selected {

@@ -187,10 +187,10 @@
           <div class="flex items-center gap-2 min-w-0">
             <Icon name="swap" customClass="w-4 h-4 shrink-0" />
             <span v-if="!rescheduleSource">
-              调课模式（第 {{ selectedWeek }} 周）：请先点击课表中的一门本周课程
+              调课模式（第 {{ selectedWeek }} 周）：点击或直接拖拽本周课程到目标格子调整位置与教室
             </span>
             <span v-else class="truncate">
-              已选「<strong>{{ rescheduleSource.courseName }}</strong>」（{{ rescheduleSourceLabel }}），请点击要移至的目标格子
+              已选「<strong>{{ rescheduleSource.courseName }}</strong>」（{{ rescheduleSourceLabel }}），请点击或拖拽至目标格子
             </span>
           </div>
           <div class="flex items-center gap-2 shrink-0">
@@ -298,7 +298,15 @@
                 </span>
                 <span class="text-xs text-[var(--ink-muted)] font-mono mt-0.5">{{ slot.time }}</span>
               </div>
-              <div class="flex-1 p-2 flex flex-col gap-2 justify-center min-w-0">
+              <div
+                :class="[
+                  'flex-1 p-2 flex flex-col gap-2 justify-center min-w-0 transition-colors',
+                  isDragTargetCell(mobileSelectedDay, slot.period) ? 'bg-[var(--md-primary-container)]/45 ring-2 ring-inset ring-[var(--md-primary)]' : ''
+                ]"
+                @dragover="onCellDragOver(mobileSelectedDay, slot.period, $event)"
+                @dragleave="onCellDragLeave(mobileSelectedDay, slot.period, $event)"
+                @drop="onCellDrop(mobileSelectedDay, slot.period, $event)"
+              >
                 <template v-if="getVisibleCoursesForSlot(mobileSelectedDay, slot.period).length > 0">
                   <TimetableCourseCard
                     v-for="course in getVisibleCoursesForSlot(mobileSelectedDay, slot.period)"
@@ -313,6 +321,8 @@
                     @open="onCourseOpen($event, 'mobile-day')"
                     @close="onCourseClose"
                     @select-reschedule="onSelectReschedule"
+                    @drag-start="onCardDragStart"
+                    @drag-end="onCardDragEnd"
                     @open-moved-out="onOpenMovedOut"
                     @edit="openEditCustomCourse"
                     @reschedule="openRescheduleModalWithSource"
@@ -436,11 +446,17 @@
                   rescheduleMode && rescheduleSource && isValidRescheduleTarget(dayNum, slot.period)
                     ? 'cursor-pointer hover:bg-[var(--md-primary-container)]/35'
                     : '',
+                  isDragTargetCell(dayNum, slot.period)
+                    ? 'bg-[var(--md-primary-container)]/50 ring-2 ring-inset ring-[var(--md-primary)]'
+                    : '',
                   rescheduleMode && rescheduleSource && !isValidRescheduleTarget(dayNum, slot.period)
                     ? 'bg-[var(--md-surface-container)]/75'
                     : ''
                 ]"
                 @click="onGridCellClick(dayNum, slot.period)"
+                @dragover="onCellDragOver(dayNum, slot.period, $event)"
+                @dragleave="onCellDragLeave(dayNum, slot.period, $event)"
+                @drop="onCellDrop(dayNum, slot.period, $event)"
               >
                 <!-- 调课模式目标格落位提示 -->
                 <div
@@ -448,12 +464,14 @@
                   :class="[
                     'pointer-events-none flex items-center justify-center rounded-[var(--shape-md)] text-[11px] font-medium transition-opacity',
                     getVisibleCoursesForSlot(dayNum, slot.period).length === 0 ? 'flex-1 py-2' : 'py-1',
-                    isValidRescheduleTarget(dayNum, slot.period)
-                      ? 'border border-dashed border-[var(--md-primary)]/50 text-[var(--md-primary)] opacity-0 group-hover:opacity-100'
-                      : 'text-[var(--ink-muted)] opacity-85'
+                    isDragTargetCell(dayNum, slot.period)
+                      ? 'border border-solid border-[var(--md-primary)] text-[var(--md-primary)] opacity-100'
+                      : isValidRescheduleTarget(dayNum, slot.period)
+                        ? 'border border-dashed border-[var(--md-primary)]/50 text-[var(--md-primary)] opacity-0 group-hover:opacity-100'
+                        : 'text-[var(--ink-muted)] opacity-85'
                   ]"
                 >
-                  {{ isValidRescheduleTarget(dayNum, slot.period) ? '点击调至此处' : '原位置' }}
+                  {{ isDragTargetCell(dayNum, slot.period) ? '松手调至此处' : (isValidRescheduleTarget(dayNum, slot.period) ? '点击/拖至此处' : '原位置') }}
                 </div>
 
                 <!-- 每节课就是一张卡片：点开后同一节点由 GSAP Flip 展开成详情大卡 -->
@@ -470,6 +488,8 @@
                   @open="onCourseOpen($event, 'desktop-grid')"
                   @close="onCourseClose"
                   @select-reschedule="onSelectReschedule"
+                  @drag-start="onCardDragStart"
+                  @drag-end="onCardDragEnd"
                   @open-moved-out="onOpenMovedOut"
                   @edit="openEditCustomCourse"
                   @reschedule="openRescheduleModalWithSource"
@@ -803,6 +823,7 @@ function onCourseClose() {
 
 const rescheduleMode = ref(false);
 const rescheduleSource = ref(null);
+const dragOverTarget = ref(null);
 const showEditorModal = ref(false);
 const editorInitialData = ref(null);
 
@@ -836,11 +857,61 @@ function toggleRescheduleMode() {
 function exitRescheduleMode() {
   rescheduleMode.value = false;
   rescheduleSource.value = null;
+  dragOverTarget.value = null;
 }
 
 watch([selectedWeek, viewMode], () => {
   rescheduleSource.value = null;
+  dragOverTarget.value = null;
 });
+
+function isDragTargetCell(day, period) {
+  return Boolean(
+    rescheduleMode.value &&
+    rescheduleSource.value &&
+    dragOverTarget.value &&
+    dragOverTarget.value.day === day &&
+    dragOverTarget.value.period === period &&
+    isValidRescheduleTarget(day, period)
+  );
+}
+
+function onCardDragStart(course) {
+  if (!rescheduleMode.value || !isCourseActiveThisWeek(course)) return;
+  rescheduleSource.value = course;
+  dragOverTarget.value = null;
+}
+
+function onCardDragEnd() {
+  dragOverTarget.value = null;
+}
+
+function onCellDragOver(day, period, event) {
+  if (!rescheduleMode.value || !rescheduleSource.value) return;
+  event.preventDefault();
+  const valid = isValidRescheduleTarget(day, period);
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = valid ? 'move' : 'none';
+  }
+  dragOverTarget.value = valid ? { day, period } : null;
+}
+
+function onCellDragLeave(day, period, event) {
+  if (!dragOverTarget.value) return;
+  if (event.currentTarget && event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) {
+    return;
+  }
+  if (dragOverTarget.value.day === day && dragOverTarget.value.period === period) {
+    dragOverTarget.value = null;
+  }
+}
+
+function onCellDrop(day, period, event) {
+  if (!rescheduleMode.value || !rescheduleSource.value) return;
+  event.preventDefault();
+  dragOverTarget.value = null;
+  openRescheduleForTarget(day, period);
+}
 
 function isValidRescheduleTarget(day, period) {
   if (!rescheduleSource.value) return false;
