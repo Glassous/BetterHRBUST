@@ -1,7 +1,7 @@
 {
   "name": "better-hrbust-landing",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.6.0",
   "type": "module",
   "description": "BetterHRBUST 介绍页 - 现代化哈理工教务在线 · 四端同源",
   "scripts": {

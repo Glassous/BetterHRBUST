@@ -2,7 +2,7 @@
 //
 // 版本号在链接期通过 -ldflags 注入（见 Makefile 与 build-tui 工作流）：
 //
-//	go build -ldflags "-X github.com/Glassous/BetterHRBUST/tui/internal/version.Version=1.5.0"
+//	go build -ldflags "-X github.com/Glassous/BetterHRBUST/tui/internal/version.Version=1.6.0"
 //
 // 未注入时回退为 "dev"，`--version` 与设置页据此区分正式构建与本地构建。
 package version
