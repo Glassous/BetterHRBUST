@@ -158,7 +158,7 @@ fun TimetableScreen(
     }
 
     suspend fun syncWidgetsAndReminders() {
-        TimetableWidgetUpdater.refreshAll(app)
+        TimetableWidgetUpdater.refreshAllWidgets(app)
         ClassReminderTicker.refreshAsync(app, forceReschedule = true)
     }
 
