@@ -278,7 +278,7 @@ fun MainAppScaffold(
     }
 
     // 桌面小部件刷新：仅在「同步结束」与「会话被清理（退出登录）」两个时点各刷新一次，
-    // 其余更新交给系统周期（30 分钟）与日期 / 时区 / 开机广播兜底
+    // 其余更新交给系统周期与日期 / 时区 / 开机广播兜底
     val isSyncing by syncManager.isSyncing.collectAsState()
     val scaffoldPrefs by prefsManager.preferencesFlow.collectAsState(initial = null)
     val studentId = scaffoldPrefs?.studentId.orEmpty()

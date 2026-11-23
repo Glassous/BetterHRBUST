@@ -18,7 +18,7 @@ object WidgetRefreshScheduler {
         courses.map { LocalTime.parse(it.time.substringAfter("–")) }.filter { it>time }.minOrNull()?.let { date.atTime(it) }
             ?: date.plusDays(1).atStartOfDay()
     private fun pending(context: Context)=PendingIntent.getBroadcast(context,20261010,
-        Intent(context,TimetableWidgetProvider::class.java).setAction(TimetableWidgetProvider.ACTION_REFRESH),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        Intent(context,TimetableWidgetRefreshReceiver::class.java).setAction(TimetableWidgetRefreshReceiver.ACTION_BOUNDARY),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun cancel(context: Context) {
         timer?.cancel();timer=null;deadline=0
         context.getSystemService(AlarmManager::class.java).cancel(pending(context))
@@ -37,7 +37,9 @@ object WidgetRefreshScheduler {
         // 进程存活时准点刷新；系统闹钟用于进程回收后的恢复。
         timer=scope.launch {
             delay((target-System.currentTimeMillis()).coerceAtLeast(1))
-            TimetableWidgetProvider.refreshAll(context.applicationContext)
+            // 先清空自身引用：refreshAllWidgets 会重新排程，不能让它 cancel 掉当前协程
+            timer=null;deadline=0L
+            TimetableWidgetUpdater.refreshAllWidgets(context.applicationContext)
         }
     }
 }

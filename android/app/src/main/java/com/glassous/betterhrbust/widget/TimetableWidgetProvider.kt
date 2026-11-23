@@ -30,7 +30,10 @@ class TimetableWidgetProvider : AppWidgetProvider() {
     }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = update(context)
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) = update(context)
-    override fun onDisabled(context: Context) { WidgetRefreshScheduler.cancel(context) }
+    override fun onDisabled(context: Context) {
+        // 仅在桌面已无任何课表组件时停掉闹钟；只移除双日课表不应影响 Glance 组件
+        if (!TimetableWidgetUpdater.hasAnyWidget(context)) WidgetRefreshScheduler.cancel(context)
+    }
     private fun update(context: Context) {
         val pending = goAsync()
         scope.launch {
@@ -51,7 +54,9 @@ class TimetableWidgetProvider : AppWidgetProvider() {
         suspend fun refreshAll(context: Context) = mutex.withLock {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, TimetableWidgetProvider::class.java))
-            if (ids.isEmpty()) { WidgetRefreshScheduler.cancel(context);return@withLock }
+            // 没有双日课表时不要取消闹钟：用户可能只添加了 Glance 原子组件，
+            // 由 TimetableWidgetUpdater 统一判断并维护排程。
+            if (ids.isEmpty()) return@withLock
             val snapshot=WidgetDataSource.load(context) ?: return@withLock
             for (id in ids) {
                 val options = manager.getAppWidgetOptions(id)

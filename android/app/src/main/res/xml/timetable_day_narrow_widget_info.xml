@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  日视图课表小部件（窄版）：桌面占位 2 列 × 4 行（约 110dp × 250dp），固定尺寸、不可缩放。
+  日视图课表小部件（窄版）：桌面占位 2 列 × 3 行（120dp × 190dp），固定尺寸、不可缩放。
+  2×3 不在 vivo 原子组件的 2×2 / 4×2 / 4×4 三档推荐网格内，按普通 AppWidget 使用；
+  未声明 vivo_widget 时不受原子组件审核约束。
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:description="@string/widget_day_narrow_description"
     android:initialLayout="@layout/widget_loading"
-    android:minHeight="250dp"
-    android:minWidth="110dp"
-    android:previewImage="@mipmap/ic_launcher"
+    android:minHeight="190dp"
+    android:minWidth="120dp"
+    android:previewImage="@drawable/widget_thumbnail_day_narrow"
     android:previewLayout="@layout/widget_preview_day_narrow"
     android:resizeMode="none"
-    android:targetCellHeight="4"
+    android:targetCellHeight="3"
     android:targetCellWidth="2"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="43200000"
     android:widgetCategory="home_screen"
     tools:targetApi="s" />
