@@ -76,10 +76,10 @@
                     {{ item.sectionLabel || `第 ${item.sectionIndex} 大节` }}
                   </div>
                   <div
-                    v-if="getCombineSlotTime(item.sectionIndex)"
+                    v-if="item.customTimeText || getCombineSlotTime(item.sectionIndex)"
                     class="text-[13px] font-mono text-[var(--ink-muted)] mt-0.5"
                   >
-                    {{ getCombineSlotTime(item.sectionIndex) }}
+                    {{ item.customTimeText || getCombineSlotTime(item.sectionIndex) }}
                   </div>
                 </div>
 
@@ -88,6 +88,9 @@
                     <span class="w-2.5 h-2.5 rounded-full shrink-0 course-dot" :style="getCourseColor(item).style"></span>
                     <h4 class="text-[15px] sm:text-base font-semibold text-[var(--ink-primary)] truncate">{{ item.courseName }}</h4>
                     <UiBadge v-if="idx === 0" size="sm" variant="accent">下一节</UiBadge>
+                    <UiBadge v-if="item.category === 'lab'" size="sm" variant="warning">实验</UiBadge>
+                    <UiBadge v-else-if="item.category === 'custom'" size="sm" variant="info">自定</UiBadge>
+                    <UiBadge v-if="item.isRescheduled" size="sm" variant="accent">调课</UiBadge>
                     <UiBadge v-if="item.courseSeq" size="sm" variant="outline">序号 {{ item.courseSeq }}</UiBadge>
                   </div>
                   <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-[var(--ink-secondary)] mt-2">
@@ -362,16 +365,26 @@ import LoginCard from '@/components/auth/LoginCard.vue';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { buildAcademicStats, computeCreditsProgress } from '@/services/academic/stats.js';
-import { getCombineSlotTime, hasCombineSlotEnded } from '@/utils/periodTimes.js';
+import { getCombineSlotTime, getCourseTimeRange, hasCourseEnded } from '@/utils/periodTimes.js';
 import { getCourseColor } from '@/utils/courseColors.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
+import { buildEffectiveTimetableCells } from '@/utils/timetableOverrides.js';
 import { parseExamDateTime } from '@/utils/examTime.js';
 
 defineEmits(['navigate']);
 
 const { isLoggedIn, authChecked, currentWeek, isSchoolHoliday } = useSession();
 // 登录后数据全部走本地缓存，仅顶栏刷新按钮与每日首次打开会触网
-const { scores, plan, timetableCombine, exams, notices, hasCachedData } = useAcademicData();
+const {
+  scores,
+  plan,
+  timetableCombine,
+  timetableReschedules,
+  timetableCustomCourses,
+  exams,
+  notices,
+  hasCachedData
+} = useAcademicData();
 
 const stats = computed(() => buildAcademicStats(scores.value));
 
@@ -392,10 +405,26 @@ const todayDateLabel = computed(() => {
 
 const todayCourses = computed(() => {
   if (isSchoolHoliday.value) return [];
-  const cells = timetableCombine.value?.cells || [];
-  return cells.filter(
-    c => c.day === currentDayIndex.value && isCourseActiveInWeek(c, currentWeek.value) && !hasCombineSlotEnded(c.sectionIndex, now.value)
-  );
+  const cells = buildEffectiveTimetableCells({
+    rawCells: timetableCombine.value?.cells || [],
+    week: currentWeek.value,
+    viewMode: 'combine',
+    reschedules: timetableReschedules.value,
+    customCourses: timetableCustomCourses.value
+  });
+  return cells
+    .filter(
+      c =>
+        !c.isMovedOut &&
+        c.day === currentDayIndex.value &&
+        isCourseActiveInWeek(c, currentWeek.value) &&
+        !hasCourseEnded(c, now.value, 'combine')
+    )
+    .toSorted((a, b) => {
+      const ta = getCourseTimeRange(a, 'combine')?.startMinutes ?? a.sectionIndex * 100;
+      const tb = getCourseTimeRange(b, 'combine')?.startMinutes ?? b.sectionIndex * 100;
+      return ta - tb;
+    });
 });
 
 function isRecentExam(exam) {

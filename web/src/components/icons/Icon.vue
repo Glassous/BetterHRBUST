@@ -239,6 +239,24 @@
       <line x1="5" y1="12" x2="19" y2="12" />
     </g>
 
+    <g v-else-if="name === 'edit'">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </g>
+
+    <g v-else-if="name === 'swap'">
+      <path d="M16 3l4 4-4 4" />
+      <path d="M20 7H4" />
+      <path d="M8 21l-4-4 4-4" />
+      <path d="M4 17h16" />
+    </g>
+
+    <g v-else-if="name === 'flask'">
+      <path d="M9 3h6" />
+      <path d="M10 3v5.4L4.8 17.6A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 1.7-2.9L14 8.4V3" />
+      <path d="M7.5 14h9" />
+    </g>
+
     <g v-else-if="name === 'lock'">
       <rect x="3" y="11" width="18" height="11" rx="3" ry="3" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />

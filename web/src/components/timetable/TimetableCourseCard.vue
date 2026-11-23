@@ -1,25 +1,71 @@
 <template>
+  <!-- 已调出原位置占位卡（不参与 GSAP Flip，点击可查看去向或还原） -->
+  <button
+    v-if="course.isMovedOut"
+    type="button"
+    :class="[
+      'tt-moved-out w-full h-full rounded-[var(--radius-panel)] border border-dashed px-2.5 py-2 text-left transition-colors cursor-pointer flex flex-col justify-between gap-1',
+      rescheduleMode
+        ? 'border-[var(--border-strong)] bg-[var(--md-surface-container)]/50 text-[var(--ink-muted)]'
+        : 'border-[var(--md-outline-variant)] bg-[var(--md-surface-container)]/40 hover:bg-[var(--md-surface-container-high)]/70 text-[var(--ink-muted)]'
+    ]"
+    @click.stop="onMovedOutClick"
+  >
+    <div class="flex items-center justify-between gap-1.5 min-w-0">
+      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--md-surface-container-highest)] text-[var(--ink-secondary)] shrink-0">
+        已调出
+      </span>
+      <span v-if="!rescheduleMode" class="text-[10px] text-[var(--md-primary)] font-medium shrink-0">还原/编辑</span>
+    </div>
+    <div class="text-xs font-medium text-[var(--ink-secondary)] line-clamp-1 line-through decoration-[var(--ink-muted)]/60">
+      {{ course.courseName }}
+    </div>
+    <div class="text-[11px] text-[var(--ink-muted)] truncate">
+      → {{ course.movedToLabel }}
+    </div>
+  </button>
+
   <!--
     课程卡片：小卡与大卡是**同一个** DOM 节点。
     展开时该节点被 Teleport 到 body（脱离课表网格的层叠/裁剪上下文）并切换为居中固定定位，
     由 GSAP Flip 在这个元素自身上完成 First → Last → Invert → Play，不存在两张卡片叠加。
   -->
+  <template v-else>
   <Teleport to="body" :disabled="!(expanded || closing)">
     <div
       ref="cardRef"
       class="tt-card"
       :class="[
         active ? 'course-card' : COURSE_MUTED,
-        { 'is-floating': expanded || closing, 'is-open': expanded }
+        {
+          'is-floating': expanded || closing,
+          'is-open': expanded,
+          'is-reschedule-selectable': rescheduleMode && active && !expanded,
+          'is-reschedule-selected': rescheduleMode && selectedForReschedule && !expanded,
+          'is-reschedule-disabled': rescheduleMode && !active && !expanded
+        }
       ]"
       :style="cardStyle"
-      :role="expanded ? 'dialog' : null"
+      :role="expanded ? 'dialog' : 'button'"
+      :tabindex="expanded ? undefined : 0"
       :aria-modal="expanded ? 'true' : null"
-      :aria-label="expanded ? `${course.courseName} 课程详情` : null"
+      :aria-label="expanded ? `${course.courseName} 课程详情` : cardAriaLabel"
       @click="onCardClick"
+      @keydown.enter.prevent="!expanded && onCardClick()"
+      @keydown.space.prevent="!expanded && onCardClick()"
       @keydown.esc.stop="requestClose"
     >
       <div class="tt-top">
+        <div
+          v-if="hasBadges"
+          class="tt-badges flex flex-wrap items-center gap-1 mb-1.5"
+        >
+          <span v-if="course.category === 'lab'" class="tt-tag tt-tag--lab">实验</span>
+          <span v-else-if="course.category === 'custom'" class="tt-tag tt-tag--custom">自定</span>
+          <span v-if="course.isRescheduled" class="tt-tag tt-tag--resched">调课</span>
+          <span v-if="course.customTimeText" class="tt-tag tt-tag--time num-tabular">{{ course.customTimeText }}</span>
+        </div>
+
         <div class="tt-head">
           <div ref="titleRef" class="tt-title" :class="{ 'line-clamp-2': !expanded }">
             {{ course.courseName }}
@@ -40,7 +86,7 @@
       </div>
 
       <div ref="teacherRef" class="tt-teacher">
-        {{ course.teacher || '—' }}<span v-if="!expanded" class="tt-weeks"> · {{ course.weeks }}</span>
+        {{ course.teacher || '—' }}<span v-if="!expanded && course.weeks" class="tt-weeks"> · {{ course.weeks }}</span>
       </div>
 
       <!-- 明细：只有大卡才有，随展开淡入（Android 端这些信息不参与共享元素过渡） -->
@@ -49,6 +95,35 @@
         <div v-for="row in rows" :key="row.label" class="tt-row">
           <span class="tt-row-label">{{ row.label }}</span>
           <span class="tt-row-value">{{ row.value }}</span>
+        </div>
+
+        <div class="tt-actions">
+          <template v-if="course.isCustomCourse">
+            <button type="button" class="tt-action-btn" @click.stop="triggerAction('edit', course)">
+              <Icon name="edit" customClass="w-3.5 h-3.5" />
+              <span>编辑</span>
+            </button>
+            <button type="button" class="tt-action-btn tt-action-btn--danger" @click.stop="triggerAction('delete', course)">
+              <Icon name="trash" customClass="w-3.5 h-3.5" />
+              <span>删除</span>
+            </button>
+          </template>
+          <template v-else-if="course.isRescheduled">
+            <button type="button" class="tt-action-btn" @click.stop="triggerAction('reschedule', course)">
+              <Icon name="swap" customClass="w-3.5 h-3.5" />
+              <span>修改调课</span>
+            </button>
+            <button type="button" class="tt-action-btn" @click.stop="triggerAction('restore', course)">
+              <Icon name="refresh" customClass="w-3.5 h-3.5" />
+              <span>还原原排课</span>
+            </button>
+          </template>
+          <template v-else-if="active">
+            <button type="button" class="tt-action-btn" @click.stop="triggerAction('reschedule', course)">
+              <Icon name="swap" customClass="w-3.5 h-3.5" />
+              <span>本周调课</span>
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -65,6 +140,7 @@
       @wheel.prevent.self
     ></div>
   </Teleport>
+  </template>
 </template>
 
 <script setup>
@@ -84,10 +160,23 @@ const props = defineProps({
   /** 大节 / 小节模式，决定「节次安排」文案 */
   viewMode: { type: String, default: 'combine' },
   /** 学分：课表页不提供，由父组件从本学期课程列表关联；null 表示未关联到 */
-  credit: { type: Number, default: null }
+  credit: { type: Number, default: null },
+  /** 是否处于调课模式 */
+  rescheduleMode: { type: Boolean, default: false },
+  /** 调课模式下是否已被选为待调整课程 */
+  selectedForReschedule: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['open', 'close']);
+const emit = defineEmits([
+  'open',
+  'close',
+  'select-reschedule',
+  'open-moved-out',
+  'edit',
+  'reschedule',
+  'restore',
+  'delete'
+]);
 
 const { isDark } = useTheme();
 
@@ -122,6 +211,22 @@ let pendingState = null;
 let homeRect = null;
 let timeline = null;
 let lastFocused = null;
+let pendingAfterClose = null;
+
+const hasBadges = computed(() =>
+  Boolean(
+    props.course?.category === 'lab' ||
+    props.course?.category === 'custom' ||
+    props.course?.isRescheduled ||
+    props.course?.customTimeText
+  )
+);
+
+const cardAriaLabel = computed(() => {
+  const name = props.course?.courseName || '课程';
+  const loc = props.course?.location || '待定';
+  return props.rescheduleMode ? `选择 ${name}（${loc}）进行调课` : `${name}，${loc}`;
+});
 
 const reduceMotion = () =>
   typeof window !== 'undefined' && window.matchMedia
@@ -140,9 +245,12 @@ const cardStyle = computed(() => {
 
 const scrimColor = computed(() => (isDark.value ? 'rgba(0, 0, 0, 0.55)' : 'rgba(0, 0, 0, 0.35)'));
 
-/** 节次安排文案：与 Android 端详情卡片一致（选课文案 · 第 N 大节/节 起止时间） */
+/** 节次安排文案：优先展示自定义时间，否则展示标准大节/小节时间 */
 const sectionText = computed(() => {
   const course = props.course;
+  if (course.customTimeText) {
+    return `${course.customTimeText}${course.sectionLabel && !course.sectionLabel.startsWith('自定义') ? ` · ${course.sectionLabel}` : ''}`;
+  }
   const slots = props.viewMode === 'combine' ? COMBINE_SLOT_TIMES : BASE_SLOT_TIMES;
   const slot = slots[course.sectionIndex - 1];
   const parts = [];
@@ -161,10 +269,16 @@ const rows = computed(() => {
   const course = props.course;
   const list = [
     { label: '上课周次', value: course.weeks || '—' },
-    { label: '节次安排', value: sectionText.value || '—' },
-    { label: '学分', value: Number.isFinite(props.credit) ? String(props.credit) : '—' }
+    { label: course.customTimeText ? '时间安排' : '节次安排', value: sectionText.value || '—' }
   ];
-  if (course.hoursType) list.push({ label: '学时类型', value: course.hoursType });
+  if (!course.isCustomCourse) {
+    list.push({ label: '学分', value: Number.isFinite(props.credit) ? String(props.credit) : '—' });
+  }
+  if (course.isRescheduled && course.originSummary) {
+    list.push({ label: '原排课', value: course.originSummary });
+  }
+  if (course.hoursType) list.push({ label: '类型', value: course.hoursType });
+  if (course.note) list.push({ label: '备注', value: course.note });
   if (course.courseSeq) list.push({ label: '课程序号', value: course.courseSeq });
   return list;
 });
@@ -188,8 +302,21 @@ function pinCentered(el) {
   el.style.top = `${Math.round((window.innerHeight - rect.height) / 2)}px`;
 }
 
+function onMovedOutClick() {
+  emit('open-moved-out', props.course);
+}
+
+function triggerAction(eventName, course) {
+  pendingAfterClose = () => emit(eventName, course);
+  requestClose();
+}
+
 function onCardClick() {
   if (props.expanded || closing.value) return;
+  if (props.rescheduleMode) {
+    emit('select-reschedule', props.course);
+    return;
+  }
   const el = cardRef.value;
   if (!el) return;
   const rect = el.getBoundingClientRect();
@@ -366,6 +493,11 @@ function finish() {
   if (focused && typeof focused.focus === 'function') {
     requestAnimationFrame(() => focused.focus({ preventScroll: true }));
   }
+  const afterClose = pendingAfterClose;
+  pendingAfterClose = null;
+  if (typeof afterClose === 'function') {
+    afterClose();
+  }
 }
 
 function onDocumentKeydown(event) {
@@ -425,6 +557,86 @@ onBeforeUnmount(() => {
 
 .tt-card:not(.is-floating):active {
   transform: scale(0.985);
+}
+
+.tt-card.is-reschedule-selectable:hover {
+  outline: 2px dashed var(--md-primary);
+  outline-offset: -2px;
+}
+
+.tt-card.is-reschedule-selected {
+  outline: 2.5px solid var(--md-primary);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.tt-card.is-reschedule-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tt-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+}
+
+.tt-tag--lab {
+  background-color: var(--sem-warning-soft);
+  color: var(--sem-warning);
+}
+
+.tt-tag--custom {
+  background-color: var(--md-tertiary-container);
+  color: var(--md-on-tertiary-container);
+}
+
+.tt-tag--resched {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+
+.tt-tag--time {
+  background-color: color-mix(in srgb, currentColor 11%, transparent);
+  color: inherit;
+}
+
+.tt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.tt-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.tt-action-btn:hover {
+  background-color: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.tt-action-btn--danger {
+  color: var(--sem-danger);
+  border-color: var(--sem-danger-border);
+  background-color: var(--sem-danger-soft);
 }
 
 .tt-title {

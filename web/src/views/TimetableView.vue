@@ -132,8 +132,27 @@
             </button>
           </div>
 
-          <!-- 右侧：视图切换、移动端日/周切换、导出 ICS -->
+          <!-- 右侧：快捷编辑、调课模式、视图切换、导出 ICS -->
           <div class="flex flex-wrap items-center gap-2">
+            <UiButton size="sm" variant="secondary" @click="openQuickAdd()">
+              <template #prefix>
+                <Icon name="plus" customClass="w-3.5 h-3.5" />
+              </template>
+              添加实验/课程
+            </UiButton>
+
+            <UiButton
+              size="sm"
+              :variant="rescheduleMode ? 'primary' : 'outline'"
+              :aria-pressed="rescheduleMode"
+              @click="toggleRescheduleMode"
+            >
+              <template #prefix>
+                <Icon name="swap" customClass="w-3.5 h-3.5" />
+              </template>
+              {{ rescheduleMode ? '退出调课' : '调课模式' }}
+            </UiButton>
+
             <UiTabs
               :items="[
                 { label: '大节课表', value: 'combine' },
@@ -156,6 +175,43 @@
                 <Icon name="download" customClass="w-3.5 h-3.5" />
               </template>
               导出 ICS
+            </UiButton>
+          </div>
+        </div>
+
+        <!-- 调课模式引导条 -->
+        <div
+          v-if="rescheduleMode"
+          class="mt-3 flex flex-wrap items-center justify-between gap-2.5 rounded-[var(--shape-lg)] bg-[var(--md-secondary-container)] text-[var(--md-on-secondary-container)] px-4 py-2.5 text-[13px]"
+        >
+          <div class="flex items-center gap-2 min-w-0">
+            <Icon name="swap" customClass="w-4 h-4 shrink-0" />
+            <span v-if="!rescheduleSource">
+              调课模式（第 {{ selectedWeek }} 周）：请先点击课表中的一门本周课程
+            </span>
+            <span v-else class="truncate">
+              已选「<strong>{{ rescheduleSource.courseName }}</strong>」（{{ rescheduleSourceLabel }}），请点击要移至的目标格子
+            </span>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <UiButton
+              v-if="rescheduleSource"
+              size="sm"
+              variant="primary"
+              @click="openRescheduleModalWithSource(rescheduleSource)"
+            >
+              选择目标位置
+            </UiButton>
+            <UiButton
+              v-if="rescheduleSource"
+              size="sm"
+              variant="outline"
+              @click="rescheduleSource = null"
+            >
+              重选课程
+            </UiButton>
+            <UiButton size="sm" variant="ghost" @click="exitRescheduleMode">
+              退出
             </UiButton>
           </div>
         </div>
@@ -188,7 +244,8 @@
 
         <div class="mt-3 pt-3 border-t border-[var(--border-hairline)] flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ink-muted)]">
           <span>上次同步：<span class="num-tabular">{{ lastSyncText }}</span></span>
-          <span>点击任意课程块查看任课教师与周次详情</span>
+          <span v-if="rescheduleMode">提示：仅针对第 {{ selectedWeek }} 周临时调课，支持单独修改教室</span>
+          <span v-else>点击课程块查看详情与调课 · 悬停或轻点网格「+」可快捷添加实验与课程</span>
         </div>
       </UiCard>
 
@@ -245,17 +302,67 @@
                 <template v-if="getVisibleCoursesForSlot(mobileSelectedDay, slot.period).length > 0">
                   <TimetableCourseCard
                     v-for="course in getVisibleCoursesForSlot(mobileSelectedDay, slot.period)"
-                    :key="course.courseName + course.id"
+                    :key="courseKey(course)"
                     :course="course"
                     :credit="creditOf(course)"
                     :active="isCourseActiveThisWeek(course)"
                     :expanded="expandedLayout === 'mobile-day' && expandedCourseKey === courseKey(course)"
                     :view-mode="viewMode"
+                    :reschedule-mode="rescheduleMode"
+                    :selected-for-reschedule="rescheduleMode && courseKey(rescheduleSource) === courseKey(course)"
                     @open="onCourseOpen($event, 'mobile-day')"
                     @close="onCourseClose"
+                    @select-reschedule="onSelectReschedule"
+                    @open-moved-out="onOpenMovedOut"
+                    @edit="openEditCustomCourse"
+                    @reschedule="openRescheduleModalWithSource"
+                    @restore="onRestoreReschedule"
+                    @delete="onDeleteCustomCourse"
                   />
+                  <button
+                    v-if="rescheduleMode && rescheduleSource && isValidRescheduleTarget(mobileSelectedDay, slot.period)"
+                    type="button"
+                    class="w-full py-1.5 px-3 rounded-[var(--shape-md)] border border-dashed border-[var(--md-primary)] text-xs font-medium text-[var(--md-primary)] bg-[var(--md-primary-container)]/35 hover:bg-[var(--md-primary-container)]/60 cursor-pointer transition-colors"
+                    @click="openRescheduleForTarget(mobileSelectedDay, slot.period)"
+                  >
+                    调至此节次
+                  </button>
+                  <button
+                    v-else-if="!rescheduleMode"
+                    type="button"
+                    class="self-start inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs text-[var(--ink-muted)] hover:text-[var(--md-primary)] hover:bg-[var(--md-surface-container-high)] cursor-pointer transition-colors"
+                    @click="openQuickAdd(mobileSelectedDay, slot.period)"
+                  >
+                    <Icon name="plus" customClass="w-3.5 h-3.5" />
+                    <span>加课 / 实验</span>
+                  </button>
                 </template>
-                <span v-else class="text-[13px] text-[var(--ink-muted)]/65 px-1">无课</span>
+                <template v-else>
+                  <button
+                    v-if="rescheduleMode && rescheduleSource && isValidRescheduleTarget(mobileSelectedDay, slot.period)"
+                    type="button"
+                    class="w-full h-full min-h-[40px] rounded-[var(--shape-md)] border border-dashed border-[var(--md-primary)] text-xs font-medium text-[var(--md-primary)] bg-[var(--md-primary-container)]/30 hover:bg-[var(--md-primary-container)]/55 cursor-pointer transition-colors"
+                    @click="openRescheduleForTarget(mobileSelectedDay, slot.period)"
+                  >
+                    点击调至{{ viewMode === 'combine' ? `第 ${slot.period} 大节` : `第 ${slot.period} 节` }}
+                  </button>
+                  <span
+                    v-else-if="rescheduleMode && rescheduleSource && !isValidRescheduleTarget(mobileSelectedDay, slot.period)"
+                    class="text-xs text-[var(--ink-muted)] px-1"
+                  >
+                    原课程所在位置
+                  </span>
+                  <button
+                    v-else-if="!rescheduleMode"
+                    type="button"
+                    class="w-full h-full min-h-[40px] rounded-[var(--shape-md)] border border-dashed border-transparent hover:border-[var(--border-strong)] hover:bg-[var(--md-surface-container)]/70 flex items-center gap-1.5 px-2.5 text-[13px] text-[var(--ink-muted)]/75 hover:text-[var(--md-primary)] cursor-pointer transition-colors"
+                    @click="openQuickAdd(mobileSelectedDay, slot.period)"
+                  >
+                    <Icon name="plus" customClass="w-3.5 h-3.5" />
+                    <span>添加实验 / 课程</span>
+                  </button>
+                  <span v-else class="text-[13px] text-[var(--ink-muted)]/65 px-1">无课</span>
+                </template>
               </div>
             </div>
           </div>
@@ -324,22 +431,67 @@
                 v-for="dayNum in 7"
                 :key="dayNum"
                 :class="[
-                  'p-1.5 border-r border-[var(--border-hairline)] last:border-r-0 flex flex-col gap-1.5 relative min-w-0 transition-colors',
-                  isTodayColumn(dayNum) ? 'bg-[var(--md-primary-container)]/35' : ''
+                  'tt-grid-cell group p-1.5 border-r border-[var(--border-hairline)] last:border-r-0 flex flex-col gap-1.5 relative min-w-0 transition-colors',
+                  isTodayColumn(dayNum) ? 'bg-[var(--md-primary-container)]/35' : '',
+                  rescheduleMode && rescheduleSource && isValidRescheduleTarget(dayNum, slot.period)
+                    ? 'cursor-pointer hover:bg-[var(--md-primary-container)]/35'
+                    : '',
+                  rescheduleMode && rescheduleSource && !isValidRescheduleTarget(dayNum, slot.period)
+                    ? 'bg-[var(--md-surface-container)]/75'
+                    : ''
                 ]"
+                @click="onGridCellClick(dayNum, slot.period)"
               >
+                <!-- 调课模式目标格落位提示 -->
+                <div
+                  v-if="rescheduleMode && rescheduleSource"
+                  :class="[
+                    'pointer-events-none flex items-center justify-center rounded-[var(--shape-md)] text-[11px] font-medium transition-opacity',
+                    getVisibleCoursesForSlot(dayNum, slot.period).length === 0 ? 'flex-1 py-2' : 'py-1',
+                    isValidRescheduleTarget(dayNum, slot.period)
+                      ? 'border border-dashed border-[var(--md-primary)]/50 text-[var(--md-primary)] opacity-0 group-hover:opacity-100'
+                      : 'text-[var(--ink-muted)] opacity-85'
+                  ]"
+                >
+                  {{ isValidRescheduleTarget(dayNum, slot.period) ? '点击调至此处' : '原位置' }}
+                </div>
+
                 <!-- 每节课就是一张卡片：点开后同一节点由 GSAP Flip 展开成详情大卡 -->
                 <TimetableCourseCard
                   v-for="course in getVisibleCoursesForSlot(dayNum, slot.period)"
-                  :key="course.courseName + course.id"
+                  :key="courseKey(course)"
                   :course="course"
                   :credit="creditOf(course)"
                   :active="isCourseActiveThisWeek(course)"
                   :expanded="expandedLayout === 'desktop-grid' && expandedCourseKey === courseKey(course)"
                   :view-mode="viewMode"
+                  :reschedule-mode="rescheduleMode"
+                  :selected-for-reschedule="rescheduleMode && courseKey(rescheduleSource) === courseKey(course)"
                   @open="onCourseOpen($event, 'desktop-grid')"
                   @close="onCourseClose"
+                  @select-reschedule="onSelectReschedule"
+                  @open-moved-out="onOpenMovedOut"
+                  @edit="openEditCustomCourse"
+                  @reschedule="openRescheduleModalWithSource"
+                  @restore="onRestoreReschedule"
+                  @delete="onDeleteCustomCourse"
                 />
+
+                <!-- 快捷加课按钮（悬停/聚焦显示，触屏设备常驻可见） -->
+                <button
+                  v-if="!rescheduleMode"
+                  type="button"
+                  :aria-label="`在${daysOfWeek[dayNum - 1]}${viewMode === 'combine' ? `第${slot.period}大节` : `第${slot.period}节`}添加实验或课程`"
+                  :title="`添加实验 / 课程（${daysOfWeek[dayNum - 1]} ${viewMode === 'combine' ? `第${slot.period}大节` : `第${slot.period}节`}）`"
+                  :class="[
+                    'tt-cell-add',
+                    getVisibleCoursesForSlot(dayNum, slot.period).length === 0 ? 'tt-cell-add--empty' : 'tt-cell-add--corner'
+                  ]"
+                  @click.stop="openQuickAdd(dayNum, slot.period)"
+                >
+                  <Icon name="plus" customClass="w-3.5 h-3.5" />
+                  <span v-if="getVisibleCoursesForSlot(dayNum, slot.period).length === 0" class="text-[11px] font-medium">添加</span>
+                </button>
               </div>
             </div>
           </div>
@@ -351,38 +503,79 @@
         <div class="divide-y divide-[var(--border-hairline)] text-[13px]">
           <div
             v-for="item in unarrangedCourses"
-            :key="item.courseId"
+            :key="item.courseId + item.courseName"
             class="px-5 py-3.5 flex flex-wrap items-center justify-between gap-2"
           >
             <div>
               <span class="text-[14px] font-medium text-[var(--ink-primary)]">{{ item.courseName }}</span>
               <span class="text-[var(--ink-muted)] ml-2 font-mono num-tabular">{{ item.courseId }}</span>
             </div>
-            <div class="text-[var(--ink-secondary)] flex flex-wrap gap-x-4 gap-y-1 num-tabular">
+            <div class="text-[var(--ink-secondary)] flex flex-wrap items-center gap-x-4 gap-y-1 num-tabular">
               <span>教师：{{ item.teacher || '待定' }}</span>
               <span>周次：{{ item.weeks || '全学期' }}</span>
+              <UiButton size="sm" variant="ghost" @click="openQuickAddFromUnarranged(item)">
+                <template #prefix>
+                  <Icon name="plus" customClass="w-3.5 h-3.5" />
+                </template>
+                排入课表
+              </UiButton>
             </div>
           </div>
         </div>
       </UiCard>
+
+      <!-- 添加 / 编辑实验与自定义课程弹窗 -->
+      <TimetableCourseEditorModal
+        v-model="showEditorModal"
+        :initial-data="editorInitialData"
+        :max-weeks="semesterTeachingWeeks"
+        :current-courses="currentCourses"
+        :unarranged-courses="unarrangedCourses"
+        @save="onSaveCustomCourse"
+        @delete="onDeleteCustomCourseById"
+      />
+
+      <!-- 单周临时调课弹窗 -->
+      <TimetableRescheduleModal
+        v-model="showRescheduleModal"
+        :week="selectedWeek"
+        :view-mode="viewMode"
+        :source-match="rescheduleModalState.sourceMatch"
+        :existing-id="rescheduleModalState.existingId"
+        :initial-target-day="rescheduleModalState.targetDay"
+        :initial-target-period="rescheduleModalState.targetPeriod"
+        :initial-location="rescheduleModalState.location"
+        :initial-teacher="rescheduleModalState.teacher"
+        :initial-note="rescheduleModalState.note"
+        @save="onSaveReschedule"
+        @restore="onRestoreRescheduleById"
+      />
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, useId, nextTick } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, useId, nextTick } from 'vue';
 import UiCard from '@/components/ui/UiCard.vue';
 import UiButton from '@/components/ui/UiButton.vue';
 import UiBadge from '@/components/ui/UiBadge.vue';
 import UiTabs from '@/components/ui/UiTabs.vue';
 import TimetableCourseCard from '@/components/timetable/TimetableCourseCard.vue';
+import TimetableCourseEditorModal from '@/components/timetable/TimetableCourseEditorModal.vue';
+import TimetableRescheduleModal from '@/components/timetable/TimetableRescheduleModal.vue';
 import Icon from '@/components/icons/Icon.vue';
 import { storageGetItem, storageSetItem } from '@/services/storage.js';
 import { useSession } from '@/composables/useSession.js';
 import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useTeachingProcess } from '@/composables/useTeachingProcess.js';
 import { useToast } from '@/composables/useToast.js';
-import { BASE_SLOT_TIMES, COMBINE_SLOT_TIMES } from '@/utils/periodTimes.js';
+import { BASE_SLOT_TIMES, COMBINE_SLOT_TIMES, getCourseTimeRange } from '@/utils/periodTimes.js';
+import {
+  buildEffectiveTimetableCells,
+  buildRescheduleSourceMatch,
+  formatDaySectionLabel,
+  isDifferentRescheduleTarget
+} from '@/utils/timetableOverrides.js';
 
 import { timetableDayDate } from '@/utils/timetableDates.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
@@ -393,7 +586,19 @@ import { computeAnchoredFixedStyle, supportsAnchorPositionArea } from '@/utils/t
 defineEmits(['navigate']);
 
 const { isLoggedIn, isSessionExpired, currentWeek, semesterTeachingWeeks, calendarWeekCountKnown, isSchoolHoliday, openLoginModal } = useSession();
-const { timetableCombine, timetableBase, syncing, lastSyncText, currentCourses } = useAcademicData();
+const {
+  timetableCombine,
+  timetableBase,
+  timetableReschedules,
+  timetableCustomCourses,
+  syncing,
+  lastSyncText,
+  currentCourses,
+  upsertTimetableReschedule,
+  removeTimetableReschedule,
+  upsertCustomCourse,
+  removeCustomCourse
+} = useAcademicData();
 const { stagesOfWeek, isCurrentSemester: processIsCurrentSemester, myClassEntry: processMyClass } = useTeachingProcess();
 const { showToast } = useToast();
 
@@ -441,7 +646,16 @@ const loading = computed(() => syncing.value && activeTimetable.value.cells.leng
 const activeTimetable = computed(() =>
   viewMode.value === 'combine' ? timetableCombine.value : timetableBase.value
 );
-const courses = computed(() => activeTimetable.value.cells || []);
+const rawCourses = computed(() => activeTimetable.value.cells || []);
+const courses = computed(() =>
+  buildEffectiveTimetableCells({
+    rawCells: rawCourses.value,
+    week: selectedWeek.value,
+    viewMode: viewMode.value,
+    reschedules: timetableReschedules.value,
+    customCourses: timetableCustomCourses.value
+  })
+);
 const unarrangedCourses = computed(() => activeTimetable.value.unarranged || []);
 
 /**
@@ -585,6 +799,241 @@ function onCourseClose() {
   expandedLayout.value = '';
 }
 
+// ---------------- 调课模式与快捷加课 ----------------
+
+const rescheduleMode = ref(false);
+const rescheduleSource = ref(null);
+const showEditorModal = ref(false);
+const editorInitialData = ref(null);
+
+const showRescheduleModal = ref(false);
+const rescheduleModalState = reactive({
+  sourceMatch: null,
+  existingId: '',
+  targetDay: 1,
+  targetPeriod: 1,
+  location: '',
+  teacher: '',
+  note: '',
+  customRecord: null
+});
+
+const rescheduleSourceLabel = computed(() => {
+  if (!rescheduleSource.value) return '';
+  return formatDaySectionLabel(rescheduleSource.value.day, rescheduleSource.value.sectionIndex, viewMode.value);
+});
+
+function toggleRescheduleMode() {
+  if (rescheduleMode.value) {
+    exitRescheduleMode();
+  } else {
+    selectedCourse.value = null;
+    rescheduleSource.value = null;
+    rescheduleMode.value = true;
+  }
+}
+
+function exitRescheduleMode() {
+  rescheduleMode.value = false;
+  rescheduleSource.value = null;
+}
+
+watch([selectedWeek, viewMode], () => {
+  rescheduleSource.value = null;
+});
+
+function isValidRescheduleTarget(day, period) {
+  if (!rescheduleSource.value) return false;
+  const match = buildRescheduleSourceMatch(rescheduleSource.value, viewMode.value);
+  return isDifferentRescheduleTarget(match, day, period, viewMode.value);
+}
+
+function onSelectReschedule(course) {
+  if (!rescheduleSource.value) {
+    if (!isCourseActiveThisWeek(course)) {
+      showToast({
+        title: '非本周课程不可调课',
+        message: '请切换至该课程所在教学周后再进行单周临时调课',
+        type: 'warning'
+      });
+      return;
+    }
+    rescheduleSource.value = course;
+    return;
+  }
+  if (courseKey(rescheduleSource.value) === courseKey(course)) {
+    rescheduleSource.value = null;
+    return;
+  }
+  openRescheduleForTarget(course.day, course.sectionIndex);
+}
+
+function onGridCellClick(day, period) {
+  if (!rescheduleMode.value || !rescheduleSource.value) return;
+  openRescheduleForTarget(day, period);
+}
+
+function openRescheduleForTarget(targetDay, targetPeriod) {
+  if (!rescheduleSource.value) return;
+  const source = rescheduleSource.value;
+  const match = buildRescheduleSourceMatch(source, viewMode.value);
+  if (!isDifferentRescheduleTarget(match, targetDay, targetPeriod, viewMode.value)) {
+    showToast({
+      title: '目标位置未变化',
+      message: '请选择与原排课不同的星期或节次',
+      type: 'warning'
+    });
+    return;
+  }
+  rescheduleModalState.sourceMatch = match;
+  rescheduleModalState.existingId = source.rescheduleRecord?.id || '';
+  rescheduleModalState.targetDay = targetDay;
+  rescheduleModalState.targetPeriod = targetPeriod;
+  rescheduleModalState.location = source.location || match.originLocation || '';
+  rescheduleModalState.teacher = source.teacher || match.originTeacher || '';
+  rescheduleModalState.note = source.note || '';
+  rescheduleModalState.customRecord = source.isCustomCourse ? source.customRecord : null;
+  showRescheduleModal.value = true;
+}
+
+function openRescheduleModalWithSource(course) {
+  if (!course || course.isMovedOut) return;
+  const match = buildRescheduleSourceMatch(course, viewMode.value);
+  const defaultPeriod = viewMode.value === 'base'
+    ? (course.sectionIndex === 1 ? 3 : 1)
+    : (course.sectionIndex === 1 ? 2 : 1);
+  rescheduleModalState.sourceMatch = match;
+  rescheduleModalState.existingId = course.rescheduleRecord?.id || '';
+  rescheduleModalState.targetDay = course.day;
+  rescheduleModalState.targetPeriod = defaultPeriod;
+  rescheduleModalState.location = course.location || match.originLocation || '';
+  rescheduleModalState.teacher = course.teacher || match.originTeacher || '';
+  rescheduleModalState.note = course.note || '';
+  rescheduleModalState.customRecord = course.isCustomCourse ? course.customRecord : null;
+  showRescheduleModal.value = true;
+}
+
+function onOpenMovedOut(course) {
+  if (rescheduleMode.value && rescheduleSource.value) {
+    openRescheduleForTarget(course.day, course.sectionIndex);
+    return;
+  }
+  const record = course?.rescheduleRecord;
+  if (!record) return;
+  rescheduleModalState.sourceMatch = record.sourceMatch;
+  rescheduleModalState.existingId = record.id;
+  rescheduleModalState.targetDay = record.targetDay;
+  rescheduleModalState.targetPeriod = viewMode.value === 'base' ? record.targetBaseSection : record.targetCombineSection;
+  rescheduleModalState.location = record.location;
+  rescheduleModalState.teacher = record.teacher;
+  rescheduleModalState.note = record.note;
+  rescheduleModalState.customRecord = null;
+  showRescheduleModal.value = true;
+}
+
+function onSaveReschedule(payload) {
+  if (rescheduleModalState.customRecord) {
+    upsertCustomCourse({
+      ...rescheduleModalState.customRecord,
+      day: payload.targetDay,
+      timeMode: 'slot',
+      slotType: viewMode.value === 'base' ? 'base' : 'combine',
+      slotPeriod: viewMode.value === 'base' ? payload.targetBaseSection : payload.targetCombineSection,
+      location: payload.location,
+      teacher: payload.teacher,
+      note: payload.note
+    });
+    rescheduleModalState.customRecord = null;
+    rescheduleSource.value = null;
+    showToast({ title: '已调整实验/课程位置', type: 'success' });
+    return;
+  }
+
+  upsertTimetableReschedule(payload);
+  rescheduleSource.value = null;
+  showToast({
+    title: '单周临时调课已保存',
+    message: `第 ${payload.week} 周 · ${formatDaySectionLabel(payload.targetDay, viewMode.value === 'base' ? payload.targetBaseSection : payload.targetCombineSection, viewMode.value)}`,
+    type: 'success'
+  });
+}
+
+function onRestoreReschedule(course) {
+  const id = course?.rescheduleId || course?.rescheduleRecord?.id;
+  onRestoreRescheduleById(id);
+}
+
+function onRestoreRescheduleById(id) {
+  if (!id) return;
+  removeTimetableReschedule(id);
+  showRescheduleModal.value = false;
+  rescheduleSource.value = null;
+  showToast({ title: '已还原原排课', type: 'success' });
+}
+
+function openQuickAdd(day = null, period = null) {
+  const targetDay = day || (mobileLayout.value === 'day' ? mobileSelectedDay.value : currentDayIndex.value);
+  const targetPeriod = period || 1;
+  editorInitialData.value = {
+    category: 'lab',
+    week: selectedWeek.value,
+    day: targetDay,
+    timeMode: 'slot',
+    slotType: viewMode.value === 'base' ? 'base' : 'combine',
+    slotPeriod: targetPeriod,
+    slotSpan: 1
+  };
+  showEditorModal.value = true;
+}
+
+function openQuickAddFromUnarranged(item) {
+  editorInitialData.value = {
+    category: 'lab',
+    courseName: item.courseName || '',
+    teacher: item.teacher || '',
+    location: item.location || '',
+    week: selectedWeek.value,
+    day: mobileLayout.value === 'day' ? mobileSelectedDay.value : currentDayIndex.value,
+    timeMode: 'slot',
+    slotType: viewMode.value === 'base' ? 'base' : 'combine',
+    slotPeriod: 1,
+    slotSpan: 1
+  };
+  showEditorModal.value = true;
+}
+
+function openEditCustomCourse(course) {
+  const record = course?.customRecord;
+  if (!record) return;
+  editorInitialData.value = { ...record };
+  showEditorModal.value = true;
+}
+
+function onSaveCustomCourse(record) {
+  const isUpdate = timetableCustomCourses.value.some(item => item.id === record.id);
+  upsertCustomCourse(record);
+  if (record.week !== selectedWeek.value) {
+    selectedWeek.value = record.week;
+  }
+  showToast({
+    title: isUpdate ? '已更新课程信息' : '已添加到课表',
+    message: `第 ${record.week} 周 · ${record.courseName}`,
+    type: 'success'
+  });
+}
+
+function onDeleteCustomCourse(course) {
+  const id = course?.customRecord?.id || course?.id;
+  onDeleteCustomCourseById(id);
+}
+
+function onDeleteCustomCourseById(id) {
+  if (!id) return;
+  removeCustomCourse(id);
+  showEditorModal.value = false;
+  showToast({ title: '已从课表移除', type: 'success' });
+}
+
 function slotDate(week, day, hour, minute) {
   const now = new Date();
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
@@ -600,21 +1049,23 @@ function parseSlotRange(range) {
 }
 
 async function exportIcs() {
-  const weekCourses = courses.value.filter(c => isCourseActiveInWeek(c, selectedWeek.value));
+  const weekCourses = courses.value.filter(
+    c => !c.isMovedOut && isCourseActiveInWeek(c, selectedWeek.value)
+  );
   if (weekCourses.length === 0) {
     showToast({ title: '本周无可导出的课程', type: 'warning' });
     return;
   }
-  const slotTimes = viewMode.value === 'combine' ? COMBINE_SLOT_TIMES : BASE_SLOT_TIMES;
   const events = [];
   for (const c of weekCourses) {
-    const range = parseSlotRange(slotTimes[c.sectionIndex - 1]?.time);
+    const timeRange = getCourseTimeRange(c, viewMode.value);
+    const range = timeRange ? parseSlotRange(timeRange.text) : null;
     if (!range) continue;
     const [sh, sm, eh, em] = range;
     events.push({
       summary: c.courseName,
       location: c.location || '',
-      description: `教师: ${c.teacher || ''} 周次: ${c.weeks || '全学期'}`,
+      description: `教师: ${c.teacher || ''} 周次: ${c.weeks || '全学期'}${c.note ? ` 备注: ${c.note}` : ''}`,
       start: slotDate(selectedWeek.value, c.day, sh, sm),
       end: slotDate(selectedWeek.value, c.day, eh, em)
     });
@@ -739,5 +1190,56 @@ onBeforeUnmount(() => {
     position-area: block-end span-inline-end;
     position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   }
+}
+
+.tt-cell-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--shape-md);
+  color: var(--ink-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.tt-cell-add--empty {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 36px;
+  border: 1px dashed transparent;
+}
+
+.tt-cell-add--corner {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background-color: var(--md-surface-container-highest);
+  border: 1px solid var(--border-hairline);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.08);
+  z-index: 2;
+}
+
+.tt-grid-cell:hover .tt-cell-add,
+.tt-grid-cell:focus-within .tt-cell-add,
+.tt-cell-add:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tt-cell-add {
+    opacity: 1;
+  }
+}
+
+.tt-cell-add:hover,
+.tt-cell-add:focus-visible {
+  color: var(--md-primary);
+  background-color: var(--md-primary-container);
+  border-color: var(--md-primary);
 }
 </style>

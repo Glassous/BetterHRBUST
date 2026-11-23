@@ -1,4 +1,5 @@
 import { semesterOn, teachingWeekOn } from '../src/utils/schoolCalendar.js';
+import { normalizeCustomCourse, normalizeTimetableReschedule } from '../src/utils/timetableOverrides.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
@@ -24,6 +25,7 @@ const env={ref,reactive,computed,academicApi:api,Date,console,
  storageGetItem:key=>store.get(key)||null,storageSetItem:(key,value)=>store.set(key,String(value)),storageRemoveItem:key=>store.delete(key),
  saveCredential:(username,password)=>store.set('better_hrbust_saved_credential',JSON.stringify({username,password})),
  clearCredential:()=>store.delete('better_hrbust_saved_credential'),
+ normalizeCustomCourse,normalizeTimetableReschedule,
  registerDataCacheCleaner:fn=>cleaners.push(fn),clearRegisteredDataCaches:()=>cleaners.forEach(fn=>fn()),registerCourseColors:()=>{}};
 function load(file, additions={}) {
  const source=readFileSync(new URL('../src/composables/'+file,import.meta.url),'utf8').replace(/^import[\s\S]*?;\r?\n/gm,'').replace(/^export /gm,'');
@@ -37,8 +39,13 @@ await session.prepareLoginAccount(B);
 assert.equal(data.scores.value.length,0);assert.equal(session.userProfile.realName,'');
 assert.equal((await session.login({username:B,password:'test',captcha:'0000'})).success,true);
 await data.syncAll();
+data.upsertCustomCourse({courseName:'物理实验',week:5,day:2,timeMode:'custom',startTime:'14:00',endTime:'16:00'});
+assert.equal(data.timetableCustomCourses.value.length,1);
+await data.syncAll();
+assert.equal(data.timetableCustomCourses.value.length,1,'全量同步不得覆盖本地自定义实验课');
 assert.equal(session.userProfile.realName,'测试乙');assert.equal(data.scores.value[0].courseName,B+'课程');
 await session.prepareLoginAccount(A);
+assert.equal(data.timetableCustomCourses.value.length,0,'切换账号后应清理上一个账号的自定义课程');
 assert.equal((await session.login({username:A,password:'test',captcha:'0000'})).success,true);
 await data.syncAll();assert.equal(data.scores.value[0].courseName,A+'课程');
 hold={};const stale=data.syncAll();

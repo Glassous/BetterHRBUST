@@ -14,6 +14,10 @@ import { useSession } from '@/composables/useSession.js';
 import { registerDataCacheCleaner, clearRegisteredDataCaches } from '@/composables/dataCacheBridge.js';
 import { registerCourseColors } from '@/utils/courseColors.js';
 import { splitCourseCellFields } from '@/utils/courseCell.js';
+import {
+  normalizeCustomCourse,
+  normalizeTimetableReschedule
+} from '@/utils/timetableOverrides.js';
 import { storageGetItem, storageSetItem, storageRemoveItem } from '@/services/storage.js';
 
 const CACHE_KEYS = {
@@ -23,6 +27,8 @@ const CACHE_KEYS = {
   plan: 'better_hrbust_cache_program_plan',
   timetableCombine: 'better_hrbust_cache_timetable',
   timetableBase: 'better_hrbust_cache_timetable_base',
+  timetableReschedules: 'better_hrbust_cache_timetable_reschedules',
+  timetableCustomCourses: 'better_hrbust_cache_timetable_custom',
   exams: 'better_hrbust_cache_exams',
   notices: 'better_hrbust_cache_notices',
   noticeWeeks: 'better_hrbust_cache_notices_weeks',
@@ -87,6 +93,8 @@ const yearOptions = ref([]);
 const plan = ref({ groups: [] });
 const timetableCombine = ref({ cells: [], unarranged: [] });
 const timetableBase = ref({ cells: [], unarranged: [] });
+const timetableReschedules = ref([]);
+const timetableCustomCourses = ref([]);
 const exams = ref([]);
 const notices = ref([]);
 const currentCourses = ref([]);
@@ -106,6 +114,14 @@ function loadCache() {
   plan.value = readJson(CACHE_KEYS.plan, { groups: [] }) || { groups: [] };
   timetableCombine.value = normalizeTimetable(readJson(CACHE_KEYS.timetableCombine, { cells: [], unarranged: [] }));
   timetableBase.value = normalizeTimetable(readJson(CACHE_KEYS.timetableBase, { cells: [], unarranged: [] }));
+  const rawReschedules = readJson(CACHE_KEYS.timetableReschedules, []);
+  timetableReschedules.value = Array.isArray(rawReschedules)
+    ? rawReschedules.filter(Boolean).map(normalizeTimetableReschedule)
+    : [];
+  const rawCustomCourses = readJson(CACHE_KEYS.timetableCustomCourses, []);
+  timetableCustomCourses.value = Array.isArray(rawCustomCourses)
+    ? rawCustomCourses.filter(Boolean).map(normalizeCustomCourse)
+    : [];
   exams.value = readJson(CACHE_KEYS.exams, []);
   notices.value = sanitizeNotices(readJson(CACHE_KEYS.notices, []));
   currentCourses.value = readJson(CACHE_KEYS.currentCourses, []);
@@ -120,6 +136,7 @@ function loadCache() {
   // 为缓存中的全部课程注册色相槽位：保证每门课颜色唯一，且课表/概览等页面取色一致
   registerCourseColors(timetableCombine.value.cells);
   registerCourseColors(timetableBase.value.cells);
+  registerCourseColors(timetableCustomCourses.value);
 }
 
 loadCache();
@@ -393,6 +410,59 @@ async function loadNoticesForWeek(week) {
   }
 }
 
+function persistReschedules() {
+  writeJson(CACHE_KEYS.timetableReschedules, timetableReschedules.value);
+}
+
+function persistCustomCourses() {
+  writeJson(CACHE_KEYS.timetableCustomCourses, timetableCustomCourses.value);
+}
+
+/** 新增或更新一条单周临时调课记录 */
+function upsertTimetableReschedule(raw) {
+  const record = normalizeTimetableReschedule(raw);
+  const idx = timetableReschedules.value.findIndex(item => item.id === record.id);
+  if (idx >= 0) {
+    const next = [...timetableReschedules.value];
+    next[idx] = { ...record, createdAt: timetableReschedules.value[idx].createdAt || record.createdAt };
+    timetableReschedules.value = next;
+  } else {
+    timetableReschedules.value = [...timetableReschedules.value, record];
+  }
+  persistReschedules();
+  return record;
+}
+
+/** 还原（移除）一条单周临时调课记录 */
+function removeTimetableReschedule(id) {
+  if (!id) return;
+  timetableReschedules.value = timetableReschedules.value.filter(item => item.id !== id);
+  persistReschedules();
+}
+
+/** 新增或更新一条手动实验/自定义课程 */
+function upsertCustomCourse(raw) {
+  const record = normalizeCustomCourse(raw);
+  const idx = timetableCustomCourses.value.findIndex(item => item.id === record.id);
+  if (idx >= 0) {
+    const next = [...timetableCustomCourses.value];
+    next[idx] = { ...record, createdAt: timetableCustomCourses.value[idx].createdAt || record.createdAt };
+    timetableCustomCourses.value = next;
+  } else {
+    timetableCustomCourses.value = [...timetableCustomCourses.value, record];
+  }
+  registerCourseColors(timetableCustomCourses.value);
+  persistCustomCourses();
+  return record;
+}
+
+/** 删除一条手动实验/自定义课程 */
+function removeCustomCourse(id) {
+  if (!id) return;
+  timetableCustomCourses.value = timetableCustomCourses.value.filter(item => item.id !== id);
+  persistCustomCourses();
+}
+
 /** 清空全部本地数据缓存（退出登录 / 切换账号时调用） */
 function clearDataCache() {
   ++cacheGeneration;
@@ -409,6 +479,8 @@ function clearDataCache() {
   plan.value = { groups: [] };
   timetableCombine.value = { cells: [], unarranged: [] };
   timetableBase.value = { cells: [], unarranged: [] };
+  timetableReschedules.value = [];
+  timetableCustomCourses.value = [];
   exams.value = [];
   notices.value = [];
   currentCourses.value = [];
@@ -429,6 +501,8 @@ export function useAcademicData() {
     plan,
     timetableCombine,
     timetableBase,
+    timetableReschedules,
+    timetableCustomCourses,
     exams,
     notices,
     currentCourses,
@@ -443,6 +517,10 @@ export function useAcademicData() {
     ensureDailySync,
     refreshAll,
     loadNoticesForWeek,
+    upsertTimetableReschedule,
+    removeTimetableReschedule,
+    upsertCustomCourse,
+    removeCustomCourse,
     clearDataCache
   };
 }

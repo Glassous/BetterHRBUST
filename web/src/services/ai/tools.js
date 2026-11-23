@@ -14,6 +14,7 @@ import { useAcademicData } from '@/composables/useAcademicData.js';
 import { useSession } from '@/composables/useSession.js';
 import { buildAcademicStats, computeCreditsProgress, dedupeScores, isCountedCourse } from '@/services/academic/stats.js';
 import { isCourseActiveInWeek } from '@/utils/courseWeeks.js';
+import { buildEffectiveTimetableCells } from '@/utils/timetableOverrides.js';
 import { maskProfile } from './mask.js';
 
 /** 单次工具结果的记录上限（与 TUI 一致） */
@@ -103,11 +104,18 @@ function wrap(data, context, total) {
   };
 }
 
-/** 课表投影：按周过滤单元格，按天分组 */
+/** 课表投影：按周过滤单元格（含单周临时调课与手动实验课），按天分组 */
 function timetableData({ week, base }, context) {
   const source = base ? context.timetableBase : context.timetableCombine;
   const activeWeek = week || context.semester.week || 1;
-  const cells = (source?.cells || []).filter(cell => isCourseActiveInWeek(cell, activeWeek));
+  const merged = buildEffectiveTimetableCells({
+    rawCells: source?.cells || [],
+    week: activeWeek,
+    viewMode: base ? 'base' : 'combine',
+    reschedules: context.timetableReschedules || [],
+    customCourses: context.timetableCustomCourses || []
+  });
+  const cells = merged.filter(cell => !cell.isMovedOut && isCourseActiveInWeek(cell, activeWeek));
 
   const days = new Map();
   for (const cell of cells) {
@@ -120,7 +128,10 @@ function timetableData({ week, base }, context) {
       teacher: cell.teacher || '',
       room: cell.location || '',
       weeks: cell.weeks || '',
-      hoursType: cell.hoursType || ''
+      hoursType: cell.hoursType || '',
+      customTime: cell.customTimeText || undefined,
+      rescheduled: cell.isRescheduled || undefined,
+      category: cell.category || undefined
     });
   }
 
@@ -372,6 +383,8 @@ export function buildToolset(options = {}) {
       plan: data.plan.value,
       timetableCombine: data.timetableCombine.value,
       timetableBase: data.timetableBase.value,
+      timetableReschedules: data.timetableReschedules?.value || [],
+      timetableCustomCourses: data.timetableCustomCourses?.value || [],
       stats: buildAcademicStats(data.scores.value),
       semester: semesterInfo(session)
     };
