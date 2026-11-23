@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "capture": "node scripts/capture-web.mjs",
+    "export": "node scripts/export-png.mjs"
   },
   "dependencies": {
     "html-to-image": "^1.11.13",

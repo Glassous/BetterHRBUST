@@ -1,5 +1,5 @@
 import type { Component } from 'vue'
-import Release140Poster from './Release140Poster.vue'
+import Release160Poster from './Release160Poster.vue'
 import PlatformQaPoster from './PlatformQaPoster.vue'
 
 export interface PosterItem {
@@ -21,13 +21,13 @@ export interface PosterItem {
 // 只有一张海报时不会显示切换按钮。
 export const posters: PosterItem[] = [
   {
-    id: 'release-1.4.0',
-    name: '版本更新 · 上课提示 & 命令行',
-    meta: 'v1.3.0 → v1.4.0',
+    id: 'release-1.6.0',
+    name: '版本更新 · 调课 & 超级岛',
+    meta: 'v1.5.0 → v1.6.0',
     width: 1200,
     height: 1600,
-    fileName: 'BetterHRBUST-v1.4.0-上课提示与命令行.png',
-    component: Release140Poster
+    fileName: 'BetterHRBUST-v1.6.0-调课与超级岛.png',
+    component: Release160Poster
   },
   {
     id: 'qa-platforms',

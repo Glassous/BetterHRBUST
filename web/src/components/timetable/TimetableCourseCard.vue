@@ -52,7 +52,7 @@
       :tabindex="expanded ? undefined : 0"
       :aria-modal="expanded ? 'true' : null"
       :aria-label="expanded ? `${course.courseName} 课程详情` : cardAriaLabel"
-      @click="onCardClick"
+      @click.stop="onCardClick"
       @dragstart="onDragStart"
       @dragend="onDragEnd"
       @keydown.enter.prevent="!expanded && onCardClick()"

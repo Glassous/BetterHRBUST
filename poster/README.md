@@ -16,6 +16,8 @@ npm install
 npm run dev      # http://localhost:5175
 npm run build    # 类型检查 + 产出 dist/（相对路径，可离线打开）
 npm run preview  # 预览构建产物
+npm run capture  # 模拟数据 + 无头浏览器生成桌面端课表截图（写入 public/）
+npm run export   # 无头浏览器点「下载 PNG」，2 倍图落到 out/
 ```
 
 页面上点「下载 PNG」即可拿到 2400 × 3200 的图片。
@@ -26,16 +28,27 @@ npm run preview  # 预览构建产物
 poster/
 ├─ public/
 │  ├─ BetterHRBUST.png             # 图标（复制自 landing/public）
-│  ├─ island-expanded.jpg          # 上课提示 · 灵动岛展开态截图
-│  ├─ island-capsule.jpg           # 上课提示 · 灵动岛折叠态截图
-│  └─ cli-exams.png                # 命令行模式 · BetterHRBUSTCLI 终端截图
+│  ├─ web-reschedule-mode.png      # 桌面端课表 · 调课模式（capture 生成）
+│  ├─ web-reschedule-dialog.png    # 单周临时调课确认弹窗（capture 生成）
+│  ├─ web-timetable.png            # 桌面端整周课表（capture 生成）
+│  ├─ island-countdown.jpg         # Android 超级岛折叠态截图
+│  └─ *.jpg / cli-exams.png        # 历史版本素材（当前海报未引用）
+├─ scripts/
+│  ├─ capture-web.mjs              # 模拟教务数据 + Playwright 截图
+│  └─ export-png.mjs               # 无头浏览器导出 2 倍图
 └─ src/
    ├─ App.vue                      # 工具条 + 预览缩放 + 导出逻辑
    ├─ posters/registry.ts          # 海报清单
-   ├─ posters/Release140Poster.vue # v1.3.0 → v1.4.0 海报（内容硬编码）
+   ├─ posters/Release160Poster.vue # v1.5.0 → v1.6.0 海报（内容硬编码）
    ├─ posters/PlatformQaPoster.vue # 平台答疑海报（MacOS / iOS / 鸿蒙 / 网页版）
    └─ assets/                      # Android 图标与下载二维码
 ```
+
+## 截图脚本说明
+
+`npm run capture` 会用一份写死的模拟教务数据（第 13 周、含调课与自定义课程）拉起 `web` 的 Vite dev server，
+再用 `web/node_modules` 里的 `playwright-core` 截图。默认使用本机已安装的 Chromium / Chrome / Edge，
+可用 `CAPTURE_BROWSER_PATH` 指定；端口与画幅可用 `CAPTURE_PORT` / `CAPTURE_WIDTH` / `CAPTURE_HEIGHT` 覆盖。
 
 ## 新增一张海报
 

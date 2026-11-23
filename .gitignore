@@ -78,6 +78,9 @@ pnpm-debug.log*
 # 油猴脚本构建产物
 web/dist-userscript/
 
+# 海报导出产物
+poster/out/
+
 # ---------- Android 构建与本地配置 ----------
 .gradle/
 **/build/
