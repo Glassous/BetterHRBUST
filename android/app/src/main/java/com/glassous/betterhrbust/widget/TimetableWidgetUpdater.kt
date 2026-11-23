@@ -44,13 +44,14 @@ object TimetableWidgetUpdater {
         }
     }
 
-    /** 刷新三个小部件（挂起直至完成）。 */
+    /** 刷新全部桌面小部件（Glance 周/日小部件 + 双日课表）。 */
     suspend fun refreshAll(context: Context = BetterHrbustApp.instance) {
         val app = context.applicationContext
         withContext(Dispatchers.Default) {
             runCatching { TimetableWeekWidget().updateAll(app) }
             runCatching { TimetableDayNarrowWidget().updateAll(app) }
             runCatching { TimetableDayWideWidget().updateAll(app) }
+            runCatching { TimetableWidgetProvider.refreshAll(app) }
         }
     }
 }

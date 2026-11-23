@@ -4,9 +4,12 @@ import android.content.Context
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.datastore.AppPreferences
 import com.glassous.betterhrbust.core.model.PersonalInfo
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
 import com.glassous.betterhrbust.core.model.TimetableResult
 import com.glassous.betterhrbust.core.parser.AcademicParsers
 import com.glassous.betterhrbust.core.ui.theme.CourseColorPalette
+import com.glassous.betterhrbust.core.util.TimetableOverrides
+import com.glassous.betterhrbust.feature.timetable.SectionMode
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -27,10 +30,14 @@ object WidgetDataSource {
         val verified=profile?.let { runCatching { json.decodeFromString<PersonalInfo>(it.json).studentNumber==prefs.username }.getOrDefault(false) }==true
         val entity=if(verified)app.database.timetableDao().getTimetable(prefs.studentId).first() else null
         val table=entity?.let { runCatching { AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(it.json)) }.getOrNull() }
-        table?.let { CourseColorPalette.register(it.cells.map { cell->CourseColorPalette.keyOf(cell.courseName,cell.courseSeq,cell.courseId,cell.id) }) }
+        val overrideEntity=if(verified)app.database.timetableOverrideDao().getOverrides(prefs.studentId).first() else null
+        val overrides=overrideEntity?.let { runCatching { json.decodeFromString<TimetableOverridesPayload>(it.json) }.getOrNull() } ?: TimetableOverridesPayload()
         val nextWeek=prefs.teachingWeekOn(date.plusDays(1))
-        val today=if(week!=null && table!=null)TimetableWidgetModel.dayCourses(table.cells,week,date,time) else emptyList()
-        val tomorrow=if(nextWeek!=null && table!=null)TimetableWidgetModel.dayCourses(table.cells,nextWeek,date.plusDays(1)) else emptyList()
+        val todayCells=if(week!=null && table!=null) TimetableOverrides.buildEffectiveTimetableCells(table.cells, week, SectionMode.COMBINE, overrides) else emptyList()
+        val tomorrowCells=if(nextWeek!=null && table!=null) TimetableOverrides.buildEffectiveTimetableCells(table.cells, nextWeek, SectionMode.COMBINE, overrides) else emptyList()
+        CourseColorPalette.register((table?.cells.orEmpty() + todayCells + tomorrowCells).map { cell->CourseColorPalette.keyOf(cell.courseName,cell.courseSeq,cell.courseId,cell.id) })
+        val today=if(week!=null && table!=null)TimetableWidgetModel.dayCourses(todayCells,week,date,time) else emptyList()
+        val tomorrow=if(nextWeek!=null && table!=null)TimetableWidgetModel.dayCourses(tomorrowCells,nextWeek,date.plusDays(1)) else emptyList()
         val current=app.preferencesManager.preferencesFlow.first()
         if(current.username!=prefs.username || current.studentId!=prefs.studentId || current.lastLoginAt!=prefs.lastLoginAt)return null
         val message=when {

@@ -415,6 +415,26 @@ internal fun GridCourseBlock(
                 style = widgetText(cell.colors.accentColor(), if (detailed) 8 else 7, FontWeight.Medium),
                 maxLines = 1
             )
+        } else {
+            val tagText = buildString {
+                when {
+                    cell.course.customCategory == "lab" -> append("实验")
+                    cell.course.isCustomCourse -> append("自定")
+                    cell.course.isRescheduled -> append("调课")
+                }
+                if (cell.course.customTimeText.isNotEmpty()) {
+                    val compactTime = cell.course.customTimeText.replace(" ", "")
+                    if (isNotEmpty()) append(" · ")
+                    append(compactTime)
+                }
+            }
+            if (tagText.isNotEmpty()) {
+                Text(
+                    text = tagText,
+                    style = widgetText(cell.colors.accentColor(), if (detailed) 8 else 7, FontWeight.Medium),
+                    maxLines = 1
+                )
+            }
         }
     }
 }

@@ -138,10 +138,32 @@ fun DashboardScreen(
     val todayDayOfWeek = remember(today) { today.dayOfWeek.value } // 1=Monday .. 7=Sunday
     val currentWeek = prefs?.currentTeachingWeek ?: 1
 
-    val todayCourses = remember(timetable, todayDayOfWeek, currentWeek, clock) {
-        timetable?.cells?.filter { cell ->
-            prefs?.teachingWeekOn(today) != null && cell.day == todayDayOfWeek && AcademicParsers.isCourseActiveInWeek(cell.weeks, currentWeek) && !com.glassous.betterhrbust.core.util.CourseSchedule.hasEnded(cell.sectionIndex, clock.toLocalTime())
-        }?.sortedBy { it.sectionIndex } ?: emptyList()
+    val studentId = prefs?.studentId.orEmpty()
+    val timetableOverrides by remember(studentId) {
+        academicRepo.observeTimetableOverrides(studentId)
+    }.collectAsState(initial = TimetableOverridesPayload())
+
+    val todayCourses = remember(timetable, timetableOverrides, todayDayOfWeek, currentWeek, clock) {
+        if (prefs?.teachingWeekOn(today) == null) emptyList()
+        else {
+            val effective = com.glassous.betterhrbust.core.util.TimetableOverrides.buildEffectiveTimetableCells(
+                rawCells = timetable?.cells.orEmpty(),
+                week = currentWeek,
+                sectionMode = com.glassous.betterhrbust.feature.timetable.SectionMode.COMBINE,
+                overrides = timetableOverrides
+            )
+            effective
+                .filter { cell ->
+                    !cell.isMovedOut &&
+                        cell.day == todayDayOfWeek &&
+                        AcademicParsers.isCourseActiveInWeek(cell.weeks, currentWeek) &&
+                        !com.glassous.betterhrbust.core.util.CourseSchedule.hasEnded(cell, clock.toLocalTime())
+                }
+                .sortedBy { cell ->
+                    com.glassous.betterhrbust.core.util.TimetableOverrides.effectiveTimeRangeOf(cell)?.first
+                        ?: java.time.LocalTime.of(cell.sectionIndex.coerceIn(1, 23), 0)
+                }
+        }
     }
 
     // 记忆键含 today：驻留跨天后倒计时按新日期重算，而非沿用进入页面当天的旧值
@@ -426,14 +448,49 @@ fun DashboardScreen(
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = course.courseName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = course.courseName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (course.isCustomCourse) {
+                                        Surface(
+                                            shape = AppShapes.Pill,
+                                            color = MaterialTheme.colorScheme.tertiaryContainer
+                                        ) {
+                                            Text(
+                                                text = if (course.customCategory == "lab") "实验" else "自定",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (course.isRescheduled) {
+                                        Surface(
+                                            shape = AppShapes.Pill,
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = "调课",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "${course.location} • ${course.teacher}",
+                                    text = buildString {
+                                        append(course.location.ifBlank { "待定" })
+                                        if (course.teacher.isNotBlank()) append(" • ${course.teacher}")
+                                        if (course.customTimeText.isNotBlank()) append(" • ${course.customTimeText}")
+                                    },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -443,7 +500,7 @@ fun DashboardScreen(
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
-                                    text = course.sectionLabel,
+                                    text = course.customTimeText.ifBlank { course.sectionLabel },
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)

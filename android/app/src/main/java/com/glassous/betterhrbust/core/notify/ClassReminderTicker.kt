@@ -8,8 +8,10 @@ import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.database.TimetableEntity
+import com.glassous.betterhrbust.core.database.TimetableOverrideEntity
 import com.glassous.betterhrbust.core.datastore.AppPreferences
 import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
 import com.glassous.betterhrbust.core.model.TimetableResult
 import com.glassous.betterhrbust.core.parser.AcademicParsers
 import kotlinx.coroutines.CancellationException
@@ -191,12 +193,13 @@ object ClassReminderTicker {
 
     private suspend fun loadSnapshotFromStorage(app: BetterHrbustApp): Snapshot {
         val prefs = app.preferencesManager.preferencesFlow.first()
-        val cells = if (!prefs.classIslandReminder || prefs.studentId.isBlank()) {
-            emptyList()
+        val (cells, overrides) = if (!prefs.classIslandReminder || prefs.studentId.isBlank()) {
+            emptyList<TimetableCell>() to TimetableOverridesPayload()
         } else {
-            decode(app.database.timetableDao().getTimetable(prefs.studentId).firstOrNull())
+            decode(app.database.timetableDao().getTimetable(prefs.studentId).firstOrNull()) to
+                decodeOverrides(app.database.timetableOverrideDao().getOverrides(prefs.studentId).firstOrNull())
         }
-        return Snapshot(prefs = prefs, cells = cells, mock = mockCourse.value)
+        return Snapshot(prefs = prefs, cells = cells, overrides = overrides, mock = mockCourse.value)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -213,8 +216,11 @@ object ClassReminderTicker {
                 if (!prefs.classIslandReminder || prefs.studentId.isBlank()) {
                     flowOf(Snapshot(prefs, emptyList()))
                 } else {
-                    app.database.timetableDao().getTimetable(prefs.studentId).map { entity ->
-                        Snapshot(prefs, decode(entity))
+                    combine(
+                        app.database.timetableDao().getTimetable(prefs.studentId),
+                        app.database.timetableOverrideDao().getOverrides(prefs.studentId)
+                    ) { entity, overrideEntity ->
+                        Snapshot(prefs, decode(entity), decodeOverrides(overrideEntity))
                     }
                 }
             }
@@ -224,6 +230,13 @@ object ClassReminderTicker {
         return runCatching {
             AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(raw)).cells
         }.getOrDefault(emptyList())
+    }
+
+    private fun decodeOverrides(entity: TimetableOverrideEntity?): TimetableOverridesPayload {
+        val raw = entity?.json ?: return TimetableOverridesPayload()
+        return runCatching {
+            json.decodeFromString<TimetableOverridesPayload>(raw)
+        }.getOrDefault(TimetableOverridesPayload())
     }
 
     private suspend fun evaluateLocked(
@@ -259,11 +272,12 @@ object ClassReminderTicker {
         val date = now.toLocalDate()
         val time = now.toLocalTime()
         val week = prefs.teachingWeekOn(date)
-        val upcoming = UpcomingClassResolver.resolve(snapshot.cells, date, week, time)
+        val upcoming = UpcomingClassResolver.resolve(snapshot.cells, date, week, time, overrides = snapshot.overrides)
         val nextWakeup = UpcomingClassResolver.nextReminderWakeup(
             cells = snapshot.cells,
             now = now,
-            weekForDate = prefs::teachingWeekOn
+            weekForDate = prefs::teachingWeekOn,
+            overrides = snapshot.overrides
         )
         ClassReminderScheduler.schedule(app, nextWakeup, force = forceReschedule)
 
@@ -282,7 +296,7 @@ object ClassReminderTicker {
         logTier: Boolean
     ) {
         val minutes = upcoming.minutesUntil(now).coerceAtLeast(1)
-        val courseKey = "${upcoming.courseName}|${upcoming.start}"
+        val courseKey = "${upcoming.courseName}|${upcoming.start}|${upcoming.location}|${upcoming.teacher}|${upcoming.sectionLabel}"
         val isFirstForCourse = lastCourseKey != courseKey
 
         if (!isFirstForCourse && lastMinutes == minutes) {
@@ -347,6 +361,7 @@ object ClassReminderTicker {
     private data class Snapshot(
         val prefs: AppPreferences,
         val cells: List<TimetableCell>,
+        val overrides: TimetableOverridesPayload = TimetableOverridesPayload(),
         /** 调试用模拟课（非空时代替真实课表） */
         val mock: UpcomingClass? = null
     )

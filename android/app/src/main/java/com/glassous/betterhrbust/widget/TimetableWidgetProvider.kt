@@ -160,7 +160,7 @@ class TimetableWidgetProvider : AppWidgetProvider() {
             val row=RemoteViews(context.packageName,if(compact) R.layout.widget_course_compact else R.layout.widget_course)
             row.setTextViewText(R.id.widget_course_name,course.name)
             row.setTextViewText(R.id.widget_course_location,course.location)
-            row.setTextViewText(R.id.widget_course_detail,course.time)
+            row.setTextViewText(R.id.widget_course_detail, if (course.tag.isNotEmpty()) "${course.time} · ${course.tag}" else course.time)
             val light=com.glassous.betterhrbust.core.ui.theme.CourseColorPalette.cardColors(course.colorKey,false)
             val dark=com.glassous.betterhrbust.core.ui.theme.CourseColorPalette.cardColors(course.colorKey,true)
             val lightBg=light.container.toArgb();val darkBg=dark.container.toArgb()

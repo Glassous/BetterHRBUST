@@ -95,7 +95,74 @@ data class TimetableCell(
     val hoursType: String,
     /** 学分：课表页不提供，联网同步时用本学期课程列表（currcourse.jsdo）补齐；旧缓存为 null */
     val credit: Double? = null,
-    val rawLines: List<String> = emptyList()
+    val rawLines: List<String> = emptyList(),
+    // 运行时合并扩展字段（不修改原始教务缓存）
+    val isCustomCourse: Boolean = false,
+    val customCategory: String = "", // "lab" | "custom"
+    val customTimeText: String = "",
+    val customStartTime: String = "",
+    val customEndTime: String = "",
+    val note: String = "",
+    val isRescheduled: Boolean = false,
+    val rescheduleId: String = "",
+    val originSummary: String = "",
+    val isMovedOut: Boolean = false,
+    val movedToLabel: String = ""
+)
+
+@Serializable
+data class CustomCourseEntry(
+    val id: String,
+    val category: String = "lab", // "lab" | "custom"
+    val courseName: String,
+    val location: String = "",
+    val teacher: String = "",
+    val week: Int = 1,
+    val day: Int = 1,
+    val timeMode: String = "slot", // "slot" | "custom"
+    val slotType: String = "combine", // "combine" | "base"
+    val slotPeriod: Int = 1,
+    val slotSpan: Int = 1,
+    val startTime: String = "",
+    val endTime: String = "",
+    val note: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+)
+
+@Serializable
+data class RescheduleSourceMatch(
+    val cellId: String = "",
+    val courseId: String = "",
+    val courseName: String = "",
+    val courseSeq: String = "",
+    val originDay: Int = 1,
+    val originCombineSection: Int = 1,
+    val originBaseSections: List<Int> = listOf(1, 2),
+    val originLocation: String = "",
+    val originTeacher: String = ""
+)
+
+@Serializable
+data class TimetableRescheduleEntry(
+    val id: String,
+    val week: Int = 1,
+    val sourceMatch: RescheduleSourceMatch,
+    val targetDay: Int = 1,
+    val targetSectionMode: String = "combine", // "combine" | "base"
+    val targetCombineSection: Int = 1,
+    val targetBaseSection: Int = 1,
+    val location: String = "",
+    val teacher: String = "",
+    val note: String = "",
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+)
+
+@Serializable
+data class TimetableOverridesPayload(
+    val reschedules: List<TimetableRescheduleEntry> = emptyList(),
+    val customCourses: List<CustomCourseEntry> = emptyList()
 )
 
 @Serializable

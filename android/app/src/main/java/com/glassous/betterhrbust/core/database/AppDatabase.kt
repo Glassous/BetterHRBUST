@@ -15,9 +15,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProfileEntity::class,
         NoticeEntity::class,
         CurriculumPlanEntity::class,
-        CurrentCoursesEntity::class
+        CurrentCoursesEntity::class,
+        TimetableOverrideEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun noticeDao(): NoticeDao
     abstract fun curriculumDao(): CurriculumDao
     abstract fun currentCoursesDao(): CurrentCoursesDao
+    abstract fun timetableOverrideDao(): TimetableOverrideDao
 
     companion object {
         @Volatile
@@ -41,13 +43,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `timetable_overrides` (`studentId` TEXT NOT NULL, `json` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`studentId`))"
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "better_hrbust.db"
-                ).addMigrations(MIGRATION_1_2)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance

@@ -199,6 +199,7 @@ class AuthRepository(
 
             database.withTransaction {
                 database.timetableDao().clear(studentContext.studentId)
+                database.timetableOverrideDao().clear(studentContext.studentId)
                 database.scoreDao().clear(studentContext.studentId)
                 database.examDao().clear(studentContext.studentId)
                 database.curriculumDao().clear(studentContext.studentId)
@@ -258,6 +259,7 @@ class AuthRepository(
         try {
             if (studentId.isNotEmpty()) {
                 database.timetableDao().clear(studentId)
+                database.timetableOverrideDao().clear(studentId)
                 database.scoreDao().clear(studentId)
                 database.examDao().clear(studentId)
                 database.curriculumDao().clear(studentId)

@@ -267,7 +267,10 @@ private fun DaySlotRow(
                                 blockHeight = blockHeight,
                                 detailed = detailed,
                                 stacked = shown.size > 1,
-                                reserveTagLine = !cell.activeInWeek
+                                reserveTagLine = !cell.activeInWeek ||
+                                    cell.course.isCustomCourse ||
+                                    cell.course.isRescheduled ||
+                                    cell.course.customTimeText.isNotEmpty()
                             ),
                             detailed = detailed,
                             modifier = GlanceModifier.fillMaxWidth().height(blockHeight)

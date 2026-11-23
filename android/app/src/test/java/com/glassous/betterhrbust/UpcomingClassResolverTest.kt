@@ -1,6 +1,10 @@
 package com.glassous.betterhrbust
 
+import com.glassous.betterhrbust.core.model.CustomCourseEntry
+import com.glassous.betterhrbust.core.model.RescheduleSourceMatch
 import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
+import com.glassous.betterhrbust.core.model.TimetableRescheduleEntry
 import com.glassous.betterhrbust.core.notify.UpcomingClassResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -162,5 +166,86 @@ class UpcomingClassResolverTest {
                 weekForDate = { week }
             )
         )
+    }
+
+    @Test
+    fun `单周调课会抑制原时段提醒并按新时段与自定义教室触发`() {
+        val original = cell(section = 1, weeks = "1-20", name = "高等数学", location = "教1-302")
+        val overrides = TimetableOverridesPayload(
+            reschedules = listOf(
+                TimetableRescheduleEntry(
+                    id = "res-notify-1",
+                    week = week,
+                    sourceMatch = RescheduleSourceMatch(
+                        courseName = "高等数学",
+                        originDay = today,
+                        originCombineSection = 1,
+                        originLocation = "教1-302",
+                        originTeacher = "张老师"
+                    ),
+                    targetDay = today,
+                    targetSectionMode = "combine",
+                    targetCombineSection = 3,
+                    location = "创新楼B405"
+                )
+            )
+        )
+
+        // 原第 1 大节（08:10）已调走，07:55 不应再提醒
+        assertNull(UpcomingClassResolver.resolve(listOf(original), date, week, at(7, 55), overrides = overrides))
+
+        // 新第 3 大节（13:30）前 20 分钟（13:15）触发提醒，且教室为自定义目标教室
+        val moved = UpcomingClassResolver.resolve(listOf(original), date, week, at(13, 15), overrides = overrides)
+        assertNotNull(moved)
+        assertEquals("高等数学", moved!!.courseName)
+        assertEquals("创新楼B405", moved.location)
+        assertEquals(LocalDateTime.of(date, at(13, 30)), moved.start)
+
+        // 07:00 时下一次后台唤醒跳过已调走的第 1 大节，直接指向新第 3 大节前 20 分钟（13:10）
+        val wakeup = UpcomingClassResolver.nextReminderWakeup(
+            cells = listOf(original),
+            now = LocalDateTime.of(date, at(7, 0)),
+            overrides = overrides,
+            weekForDate = { week }
+        )
+        assertEquals(LocalDateTime.of(date, at(13, 10)), wakeup)
+    }
+
+    @Test
+    fun `手动实验课支持自定义精确起止时间并参与提醒与唤醒调度`() {
+        val overrides = TimetableOverridesPayload(
+            customCourses = listOf(
+                CustomCourseEntry(
+                    id = "lab-notify-1",
+                    category = "lab",
+                    courseName = "大学物理实验",
+                    location = "实验楼A302",
+                    teacher = "李老师",
+                    week = week,
+                    day = today,
+                    timeMode = "custom",
+                    startTime = "14:15",
+                    endTime = "16:45"
+                )
+            )
+        )
+
+        // 13:54 超过 20 分钟不触发；13:55 恰好 20 分钟触发
+        assertNull(UpcomingClassResolver.resolve(emptyList(), date, week, at(13, 54), overrides = overrides))
+        val lab = UpcomingClassResolver.resolve(emptyList(), date, week, at(13, 55), overrides = overrides)
+        assertNotNull(lab)
+        assertEquals("大学物理实验", lab!!.courseName)
+        assertEquals("实验楼A302", lab.location)
+        assertEquals(LocalDateTime.of(date, at(14, 15)), lab.start)
+        assertEquals(LocalDateTime.of(date, at(16, 45)), lab.end)
+
+        // 即使原始教务课表为空，自定义实验课仍注册精确唤醒闹钟（13:55）
+        val wakeup = UpcomingClassResolver.nextReminderWakeup(
+            cells = emptyList(),
+            now = LocalDateTime.of(date, at(12, 0)),
+            overrides = overrides,
+            weekForDate = { week }
+        )
+        assertEquals(LocalDateTime.of(date, at(13, 55)), wakeup)
     }
 }

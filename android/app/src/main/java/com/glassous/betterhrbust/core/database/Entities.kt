@@ -53,3 +53,10 @@ data class CurrentCoursesEntity(
     val json: String,
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "timetable_overrides")
+data class TimetableOverrideEntity(
+    @PrimaryKey val studentId: String,
+    val json: String,
+    val updatedAt: Long = System.currentTimeMillis()
+)

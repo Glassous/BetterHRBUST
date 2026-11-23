@@ -3,11 +3,14 @@ package com.glassous.betterhrbust.widget
 import androidx.compose.ui.graphics.Color
 import com.glassous.betterhrbust.BetterHrbustApp
 import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
 import com.glassous.betterhrbust.core.model.TimetableResult
 import com.glassous.betterhrbust.core.parser.AcademicParsers
 import com.glassous.betterhrbust.core.ui.theme.CourseColorPalette
+import com.glassous.betterhrbust.core.util.TimetableOverrides
 import com.glassous.betterhrbust.feature.timetable.CombineSlots
 import com.glassous.betterhrbust.feature.timetable.MaxTeachingWeek
+import com.glassous.betterhrbust.feature.timetable.SectionMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
@@ -153,27 +156,38 @@ internal object TimetableWidgetLoader {
             app.database.timetableDao().getTimetable(prefs.studentId).firstOrNull()?.json
                 ?.let { AcademicParsers.normalizeTimetableCells(json.decodeFromString<TimetableResult>(it)) }
         }.getOrNull() ?: TimetableResult()
+        val overrides = runCatching {
+            app.database.timetableOverrideDao().getOverrides(prefs.studentId).firstOrNull()?.json
+                ?.let { json.decodeFromString<TimetableOverridesPayload>(it) }
+        }.getOrNull() ?: TimetableOverridesPayload()
 
         val week = (snapshot.week ?: return TimetableWidgetData.empty(todayDay)).coerceIn(1, prefs.semesterTeachingWeeks)
+        val mergedCells = TimetableOverrides.buildEffectiveTimetableCells(
+            rawCells = timetable.cells,
+            week = week,
+            sectionMode = SectionMode.COMBINE,
+            overrides = overrides
+        ).filterNot { it.isMovedOut }
+
         // CourseColorPalette 约定仅主线程访问（与 App 内取色共用同一张槽位表），故在 Main 上取色
-        val styles = withContext(Dispatchers.Main) { resolveStyles(timetable.cells, week) }
+        val styles = withContext(Dispatchers.Main) { resolveStyles(mergedCells, week) }
 
         val current = app.preferencesManager.preferencesFlow.firstOrNull()
         if (current?.username != prefs.username || current.studentId != prefs.studentId || current.lastLoginAt != prefs.lastLoginAt)
             return TimetableWidgetData.empty(todayDay)
-        val todayRows = buildTodayRows(timetable.cells, styles, todayDay)
+        val todayRows = buildTodayRows(mergedCells, styles, todayDay)
         val now = snapshot.time
         val todayCells = todayRows.flatMap { it.cells }.filter { it.activeInWeek }
         return TimetableWidgetData(
             hasSession = true,
-            hasTimetable = timetable.cells.isNotEmpty() || timetable.unarranged.isNotEmpty(),
+            hasTimetable = timetable.cells.isNotEmpty() || timetable.unarranged.isNotEmpty() || overrides.customCourses.isNotEmpty(),
             currentWeek = week,
             todayDay = todayDay,
-            weekRows = buildWeekRows(timetable.cells, styles),
+            weekRows = buildWeekRows(mergedCells, styles),
             todayDate = snapshot.date,
             todayRows = todayRows,
             updatedAt = now,
-            todayDone = todayCells.count { cell -> finishedBy(cell.course.sectionIndex, now) },
+            todayDone = todayCells.count { cell -> finishedBy(cell.course, now) },
             todayTotal = todayCells.size
         )
     }
@@ -247,10 +261,12 @@ internal object TimetableWidgetLoader {
     }
 }
 
-/** 该大节的课是否已经下课（页脚「今天已上 x/y 节」用）。 */
-private fun finishedBy(section: Int, now: LocalTime): Boolean {
-    val slot = CombineSlots.getOrNull(section - 1) ?: return false
-    return !now.isBefore(LocalTime.parse(slot.end))
+/** 该课次是否已经下课（优先采用自定义时间，供页脚「今天已上 x/y 节」使用）。 */
+private fun finishedBy(cell: TimetableCell, now: LocalTime): Boolean {
+    val end = TimetableOverrides.effectiveTimeRangeOf(cell)?.second
+        ?: CombineSlots.getOrNull(cell.sectionIndex - 1)?.let { LocalTime.parse(it.end) }
+        ?: return false
+    return !now.isBefore(end)
 }
 
 /** 课程配色主键（与 App 内课表色块 / 详情卡片同一口径）。 */

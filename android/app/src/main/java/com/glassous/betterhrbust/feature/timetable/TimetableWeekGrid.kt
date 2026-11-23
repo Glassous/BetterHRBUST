@@ -7,35 +7,54 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.glassous.betterhrbust.core.model.TimetableCell
 import com.glassous.betterhrbust.core.parser.AcademicParsers
+import com.glassous.betterhrbust.core.ui.theme.AppShapes
 import com.glassous.betterhrbust.core.ui.theme.CourseColorPalette
 import java.time.LocalDate
+import kotlin.math.roundToInt
 
 /** 时间列宽度：仅展示节次序号与起止时间，保持窄而清爽，把宽度让给课程块。 */
 private val TimeColumnWidth = 38.dp
@@ -146,6 +165,13 @@ internal fun TimetableGrid(
     selectedDetail: TimetableCell?,
     sharedTransitionScope: SharedTransitionScope,
     onCourseClick: (TimetableCell) -> Unit,
+    rescheduleMode: Boolean = false,
+    rescheduleSource: TimetableCell? = null,
+    isValidRescheduleTarget: (Int, Int) -> Boolean = { _, _ -> false },
+    onQuickAdd: (day: Int, period: Int) -> Unit = { _, _ -> },
+    onRescheduleCellTap: (day: Int, period: Int) -> Unit = { _, _ -> },
+    onRescheduleDragDrop: (source: TimetableCell, targetDay: Int, targetPeriod: Int) -> Unit = { _, _, _ -> },
+    onMovedOutClick: (TimetableCell) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val rows = rememberGridRows(
@@ -157,6 +183,26 @@ internal fun TimetableGrid(
         cells.groupBy { it.day }.mapValues { (_, dayCells) -> dayCells.groupBy { it.sectionIndex } }
     }
     val todayDay = remember { LocalDate.now().dayOfWeek.value }
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+
+    var gridCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var draggedCell by remember { mutableStateOf<TimetableCell?>(null) }
+    var dragFingerInGrid by remember { mutableStateOf<Offset?>(null) }
+    var dragCardTopLeft by remember { mutableStateOf(Offset.Zero) }
+    var dragGrabOffset by remember { mutableStateOf(Offset.Zero) }
+    var dragBlockHeight by remember { mutableStateOf(80.dp) }
+    var dragHoverTarget by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var armedQuickAddCell by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+
+    LaunchedEffect(armedQuickAddCell, rescheduleMode) {
+        if (rescheduleMode) {
+            armedQuickAddCell = null
+        } else if (armedQuickAddCell != null) {
+            kotlinx.coroutines.delay(3000L)
+            armedQuickAddCell = null
+        }
+    }
 
     val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     val bandColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.025f)
@@ -167,6 +213,24 @@ internal fun TimetableGrid(
     BoxWithConstraints(modifier = modifier) {
         // 除时间列外的宽度按日列等分：手机窄屏同样铺满屏宽，不做横向滚动
         val dayColumnWidth = (maxWidth - TimeColumnWidth) / days.size.coerceAtLeast(1)
+        val dayWidthPx = with(density) { dayColumnWidth.toPx() }
+        val rowBoundsPx = remember(rows, density) {
+            with(density) {
+                rows.slots.indices.map { i ->
+                    val top = rows.tops[i].toPx()
+                    top to (top + rows.heights[i].toPx())
+                }
+            }
+        }
+
+        fun hitTestTarget(posInGrid: Offset): Pair<Int, Int>? {
+            if (posInGrid.x < 0f || posInGrid.y < 0f || dayWidthPx <= 0f) return null
+            val colIdx = (posInGrid.x / dayWidthPx).toInt()
+            if (colIdx !in days.indices) return null
+            val rowIdx = rowBoundsPx.indexOfFirst { (top, bottom) -> posInGrid.y in top..bottom }
+            if (rowIdx < 0) return null
+            return days[colIdx] to rows.slots[rowIdx].period
+        }
 
         Column(modifier = Modifier.fillMaxWidth()) {
             // 表头：星期（今天列浅色底 + 圆点）
@@ -252,7 +316,9 @@ internal fun TimetableGrid(
 
                 // 日列区：网格线、斑马纹与今天列底色统一由一次 drawBehind 绘制
                 Box(
-                    modifier = Modifier.drawBehind {
+                    modifier = Modifier
+                        .onGloballyPositioned { gridCoordinates = it }
+                        .drawBehind {
                         val dayWidth = dayColumnWidth.toPx()
                         val todayIndex = days.indexOf(todayDay)
                         if (highlightToday && todayIndex >= 0) {
@@ -300,6 +366,114 @@ internal fun TimetableGrid(
                                     .width(dayColumnWidth)
                                     .height(rows.totalHeight)
                             ) {
+                                // 底层网格槽位：正常模式下空白槽可点击「+」快捷加课；调课模式或拖拽中高亮目标槽
+                                rows.slots.forEachIndexed { rowIdx, slot ->
+                                    val rowTop = rows.tops[rowIdx]
+                                    val rowHeight = rows.heights[rowIdx]
+                                    val slotSection = if (sectionMode == SectionMode.BASE) {
+                                        sectionOfBasePeriod(slot.period)
+                                    } else {
+                                        slot.period
+                                    }
+                                    val slotHasCourses = cellsByDaySection[day]?.get(slotSection)?.isNotEmpty() == true
+                                    val isDragHover = dragHoverTarget?.first == day && dragHoverTarget?.second == slot.period
+                                    val isTapTargetActive = rescheduleMode && rescheduleSource != null
+                                    val slotValidForDrag = draggedCell?.let { src ->
+                                        val match = com.glassous.betterhrbust.core.util.TimetableOverrides.buildRescheduleSourceMatch(src)
+                                        com.glassous.betterhrbust.core.util.TimetableOverrides.isDifferentRescheduleTarget(
+                                            match,
+                                            day,
+                                            slot.period,
+                                            sectionMode
+                                        )
+                                    } ?: false
+                                    val slotValidForTap = isTapTargetActive && isValidRescheduleTarget(day, slot.period)
+                                    val isQuickAddArmed = !rescheduleMode && !slotHasCourses && armedQuickAddCell == (day to slot.period)
+
+                                    val highlightColor = when {
+                                        isDragHover && slotValidForDrag -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f)
+                                        isDragHover && !slotValidForDrag -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
+                                        isTapTargetActive && slotValidForTap && !slotHasCourses -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.22f)
+                                        isQuickAddArmed -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+                                        else -> Color.Transparent
+                                    }
+                                    val borderColor = when {
+                                        isDragHover && slotValidForDrag -> MaterialTheme.colorScheme.primary
+                                        isDragHover && !slotValidForDrag -> MaterialTheme.colorScheme.error
+                                        isTapTargetActive && slotValidForTap && !slotHasCourses -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                                        isQuickAddArmed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                        else -> Color.Transparent
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .offset(y = rowTop)
+                                            .fillMaxWidth()
+                                            .height(rowHeight)
+                                            .padding(2.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(highlightColor)
+                                            .then(
+                                                if (borderColor != Color.Transparent) {
+                                                    Modifier.border(
+                                                        width = if (isDragHover) 1.5.dp else 1.dp,
+                                                        color = borderColor,
+                                                        shape = RoundedCornerShape(10.dp)
+                                                    )
+                                                } else Modifier
+                                            )
+                                            .clickable(enabled = !rescheduleMode || isTapTargetActive) {
+                                                if (isTapTargetActive) {
+                                                    onRescheduleCellTap(day, slot.period)
+                                                } else if (!rescheduleMode) {
+                                                    if (armedQuickAddCell == (day to slot.period)) {
+                                                        armedQuickAddCell = null
+                                                        onQuickAdd(day, slot.period)
+                                                    } else {
+                                                        armedQuickAddCell = day to slot.period
+                                                    }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isDragHover) {
+                                            Text(
+                                                text = if (slotValidForDrag) "松手调至此处" else "原位置",
+                                                fontSize = if (dense) 9.sp else 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (slotValidForDrag) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        } else if (isQuickAddArmed) {
+                                            if (dense) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "点击添加实验或课程",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            } else {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Add,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Text(
+                                                        text = "添加实验 / 课程",
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // 同一格可能排多门课（如不同周次），纵向等分展示
                                 cellsByDaySection[day].orEmpty()
                                     .forEach { (section, courseCells) ->
@@ -317,6 +491,10 @@ internal fun TimetableGrid(
                                             )
                                         ) {
                                             courseCells.forEach { cell ->
+                                                val isSourceSelected = rescheduleMode && rescheduleSource?.id == cell.id && rescheduleSource.courseName == cell.courseName
+                                                val isBeingDragged = draggedCell?.id == cell.id && draggedCell?.courseName == cell.courseName
+                                                val activeThisWeek = AcademicParsers.isCourseActiveInWeek(cell.weeks, selectedWeek)
+
                                                 CourseBlock(
                                                     cell = cell,
                                                     page = page,
@@ -333,7 +511,56 @@ internal fun TimetableGrid(
                                                         else -> 2
                                                     },
                                                     showTeacher = !stacked,
-                                                    onClick = { onCourseClick(cell) },
+                                                    rescheduleMode = rescheduleMode,
+                                                    selectedForReschedule = isSourceSelected,
+                                                    isBeingDragged = isBeingDragged,
+                                                    onClick = {
+                                                        if (cell.isMovedOut) {
+                                                            if (rescheduleMode && rescheduleSource != null) {
+                                                                val targetPeriod = if (sectionMode == SectionMode.BASE) {
+                                                                    baseRowRangeOf(cell.sectionIndex).first
+                                                                } else cell.sectionIndex
+                                                                onRescheduleCellTap(day, targetPeriod)
+                                                            } else {
+                                                                onMovedOutClick(cell)
+                                                            }
+                                                        } else {
+                                                            onCourseClick(cell)
+                                                        }
+                                                    },
+                                                    onDragEnabled = rescheduleMode && activeThisWeek && !cell.isMovedOut,
+                                                    onDragStart = { cardCoords, localOffset ->
+                                                        val gridCoords = gridCoordinates ?: return@CourseBlock
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        val topLeft = gridCoords.localPositionOf(cardCoords, Offset.Zero)
+                                                        draggedCell = cell
+                                                        dragCardTopLeft = topLeft
+                                                        dragGrabOffset = localOffset
+                                                        dragBlockHeight = if (stacked) (blockHeight / courseCells.size).coerceAtLeast(48.dp) else blockHeight
+                                                        val finger = topLeft + localOffset
+                                                        dragFingerInGrid = finger
+                                                        dragHoverTarget = hitTestTarget(finger)
+                                                    },
+                                                    onDrag = { dragAmount ->
+                                                        val nextFinger = (dragFingerInGrid ?: return@CourseBlock) + dragAmount
+                                                        dragFingerInGrid = nextFinger
+                                                        dragHoverTarget = hitTestTarget(nextFinger)
+                                                    },
+                                                    onDragEnd = {
+                                                        val src = draggedCell
+                                                        val target = dragHoverTarget
+                                                        draggedCell = null
+                                                        dragFingerInGrid = null
+                                                        dragHoverTarget = null
+                                                        if (src != null && target != null) {
+                                                            onRescheduleDragDrop(src, target.first, target.second)
+                                                        }
+                                                    },
+                                                    onDragCancel = {
+                                                        draggedCell = null
+                                                        dragFingerInGrid = null
+                                                        dragHoverTarget = null
+                                                    },
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .weight(1f)
@@ -342,6 +569,55 @@ internal fun TimetableGrid(
                                         }
                                     }
                             }
+                        }
+                    }
+
+                    // 拖拽调课时的随指悬浮预览卡
+                    val floatingCell = draggedCell
+                    val finger = dragFingerInGrid
+                    if (floatingCell != null && finger != null) {
+                        val previewPos = finger - dragGrabOffset
+                        val key = CourseColorPalette.keyOf(
+                            floatingCell.courseName,
+                            floatingCell.courseSeq,
+                            floatingCell.courseId,
+                            floatingCell.id
+                        )
+                        val colors = CourseColorPalette.cardColors(key = key, dark = isDark, muted = false)
+                        val shape = RoundedCornerShape(12.dp)
+                        Column(
+                            modifier = Modifier
+                                .zIndex(20f)
+                                .offset { IntOffset(previewPos.x.roundToInt(), previewPos.y.roundToInt()) }
+                                .width(dayColumnWidth - BlockGap)
+                                .height(dragBlockHeight)
+                                .graphicsLayer {
+                                    scaleX = 1.05f
+                                    scaleY = 1.05f
+                                    alpha = 0.94f
+                                }
+                                .shadow(14.dp, shape)
+                                .clip(shape)
+                                .background(colors.container)
+                                .border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                                .padding(horizontal = if (dense) BlockHorizontalPadding else 10.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = floatingCell.courseName,
+                                fontSize = if (dense) 10.sp else 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.content,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = floatingCell.location.ifEmpty { "待定" },
+                                fontSize = if (dense) 9.sp else 11.sp,
+                                color = colors.content.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -368,9 +644,63 @@ private fun CourseBlock(
     sharedTransitionScope: SharedTransitionScope,
     nameMaxLines: Int,
     showTeacher: Boolean,
+    rescheduleMode: Boolean,
+    selectedForReschedule: Boolean,
+    isBeingDragged: Boolean,
     onClick: () -> Unit,
+    onDragEnabled: Boolean,
+    onDragStart: (LayoutCoordinates, Offset) -> Unit,
+    onDrag: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (cell.isMovedOut) {
+        val outlineColor = MaterialTheme.colorScheme.outlineVariant
+        val shape = RoundedCornerShape(12.dp)
+        Column(
+            modifier = modifier
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.45f))
+                .drawBehind {
+                    drawRoundRect(
+                        color = outlineColor,
+                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                        style = Stroke(
+                            width = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+                        )
+                    )
+                }
+                .clickable(onClick = onClick)
+                .padding(horizontal = if (dense) BlockHorizontalPadding else 10.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "已调出",
+                fontSize = if (dense) 8.sp else 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = cell.courseName,
+                fontSize = if (dense) 9.sp else 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textDecoration = TextDecoration.LineThrough,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "→ ${cell.movedToLabel}",
+                fontSize = if (dense) 8.sp else 10.sp,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        return
+    }
+
     val key = remember(cell) {
         CourseColorPalette.keyOf(
             courseName = cell.courseName,
@@ -388,14 +718,24 @@ private fun CourseBlock(
     val shape = RoundedCornerShape(12.dp)
 
     // 非本周的块要多带一行「非本周」标记，课程名相应少一行，避免整块内容溢出被裁切
-    val nameLines = if (active) nameMaxLines else (nameMaxLines - 1).coerceAtLeast(1)
-
+    val hasBadge = cell.isCustomCourse || cell.isRescheduled
+    val nameLines = when {
+        !active -> (nameMaxLines - 1).coerceAtLeast(1)
+        hasBadge && dense -> (nameMaxLines - 1).coerceAtLeast(1)
+        else -> nameMaxLines
+    }
 
     val interactions = remember { MutableInteractionSource() }
     val pressed by interactions.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, label = "coursePress")
+    var cardCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
 
-    Box(modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }) {
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { cardCoords = it }
+            .alpha(if (isBeingDragged) 0.32f else if (rescheduleMode && !active) 0.45f else 1f)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+    ) {
         sharedTransitionScope.run {
             AnimatedVisibility(
                 visible = !isSharedHidden,
@@ -413,7 +753,26 @@ private fun CourseBlock(
                         )
                         .clip(shape)
                         .background(colors.container)
-                        .border(1.dp, colors.border, shape)
+                        .border(
+                            width = if (selectedForReschedule) 2.dp else 1.dp,
+                            color = if (selectedForReschedule) MaterialTheme.colorScheme.primary else colors.border,
+                            shape = shape
+                        )
+                        .pointerInput(onDragEnabled, cell.id, cell.courseName) {
+                            if (!onDragEnabled) return@pointerInput
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { offset ->
+                                    val coords = cardCoords ?: return@detectDragGesturesAfterLongPress
+                                    onDragStart(coords, offset)
+                                },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount)
+                                },
+                                onDragEnd = onDragEnd,
+                                onDragCancel = onDragCancel
+                            )
+                        }
                         .clickable(interactionSource = interactions, indication = null, onClick = onClick)
                         .padding(
                             horizontal = if (dense) BlockHorizontalPadding else 10.dp,
@@ -421,6 +780,42 @@ private fun CourseBlock(
                         ),
                     verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
+                    if (hasBadge) {
+                        val badgeLabel = when {
+                            cell.customCategory == "lab" -> "实验"
+                            cell.isCustomCourse -> "自定"
+                            cell.isRescheduled -> "调课"
+                            else -> ""
+                        }
+                        if (badgeLabel.isNotEmpty()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = AppShapes.Pill,
+                                    color = colors.content.copy(alpha = 0.14f)
+                                ) {
+                                    Text(
+                                        text = badgeLabel,
+                                        fontSize = if (dense) 8.sp else 10.sp,
+                                        lineHeight = if (dense) 10.sp else 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.content,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                                if (cell.customTimeText.isNotEmpty() && !dense) {
+                                    Text(
+                                        text = cell.customTimeText,
+                                        fontSize = 10.sp,
+                                        color = colors.content.copy(alpha = 0.8f),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Text(
                         text = cell.courseName,
                         fontSize = if (dense) 10.sp else 13.sp,
@@ -435,7 +830,11 @@ private fun CourseBlock(
                         )
                     )
                     Text(
-                        text = cell.location.ifEmpty { "待定" },
+                        text = if (dense && cell.customTimeText.isNotEmpty()) {
+                            "${cell.customTimeText} · ${cell.location.ifEmpty { "待定" }}"
+                        } else {
+                            cell.location.ifEmpty { "待定" }
+                        },
                         fontSize = if (dense) 9.sp else 11.sp,
                         lineHeight = if (dense) 11.sp else 14.sp,
                         color = colors.content.copy(alpha = 0.85f),

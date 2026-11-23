@@ -1,6 +1,12 @@
 package com.glassous.betterhrbust
 
+import com.glassous.betterhrbust.core.model.CustomCourseEntry
+import com.glassous.betterhrbust.core.model.RescheduleSourceMatch
 import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
+import com.glassous.betterhrbust.core.model.TimetableRescheduleEntry
+import com.glassous.betterhrbust.core.util.TimetableOverrides
+import com.glassous.betterhrbust.feature.timetable.SectionMode
 import com.glassous.betterhrbust.widget.TimetableWidgetModel
 import java.time.LocalDate
 import java.time.LocalTime
@@ -122,5 +128,85 @@ class TimetableWidgetTest {
         assertEquals(listOf("下一课"), after.map { it.name })
         assertFalse(after.first().ongoing)
         assertTrue(TimetableWidgetModel.remainingCourses(cells, 6, date, LocalTime.parse("21:30")).isEmpty())
+    }
+
+    @Test fun widgetAdaptsRescheduledAndCustomLabCourses() {
+        val baseCell = TimetableCell(
+            id = "math-5-1",
+            courseId = "math",
+            day = 5,
+            sectionIndex = 1,
+            sectionLabel = "第一大节",
+            courseName = "高等数学",
+            courseSeq = "01",
+            location = "1-302",
+            teacher = "张老师",
+            weeks = "1-18周",
+            hoursType = ""
+        )
+        val overrides = TimetableOverridesPayload(
+            reschedules = listOf(
+                TimetableRescheduleEntry(
+                    id = "res-1",
+                    week = 6,
+                    sourceMatch = RescheduleSourceMatch(
+                        courseName = "高等数学",
+                        originDay = 5,
+                        originCombineSection = 1,
+                        originLocation = "1-302",
+                        originTeacher = "张老师"
+                    ),
+                    targetDay = 5,
+                    targetSectionMode = "combine",
+                    targetCombineSection = 3,
+                    location = "西区主楼E402"
+                )
+            ),
+            customCourses = listOf(
+                CustomCourseEntry(
+                    id = "lab-1",
+                    category = "lab",
+                    courseName = "物理实验",
+                    location = "实验楼B201",
+                    teacher = "王老师",
+                    week = 6,
+                    day = 5,
+                    timeMode = "custom",
+                    startTime = "14:00",
+                    endTime = "16:30"
+                )
+            )
+        )
+        val effective = TimetableOverrides.buildEffectiveTimetableCells(
+            rawCells = listOf(baseCell),
+            week = 6,
+            sectionMode = SectionMode.COMBINE,
+            overrides = overrides
+        )
+        val date = LocalDate.parse("2026-10-09") // Friday (day=5) in week 6
+
+        val fridayCourses = TimetableWidgetModel.dayCourses(effective, 6, date, LocalTime.parse("15:20"))
+        assertEquals(listOf("高等数学", "物理实验"), fridayCourses.map { it.name })
+
+        val movedCourse = fridayCourses[0]
+        assertEquals("13:30–15:10", movedCourse.time)
+        assertEquals("西区主楼E402", movedCourse.location)
+        assertEquals("调课", movedCourse.tag)
+        assertFalse(movedCourse.ongoing)
+
+        val labCourse = fridayCourses[1]
+        assertEquals("14:00–16:30", labCourse.time)
+        assertEquals("实验楼B201", labCourse.location)
+        assertEquals("实验", labCourse.tag)
+        assertTrue(labCourse.ongoing)
+
+        // 15:20: moved math (13:30-15:10) has finished, custom lab (14:00-16:30) is ongoing
+        val remaining = TimetableWidgetModel.remainingCourses(effective, 6, date, LocalTime.parse("15:20"))
+        assertEquals(listOf("物理实验"), remaining.map { it.name })
+        assertTrue(remaining.single().ongoing)
+
+        val progress = TimetableWidgetModel.progress(fridayCourses, LocalTime.parse("15:20"))
+        assertEquals(1, progress.completed)
+        assertEquals(2, progress.total)
     }
 }

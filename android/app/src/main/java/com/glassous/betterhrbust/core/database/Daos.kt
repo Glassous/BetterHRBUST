@@ -97,3 +97,15 @@ interface CurrentCoursesDao {
     @Query("DELETE FROM current_courses_cache WHERE studentId = :studentId")
     suspend fun clear(studentId: String)
 }
+
+@Dao
+interface TimetableOverrideDao {
+    @Query("SELECT * FROM timetable_overrides WHERE studentId = :studentId")
+    fun getOverrides(studentId: String): Flow<TimetableOverrideEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: TimetableOverrideEntity)
+
+    @Query("DELETE FROM timetable_overrides WHERE studentId = :studentId")
+    suspend fun clear(studentId: String)
+}

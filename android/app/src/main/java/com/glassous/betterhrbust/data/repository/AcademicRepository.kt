@@ -10,6 +10,7 @@ import com.glassous.betterhrbust.core.parser.AcademicParsers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -906,5 +907,75 @@ class AcademicRepository(
             } catch (_: Exception) {}
             emit(Resource.Error("未能识别教学周"))
         }
+    }
+
+    /** 观察本地课表增强（单周临时调课 + 手动实验/自定义课程），教务全量刷新不覆盖此表。 */
+    fun observeTimetableOverrides(studentId: String): Flow<TimetableOverridesPayload> {
+        if (studentId.isBlank()) return kotlinx.coroutines.flow.flowOf(TimetableOverridesPayload())
+        return database.timetableOverrideDao().getOverrides(studentId).map { entity ->
+            if (entity == null) TimetableOverridesPayload()
+            else runCatching { json.decodeFromString<TimetableOverridesPayload>(entity.json) }
+                .getOrDefault(TimetableOverridesPayload())
+        }
+    }
+
+    suspend fun getTimetableOverridesSnapshot(studentId: String): TimetableOverridesPayload {
+        if (studentId.isBlank()) return TimetableOverridesPayload()
+        val entity = database.timetableOverrideDao().getOverrides(studentId).firstOrNull() ?: return TimetableOverridesPayload()
+        return runCatching { json.decodeFromString<TimetableOverridesPayload>(entity.json) }
+            .getOrDefault(TimetableOverridesPayload())
+    }
+
+    private suspend fun saveTimetableOverrides(studentId: String, payload: TimetableOverridesPayload) {
+        if (studentId.isBlank()) return
+        database.timetableOverrideDao().insert(
+            TimetableOverrideEntity(studentId = studentId, json = json.encodeToString(payload))
+        )
+    }
+
+    suspend fun upsertTimetableReschedule(studentId: String, raw: TimetableRescheduleEntry): TimetableRescheduleEntry {
+        val entry = com.glassous.betterhrbust.core.util.TimetableOverrides.normalizeReschedule(raw)
+        val current = getTimetableOverridesSnapshot(studentId)
+        val updated = current.reschedules.toMutableList()
+        val idx = updated.indexOfFirst { it.id == entry.id }
+        if (idx >= 0) {
+            updated[idx] = entry.copy(createdAt = updated[idx].createdAt.takeIf { it > 0L } ?: entry.createdAt)
+        } else {
+            updated.add(entry)
+        }
+        saveTimetableOverrides(studentId, current.copy(reschedules = updated))
+        return entry
+    }
+
+    suspend fun removeTimetableReschedule(studentId: String, rescheduleId: String) {
+        if (rescheduleId.isBlank()) return
+        val current = getTimetableOverridesSnapshot(studentId)
+        saveTimetableOverrides(
+            studentId,
+            current.copy(reschedules = current.reschedules.filterNot { it.id == rescheduleId })
+        )
+    }
+
+    suspend fun upsertCustomCourse(studentId: String, raw: CustomCourseEntry): CustomCourseEntry {
+        val entry = com.glassous.betterhrbust.core.util.TimetableOverrides.normalizeCustomCourse(raw)
+        val current = getTimetableOverridesSnapshot(studentId)
+        val updated = current.customCourses.toMutableList()
+        val idx = updated.indexOfFirst { it.id == entry.id }
+        if (idx >= 0) {
+            updated[idx] = entry.copy(createdAt = updated[idx].createdAt.takeIf { it > 0L } ?: entry.createdAt)
+        } else {
+            updated.add(entry)
+        }
+        saveTimetableOverrides(studentId, current.copy(customCourses = updated))
+        return entry
+    }
+
+    suspend fun removeCustomCourse(studentId: String, customCourseId: String) {
+        if (customCourseId.isBlank()) return
+        val current = getTimetableOverridesSnapshot(studentId)
+        saveTimetableOverrides(
+            studentId,
+            current.copy(customCourses = current.customCourses.filterNot { it.id == customCourseId })
+        )
     }
 }

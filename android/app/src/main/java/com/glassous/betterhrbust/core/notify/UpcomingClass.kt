@@ -1,8 +1,10 @@
 package com.glassous.betterhrbust.core.notify
 
 import com.glassous.betterhrbust.core.model.TimetableCell
+import com.glassous.betterhrbust.core.model.TimetableOverridesPayload
 import com.glassous.betterhrbust.core.parser.AcademicParsers
-import com.glassous.betterhrbust.feature.timetable.CombineSlots
+import com.glassous.betterhrbust.core.util.TimetableOverrides
+import com.glassous.betterhrbust.feature.timetable.SectionMode
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -42,13 +44,20 @@ object UpcomingClassResolver {
         date: LocalDate,
         week: Int?,
         now: LocalTime,
-        windowMinutes: Long = WINDOW_MINUTES
+        windowMinutes: Long = WINDOW_MINUTES,
+        overrides: TimetableOverridesPayload = TimetableOverridesPayload()
     ): UpcomingClass? {
         // 教学周未知（假期 / 尚未同步）时不做任何猜测性提醒
-        if (week == null || cells.isEmpty()) return null
+        if (week == null || (cells.isEmpty() && overrides.customCourses.isEmpty())) return null
+        val effectiveCells = TimetableOverrides.buildEffectiveTimetableCells(
+            rawCells = cells,
+            week = week,
+            sectionMode = SectionMode.COMBINE,
+            overrides = overrides
+        )
         val today = date.dayOfWeek.value
-        val candidates = cells.asSequence()
-            .filter { it.day == today && AcademicParsers.isCourseActiveInWeek(it.weeks, week) }
+        val candidates = effectiveCells.asSequence()
+            .filter { !it.isMovedOut && it.day == today && AcademicParsers.isCourseActiveInWeek(it.weeks, week) }
             .mapNotNull { cell -> cell.toSchedule() }
             .sortedBy { it.first }
             .toList()
@@ -95,11 +104,12 @@ object UpcomingClassResolver {
         cells: List<TimetableCell>,
         now: LocalDateTime,
         weekForDate: (LocalDate) -> Int?,
-        windowMinutes: Long = WINDOW_MINUTES
+        windowMinutes: Long = WINDOW_MINUTES,
+        overrides: TimetableOverridesPayload = TimetableOverridesPayload()
     ): LocalDateTime? {
-        if (cells.isEmpty()) return null
+        if (cells.isEmpty() && overrides.customCourses.isEmpty()) return null
         val today = now.toLocalDate()
-        val activeNow = resolve(cells, today, weekForDate(today), now.toLocalTime(), windowMinutes)
+        val activeNow = resolve(cells, today, weekForDate(today), now.toLocalTime(), windowMinutes, overrides)
         if (activeNow != null) {
             return nextActiveBoundary(activeNow, now)
         }
@@ -107,8 +117,14 @@ object UpcomingClassResolver {
             val candidateDate = today.plusDays(offset)
             val week = weekForDate(candidateDate) ?: continue
             val dayOfWeek = candidateDate.dayOfWeek.value
-            val earliest = cells.asSequence()
-                .filter { it.day == dayOfWeek && AcademicParsers.isCourseActiveInWeek(it.weeks, week) }
+            val effectiveCells = TimetableOverrides.buildEffectiveTimetableCells(
+                rawCells = cells,
+                week = week,
+                sectionMode = SectionMode.COMBINE,
+                overrides = overrides
+            )
+            val earliest = effectiveCells.asSequence()
+                .filter { !it.isMovedOut && it.day == dayOfWeek && AcademicParsers.isCourseActiveInWeek(it.weeks, week) }
                 .mapNotNull { it.toSchedule() }
                 .sortedBy { it.first }
                 .map { (startTime, endTime, cell) ->
@@ -130,11 +146,9 @@ object UpcomingClassResolver {
         return today.plusDays(1).atTime(0, 5)
     }
 
-    /** 大节序号 → 起止时间；序号越界或时间解析失败返回 null，绝不抛异常。 */
+    /** 节次或自定义时段 → 起止时间；越界或格式非法返回 null，绝不抛异常。 */
     private fun TimetableCell.toSchedule(): Triple<LocalTime, LocalTime, TimetableCell>? {
-        val slot = CombineSlots.getOrNull(sectionIndex - 1) ?: return null
-        val start = runCatching { LocalTime.parse(slot.start) }.getOrNull() ?: return null
-        val end = runCatching { LocalTime.parse(slot.end) }.getOrNull() ?: return null
-        return Triple(start, end, this)
+        val range = TimetableOverrides.effectiveTimeRangeOf(this) ?: return null
+        return Triple(range.first, range.second, this)
     }
 }
